@@ -43,6 +43,68 @@ local function isAdmin(player)
     return false
 end
 
+local function isSameTeam(player1, player2)
+    if not player1.Team or not player2.Team then
+        return false
+    end
+    return player1.Team == player2.Team
+end
+
+local function isValidTarget(admin, target)
+    -- Not yourself
+    if target == admin then
+        return false
+    end
+    
+    -- Not an admin
+    if isAdmin(target) then
+        return false
+    end
+    
+    -- Not same team
+    if isSameTeam(admin, target) then
+        return false
+    end
+    
+    return true
+end
+
+local function hasLineOfSight(admin, target)
+    local adminChar = admin.Character
+    local targetChar = target.Character
+    
+    if not adminChar or not targetChar then
+        return false
+    end
+    
+    local adminHead = adminChar:FindFirstChild("Head")
+    local targetHRP = targetChar:FindFirstChild("HumanoidRootPart")
+    
+    if not adminHead or not targetHRP then
+        return false
+    end
+    
+    local origin = adminHead.Position
+    local destination = targetHRP.Position
+    local direction = (destination - origin)
+    local distance = direction.Magnitude
+    
+    -- Raycast parameters - ignore admin and target characters
+    local raycastParams = RaycastParams.new()
+    raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+    raycastParams.FilterDescendantsInstances = {adminChar, targetChar}
+    raycastParams.IgnoreWater = true
+    
+    local raycastResult = Workspace:Raycast(origin, direction.Unit * distance, raycastParams)
+    
+    -- If raycast hit something, there's a wall in the way
+    if raycastResult then
+        return false
+    end
+    
+    return true
+end
+
 local function findPlayer(name)
     name = name:lower()
     for _, player in ipairs(Players:GetPlayers()) do
@@ -53,7 +115,7 @@ local function findPlayer(name)
     return nil
 end
 
-local function getNearestPlayer(admin)
+local function getNearestValidTarget(admin)
     local adminChar = admin.Character
     if not adminChar then return nil end
     
@@ -64,13 +126,16 @@ local function getNearestPlayer(admin)
     local nearestDistance = math.huge
     
     for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= admin then
+        -- Check if valid target (not admin, not same team)
+        if isValidTarget(admin, player) then
             local char = player.Character
             if char then
                 local hrp = char:FindFirstChild("HumanoidRootPart")
                 if hrp then
                     local distance = (adminHRP.Position - hrp.Position).Magnitude
-                    if distance < nearestDistance then
+                    
+                    -- Check line of sight (no walls)
+                    if distance < nearestDistance and hasLineOfSight(admin, player) then
                         nearestDistance = distance
                         nearestPlayer = player
                     end
@@ -100,7 +165,6 @@ local function stopRightMouseTracking(admin)
         end
         rightMouseTracking[admin.UserId] = nil
         
-        -- Reset camera
         local camera = Workspace.CurrentCamera
         if camera then
             camera.CameraType = Enum.CameraType.Custom
@@ -113,13 +177,23 @@ end
 local function createESPHighlight(target, admin)
     if not target.Character then return nil end
     
-    local existingHighlight = target.Character:FindFirstChild("AdminESP")
+    -- Don't create ESP for admins or same team
+    if not isValidTarget(admin, target) then
+        return nil
+    end
+    
+    local existingHighlight = target.Character:FindFirstChild("AdminESP_" .. admin.UserId)
     if existingHighlight then
         existingHighlight:Destroy()
     end
     
+    local existingBillboard = target.Character:FindFirstChild("AdminESPInfo_" .. admin.UserId)
+    if existingBillboard then
+        existingBillboard:Destroy()
+    end
+    
     local highlight = Instance.new("Highlight")
-    highlight.Name = "AdminESP"
+    highlight.Name = "AdminESP_" .. admin.UserId
     highlight.Adornee = target.Character
     highlight.FillColor = Color3.fromRGB(255, 0, 0)
     highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
@@ -129,7 +203,7 @@ local function createESPHighlight(target, admin)
     highlight.Parent = target.Character
     
     local billboardGui = Instance.new("BillboardGui")
-    billboardGui.Name = "AdminESPInfo"
+    billboardGui.Name = "AdminESPInfo_" .. admin.UserId
     billboardGui.Adornee = target.Character:FindFirstChild("Head")
     billboardGui.Size = UDim2.new(0, 200, 0, 50)
     billboardGui.StudsOffset = Vector3.new(0, 3, 0)
@@ -161,11 +235,40 @@ local function createESPHighlight(target, admin)
     distanceLabel.Font = Enum.Font.Gotham
     distanceLabel.Parent = billboardGui
     
-    return {highlight = highlight, billboard = billboardGui, distanceLabel = distanceLabel}
+    local visibilityLabel = Instance.new("TextLabel")
+    visibilityLabel.Name = "VisibilityLabel"
+    visibilityLabel.Size = UDim2.new(1, 0, 0.3, 0)
+    visibilityLabel.Position = UDim2.new(0, 0, 0.7, 0)
+    visibilityLabel.BackgroundTransparency = 1
+    visibilityLabel.Text = "👁️ Visible"
+    visibilityLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+    visibilityLabel.TextStrokeTransparency = 0
+    visibilityLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    visibilityLabel.TextSize = 10
+    visibilityLabel.Font = Enum.Font.Gotham
+    visibilityLabel.Parent = billboardGui
+    
+    return {
+        highlight = highlight, 
+        billboard = billboardGui, 
+        distanceLabel = distanceLabel,
+        visibilityLabel = visibilityLabel
+    }
 end
 
 local function updateESPDistance(admin, target, espComponents)
     if not admin.Character or not target.Character then return end
+    
+    -- Re-check if still valid target (team might have changed)
+    if not isValidTarget(admin, target) then
+        if espComponents.highlight then
+            espComponents.highlight:Destroy()
+        end
+        if espComponents.billboard then
+            espComponents.billboard:Destroy()
+        end
+        return false
+    end
     
     local adminHRP = admin.Character:FindFirstChild("HumanoidRootPart")
     local targetHRP = target.Character:FindFirstChild("HumanoidRootPart")
@@ -174,6 +277,20 @@ local function updateESPDistance(admin, target, espComponents)
         local distance = (adminHRP.Position - targetHRP.Position).Magnitude
         espComponents.distanceLabel.Text = string.format("%.0f studs", distance)
         
+        -- Check line of sight and update visibility indicator
+        local canSee = hasLineOfSight(admin, target)
+        
+        if canSee then
+            espComponents.visibilityLabel.Text = "👁️ Visible"
+            espComponents.visibilityLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+            espComponents.highlight.FillTransparency = 0.5
+        else
+            espComponents.visibilityLabel.Text = "🧱 Behind Cover"
+            espComponents.visibilityLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+            espComponents.highlight.FillTransparency = 0.8
+        end
+        
+        -- Color based on distance
         if distance < 50 then
             espComponents.highlight.FillColor = Color3.fromRGB(255, 0, 0)
         elseif distance < 150 then
@@ -182,6 +299,8 @@ local function updateESPDistance(admin, target, espComponents)
             espComponents.highlight.FillColor = Color3.fromRGB(0, 255, 0)
         end
     end
+    
+    return true
 end
 
 local function clearAllESP(admin)
@@ -191,16 +310,31 @@ local function clearAllESP(admin)
                 data.connection:Disconnect()
             end
             if data.components then
-                if data.components.highlight then
+                if data.components.highlight and data.components.highlight.Parent then
                     data.components.highlight:Destroy()
                 end
-                if data.components.billboard then
+                if data.components.billboard and data.components.billboard.Parent then
                     data.components.billboard:Destroy()
                 end
             end
         end
         activeESP[admin.UserId] = nil
     end
+    
+    -- Clean up any remaining ESP on all players
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player.Character then
+            local highlight = player.Character:FindFirstChild("AdminESP_" .. admin.UserId)
+            if highlight then
+                highlight:Destroy()
+            end
+            local billboard = player.Character:FindFirstChild("AdminESPInfo_" .. admin.UserId)
+            if billboard then
+                billboard:Destroy()
+            end
+        end
+    end
+    
     espEnabled[admin.UserId] = false
 end
 
@@ -211,14 +345,21 @@ local function enableESP(admin)
     espEnabled[admin.UserId] = true
     
     for _, target in ipairs(Players:GetPlayers()) do
-        if target ~= admin then
+        if isValidTarget(admin, target) then
             local components = createESPHighlight(target, admin)
             if components then
                 local connection = RunService.Heartbeat:Connect(function()
                     if not espEnabled[admin.UserId] then
                         return
                     end
-                    updateESPDistance(admin, target, components)
+                    local stillValid = updateESPDistance(admin, target, components)
+                    if not stillValid then
+                        -- Target became invalid, clean up
+                        if activeESP[admin.UserId] and activeESP[admin.UserId][target.UserId] then
+                            activeESP[admin.UserId][target.UserId].connection:Disconnect()
+                            activeESP[admin.UserId][target.UserId] = nil
+                        end
+                    end
                 end)
                 
                 activeESP[admin.UserId][target.UserId] = {
@@ -229,6 +370,7 @@ local function enableESP(admin)
         end
     end
     
+    -- Handle new players joining
     local playerAddedConn
     playerAddedConn = Players.PlayerAdded:Connect(function(target)
         if not espEnabled[admin.UserId] then
@@ -239,7 +381,7 @@ local function enableESP(admin)
         target.CharacterAdded:Wait()
         task.wait(1)
         
-        if espEnabled[admin.UserId] then
+        if espEnabled[admin.UserId] and isValidTarget(admin, target) then
             local components = createESPHighlight(target, admin)
             if components then
                 local connection = RunService.Heartbeat:Connect(function()
@@ -249,6 +391,10 @@ local function enableESP(admin)
                     updateESPDistance(admin, target, components)
                 end)
                 
+                if not activeESP[admin.UserId] then
+                    activeESP[admin.UserId] = {}
+                end
+                
                 activeESP[admin.UserId][target.UserId] = {
                     components = components,
                     connection = connection
@@ -257,18 +403,21 @@ local function enableESP(admin)
         end
     end)
     
+    -- Handle character respawns
     for _, target in ipairs(Players:GetPlayers()) do
         if target ~= admin then
             target.CharacterAdded:Connect(function()
-                if espEnabled[admin.UserId] then
+                if espEnabled[admin.UserId] and isValidTarget(admin, target) then
                     task.wait(1)
                     
+                    -- Clean old
                     if activeESP[admin.UserId] and activeESP[admin.UserId][target.UserId] then
                         if activeESP[admin.UserId][target.UserId].connection then
                             activeESP[admin.UserId][target.UserId].connection:Disconnect()
                         end
                     end
                     
+                    -- Create new
                     local components = createESPHighlight(target, admin)
                     if components then
                         local connection = RunService.Heartbeat:Connect(function()
@@ -286,6 +435,47 @@ local function enableESP(admin)
                             components = components,
                             connection = connection
                         }
+                    end
+                end
+            end)
+            
+            -- Handle team changes
+            target:GetPropertyChangedSignal("Team"):Connect(function()
+                if espEnabled[admin.UserId] then
+                    -- If now same team or admin, remove ESP
+                    if not isValidTarget(admin, target) then
+                        if activeESP[admin.UserId] and activeESP[admin.UserId][target.UserId] then
+                            if activeESP[admin.UserId][target.UserId].connection then
+                                activeESP[admin.UserId][target.UserId].connection:Disconnect()
+                            end
+                            if activeESP[admin.UserId][target.UserId].components then
+                                if activeESP[admin.UserId][target.UserId].components.highlight then
+                                    activeESP[admin.UserId][target.UserId].components.highlight:Destroy()
+                                end
+                                if activeESP[admin.UserId][target.UserId].components.billboard then
+                                    activeESP[admin.UserId][target.UserId].components.billboard:Destroy()
+                                end
+                            end
+                            activeESP[admin.UserId][target.UserId] = nil
+                        end
+                    else
+                        -- Now enemy, add ESP if not exists
+                        if not activeESP[admin.UserId][target.UserId] and target.Character then
+                            local components = createESPHighlight(target, admin)
+                            if components then
+                                local connection = RunService.Heartbeat:Connect(function()
+                                    if not espEnabled[admin.UserId] then
+                                        return
+                                    end
+                                    updateESPDistance(admin, target, components)
+                                end)
+                                
+                                activeESP[admin.UserId][target.UserId] = {
+                                    components = components,
+                                    connection = connection
+                                }
+                            end
+                        end
                     end
                 end
             end)
@@ -319,8 +509,8 @@ local function createAdminGui(player)
     -- Main Frame
     local mainFrame = Instance.new("Frame")
     mainFrame.Name = "MainFrame"
-    mainFrame.Size = UDim2.new(0, 320, 0, 520)
-    mainFrame.Position = UDim2.new(0.5, -160, 0.5, -260)
+    mainFrame.Size = UDim2.new(0, 320, 0, 560)
+    mainFrame.Position = UDim2.new(0.5, -160, 0.5, -280)
     mainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
     mainFrame.BorderSizePixel = 0
     mainFrame.Visible = false
@@ -355,7 +545,7 @@ local function createAdminGui(player)
     titleText.Size = UDim2.new(1, -50, 1, 0)
     titleText.Position = UDim2.new(0, 15, 0, 0)
     titleText.BackgroundTransparency = 1
-    titleText.Text = "⚡ Admin Panel [Right Ctrl]"
+    titleText.Text = "⚡ Admin Panel [R-Ctrl]"
     titleText.TextColor3 = Color3.fromRGB(255, 255, 255)
     titleText.TextSize = 16
     titleText.Font = Enum.Font.GothamBold
@@ -376,14 +566,30 @@ local function createAdminGui(player)
     closeCorner.CornerRadius = UDim.new(0, 6)
     closeCorner.Parent = closeBtn
     
+    -- Info Label
+    local infoLabel = Instance.new("TextLabel")
+    infoLabel.Size = UDim2.new(1, -20, 0, 30)
+    infoLabel.Position = UDim2.new(0, 10, 0, 48)
+    infoLabel.BackgroundColor3 = Color3.fromRGB(60, 40, 80)
+    infoLabel.Text = "  ℹ️ Ignores: Admins, Teammates, Walls"
+    infoLabel.TextColor3 = Color3.fromRGB(200, 180, 255)
+    infoLabel.TextSize = 11
+    infoLabel.Font = Enum.Font.Gotham
+    infoLabel.TextXAlignment = Enum.TextXAlignment.Left
+    infoLabel.Parent = mainFrame
+    
+    local infoCorner = Instance.new("UICorner")
+    infoCorner.CornerRadius = UDim.new(0, 6)
+    infoCorner.Parent = infoLabel
+    
     -- Content Frame
     local contentFrame = Instance.new("ScrollingFrame")
     contentFrame.Name = "Content"
-    contentFrame.Size = UDim2.new(1, -20, 1, -55)
-    contentFrame.Position = UDim2.new(0, 10, 0, 50)
+    contentFrame.Size = UDim2.new(1, -20, 1, -90)
+    contentFrame.Position = UDim2.new(0, 10, 0, 82)
     contentFrame.BackgroundTransparency = 1
     contentFrame.ScrollBarThickness = 4
-    contentFrame.CanvasSize = UDim2.new(0, 0, 0, 580)
+    contentFrame.CanvasSize = UDim2.new(0, 0, 0, 620)
     contentFrame.Parent = mainFrame
     
     -- Player Input
@@ -410,7 +616,7 @@ local function createAdminGui(player)
     statusLabel.Size = UDim2.new(1, 0, 0, 20)
     statusLabel.Position = UDim2.new(0, 0, 0, 42)
     statusLabel.BackgroundTransparency = 1
-    statusLabel.Text = "Ready | Hold RMB to track nearest"
+    statusLabel.Text = "Ready | Hold RMB to track nearest enemy"
     statusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
     statusLabel.TextSize = 11
     statusLabel.Font = Enum.Font.Gotham
@@ -419,7 +625,7 @@ local function createAdminGui(player)
     -- Live Tracking Info
     local trackingInfo = Instance.new("Frame")
     trackingInfo.Name = "TrackingInfo"
-    trackingInfo.Size = UDim2.new(1, 0, 0, 70)
+    trackingInfo.Size = UDim2.new(1, 0, 0, 85)
     trackingInfo.Position = UDim2.new(0, 0, 0, 65)
     trackingInfo.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
     trackingInfo.BorderSizePixel = 0
@@ -477,6 +683,18 @@ local function createAdminGui(player)
     trackingDist.TextXAlignment = Enum.TextXAlignment.Left
     trackingDist.Parent = trackingInfo
     
+    local trackingVisibility = Instance.new("TextLabel")
+    trackingVisibility.Name = "Visibility"
+    trackingVisibility.Size = UDim2.new(1, -20, 0, 15)
+    trackingVisibility.Position = UDim2.new(0, 10, 0, 70)
+    trackingVisibility.BackgroundTransparency = 1
+    trackingVisibility.Text = "Status: 👁️ Visible"
+    trackingVisibility.TextColor3 = Color3.fromRGB(0, 255, 0)
+    trackingVisibility.TextSize = 11
+    trackingVisibility.Font = Enum.Font.Gotham
+    trackingVisibility.TextXAlignment = Enum.TextXAlignment.Left
+    trackingVisibility.Parent = trackingInfo
+    
     -- Button Template Function
     local function createButton(name, text, color, positionY)
         local btn = Instance.new("TextButton")
@@ -498,21 +716,21 @@ local function createAdminGui(player)
     end
     
     -- Create Buttons
-    local unlockBtn = createButton("UnlockAll", "🔓 Unlock All", Color3.fromRGB(80, 150, 255), 145)
-    local locateBtn = createButton("Locate", "📍 Locate All Players", Color3.fromRGB(255, 180, 50), 195)
-    local trackBtn = createButton("Track", "🎯 Track Player (Cam Only)", Color3.fromRGB(180, 80, 255), 245)
-    local untrackBtn = createButton("Untrack", "🛑 Stop Tracking", Color3.fromRGB(255, 80, 80), 295)
-    local espBtn = createButton("ESP", "👁️ Toggle ESP", Color3.fromRGB(0, 200, 255), 345)
-    local tpBtn = createButton("Teleport", "⚡ Teleport To Player", Color3.fromRGB(80, 200, 120), 395)
-    local bringBtn = createButton("Bring", "📥 Bring Player", Color3.fromRGB(255, 100, 150), 445)
-    local godBtn = createButton("God", "💎 God Mode", Color3.fromRGB(255, 215, 0), 495)
-    local speedBtn = createButton("Speed", "🏃 Speed Boost", Color3.fromRGB(100, 200, 255), 545)
+    local unlockBtn = createButton("UnlockAll", "🔓 Unlock All", Color3.fromRGB(80, 150, 255), 160)
+    local locateBtn = createButton("Locate", "📍 Locate Enemies", Color3.fromRGB(255, 180, 50), 210)
+    local trackBtn = createButton("Track", "🎯 Track Player (Cam)", Color3.fromRGB(180, 80, 255), 260)
+    local untrackBtn = createButton("Untrack", "🛑 Stop Tracking", Color3.fromRGB(255, 80, 80), 310)
+    local espBtn = createButton("ESP", "👁️ Toggle ESP (Enemies Only)", Color3.fromRGB(0, 200, 255), 360)
+    local tpBtn = createButton("Teleport", "⚡ Teleport To Player", Color3.fromRGB(80, 200, 120), 410)
+    local bringBtn = createButton("Bring", "📥 Bring Player", Color3.fromRGB(255, 100, 150), 460)
+    local godBtn = createButton("God", "💎 God Mode", Color3.fromRGB(255, 215, 0), 510)
+    local speedBtn = createButton("Speed", "🏃 Speed Boost", Color3.fromRGB(100, 200, 255), 560)
     
     -- Player List Frame
     local playerListFrame = Instance.new("ScrollingFrame")
     playerListFrame.Name = "PlayerList"
     playerListFrame.Size = UDim2.new(1, 0, 0, 180)
-    playerListFrame.Position = UDim2.new(0, 0, 0, 595)
+    playerListFrame.Position = UDim2.new(0, 0, 0, 610)
     playerListFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
     playerListFrame.BorderSizePixel = 0
     playerListFrame.ScrollBarThickness = 4
@@ -574,49 +792,56 @@ local function createAdminGui(player)
         
         local count = 0
         for _, p in ipairs(Players:GetPlayers()) do
-            local char = p.Character
-            local label = Instance.new("TextLabel")
-            label.Size = UDim2.new(1, -10, 0, 30)
-            label.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-            label.TextColor3 = Color3.fromRGB(255, 255, 255)
-            label.TextSize = 11
-            label.Font = Enum.Font.Gotham
-            label.TextXAlignment = Enum.TextXAlignment.Left
-            
-            local corner = Instance.new("UICorner")
-            corner.CornerRadius = UDim.new(0, 4)
-            corner.Parent = label
-            
-            local padding = Instance.new("UIPadding")
-            padding.PaddingLeft = UDim.new(0, 8)
-            padding.Parent = label
-            
-            if char then
-                local hrp = char:FindFirstChild("HumanoidRootPart")
-                if hrp then
-                    local pos = hrp.Position
-                    label.Text = string.format("%s | X:%.0f Y:%.0f Z:%.0f", p.Name, pos.X, pos.Y, pos.Z)
+            -- Only show valid targets (not admins, not same team)
+            if isValidTarget(player, p) then
+                local char = p.Character
+                local label = Instance.new("TextLabel")
+                label.Size = UDim2.new(1, -10, 0, 35)
+                label.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+                label.TextColor3 = Color3.fromRGB(255, 255, 255)
+                label.TextSize = 10
+                label.Font = Enum.Font.Gotham
+                label.TextXAlignment = Enum.TextXAlignment.Left
+                label.TextWrapped = true
+                
+                local corner = Instance.new("UICorner")
+                corner.CornerRadius = UDim.new(0, 4)
+                corner.Parent = label
+                
+                local padding = Instance.new("UIPadding")
+                padding.PaddingLeft = UDim.new(0, 8)
+                padding.Parent = label
+                
+                if char then
+                    local hrp = char:FindFirstChild("HumanoidRootPart")
+                    if hrp then
+                        local pos = hrp.Position
+                        local canSee = hasLineOfSight(player, p)
+                        local visIcon = canSee and "👁️" or "🧱"
+                        label.Text = string.format("%s %s | X:%.0f Y:%.0f Z:%.0f", visIcon, p.Name, pos.X, pos.Y, pos.Z)
+                        label.BackgroundColor3 = canSee and Color3.fromRGB(50, 70, 50) or Color3.fromRGB(70, 50, 50)
+                    else
+                        label.Text = "❓ " .. p.Name .. " | Unknown"
+                    end
                 else
-                    label.Text = p.Name .. " | Unknown"
+                    label.Text = "💤 " .. p.Name .. " | Not spawned"
                 end
-            else
-                label.Text = p.Name .. " | Not spawned"
+                
+                label.Parent = playerListFrame
+                count = count + 1
             end
-            
-            label.Parent = playerListFrame
-            count = count + 1
         end
         
         playerListFrame.Visible = not playerListFrame.Visible
-        playerListFrame.CanvasSize = UDim2.new(0, 0, 0, count * 35 + 10)
+        playerListFrame.CanvasSize = UDim2.new(0, 0, 0, count * 40 + 10)
         
         if playerListFrame.Visible then
-            contentFrame.CanvasSize = UDim2.new(0, 0, 0, 780)
+            contentFrame.CanvasSize = UDim2.new(0, 0, 0, 800)
         else
-            contentFrame.CanvasSize = UDim2.new(0, 0, 0, 590)
+            contentFrame.CanvasSize = UDim2.new(0, 0, 0, 610)
         end
         
-        setStatus("📍 Showing " .. count .. " players", Color3.fromRGB(255, 180, 50))
+        setStatus("📍 Showing " .. count .. " enemies", Color3.fromRGB(255, 180, 50))
     end
     
     local function trackPlayerCam(targetName)
@@ -638,6 +863,16 @@ local function createAdminGui(player)
             return
         end
         
+        if isAdmin(target) then
+            setStatus("⚠️ Can't track admins!", Color3.fromRGB(255, 100, 100))
+            return
+        end
+        
+        if isSameTeam(player, target) then
+            setStatus("⚠️ Can't track teammates!", Color3.fromRGB(255, 100, 100))
+            return
+        end
+        
         setStatus("🎯 Cam tracking " .. target.Name, Color3.fromRGB(180, 80, 255))
         trackingInfo.Visible = true
         trackingTarget.Text = "Target: " .. target.Name
@@ -654,16 +889,22 @@ local function createAdminGui(player)
             local targetHRP = targetChar:FindFirstChild("HumanoidRootPart")
             
             if adminHRP and targetHRP and camera then
-                -- Camera only tracking - look at target
                 local targetPos = targetHRP.Position
                 local adminPos = adminHRP.Position
-                
-                -- Smooth camera look at target
-                local lookAtCFrame = CFrame.new(camera.CFrame.Position, targetPos)
-                camera.CFrame = camera.CFrame:Lerp(lookAtCFrame, 0.1)
-                
-                -- Update live coordinates
                 local distance = (adminPos - targetPos).Magnitude
+                local canSee = hasLineOfSight(player, target)
+                
+                -- Only track if visible (no walls)
+                if canSee then
+                    local lookAtCFrame = CFrame.new(camera.CFrame.Position, targetPos)
+                    camera.CFrame = camera.CFrame:Lerp(lookAtCFrame, 0.1)
+                    trackingVisibility.Text = "Status: 👁️ Visible - Tracking"
+                    trackingVisibility.TextColor3 = Color3.fromRGB(0, 255, 0)
+                else
+                    trackingVisibility.Text = "Status: 🧱 Behind Cover - Paused"
+                    trackingVisibility.TextColor3 = Color3.fromRGB(255, 100, 100)
+                end
+                
                 trackingCoords.Text = string.format(
                     "Position: X: %.0f | Y: %.0f | Z: %.0f",
                     targetPos.X,
@@ -691,8 +932,9 @@ local function createAdminGui(player)
     local function startRightMouseTracking()
         stopRightMouseTracking(player)
         
-        local nearestPlayer, distance = getNearestPlayer(player)
+        local nearestPlayer, distance = getNearestValidTarget(player)
         if not nearestPlayer then
+            setStatus("⚠️ No visible enemies nearby!", Color3.fromRGB(255, 100, 100))
             return
         end
         
@@ -703,9 +945,13 @@ local function createAdminGui(player)
         local camera = Workspace.CurrentCamera
         
         local connection = RunService.RenderStepped:Connect(function()
-            -- Continuously find nearest player while holding RMB
-            local currentNearest, dist = getNearestPlayer(player)
-            if not currentNearest then return end
+            -- Continuously find nearest VALID and VISIBLE player
+            local currentNearest, dist = getNearestValidTarget(player)
+            if not currentNearest then 
+                trackingVisibility.Text = "Status: ⚠️ No visible enemies"
+                trackingVisibility.TextColor3 = Color3.fromRGB(255, 180, 50)
+                return 
+            end
             
             local adminChar = player.Character
             local targetChar = currentNearest.Character
@@ -719,7 +965,7 @@ local function createAdminGui(player)
                 local targetPos = targetHRP.Position
                 local adminPos = adminHRP.Position
                 
-                -- Lock camera onto nearest player
+                -- Lock camera onto nearest visible enemy
                 local lookAtCFrame = CFrame.new(camera.CFrame.Position, targetPos)
                 camera.CFrame = camera.CFrame:Lerp(lookAtCFrame, 0.2)
                 
@@ -732,6 +978,8 @@ local function createAdminGui(player)
                     targetPos.Z
                 )
                 trackingDist.Text = string.format("Distance: %.0f studs", dist)
+                trackingVisibility.Text = "Status: 👁️ Visible - Locked"
+                trackingVisibility.TextColor3 = Color3.fromRGB(0, 255, 0)
             end
         end)
         
@@ -846,14 +1094,14 @@ local function createAdminGui(player)
     local function toggleESP()
         if espEnabled[player.UserId] then
             clearAllESP(player)
-            espBtn.Text = "👁️ Toggle ESP"
+            espBtn.Text = "👁️ Toggle ESP (Enemies Only)"
             espBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 255)
             setStatus("👁️ ESP disabled", Color3.fromRGB(150, 150, 150))
         else
             enableESP(player)
             espBtn.Text = "👁️ ESP (ON)"
             espBtn.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
-            setStatus("👁️ ESP enabled!", Color3.fromRGB(0, 200, 255))
+            setStatus("👁️ ESP enabled! (Enemies only)", Color3.fromRGB(0, 200, 255))
         end
     end
     
@@ -865,7 +1113,7 @@ local function createAdminGui(player)
             mainFrame.Visible = not mainFrame.Visible
         end
         
-        -- Right Mouse Button - Track nearest player
+        -- Right Mouse Button - Track nearest visible enemy
         if input.UserInputType == Enum.UserInputType.MouseButton2 then
             startRightMouseTracking()
         end
@@ -877,7 +1125,7 @@ local function createAdminGui(player)
             stopRightMouseTracking(player)
             if not activeTracking[player.UserId] then
                 trackingInfo.Visible = false
-                setStatus("Ready | Hold RMB to track nearest", Color3.fromRGB(100, 255, 100))
+                setStatus("Ready | Hold RMB to track nearest enemy", Color3.fromRGB(100, 255, 100))
             end
         end
     end)
