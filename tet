@@ -1,0 +1,782 @@
+-- ServerScriptService
+
+-- Services
+local Players = game:GetService("Players")
+local ServerStorage = game:GetService("ServerStorage")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local Lighting = game:GetService("Lighting")
+local Workspace = game:GetService("Workspace")
+local TweenService = game:GetService("TweenService")
+local Debris = game:GetService("Debris")
+local SoundService = game:GetService("SoundService")
+local UserInputService = game:GetService("UserInputService")
+local HttpService = game:GetService("HttpService")
+local MarketplaceService = game:GetService("MarketplaceService")
+local TeleportService = game:GetService("TeleportService")
+local BadgeService = game:GetService("BadgeService")
+local DataStoreService = game:GetService("DataStoreService")
+local PhysicsService = game:GetService("PhysicsService")
+local PathfindingService = game:GetService("PathfindingService")
+local Chat = game:GetService("Chat")
+local Teams = game:GetService("Teams")
+local StarterGui = game:GetService("StarterGui")
+local StarterPack = game:GetService("StarterPack")
+local StarterPlayer = game:GetService("StarterPlayer")
+
+local adminIds = {
+    9766385891, -- Your admin
+}
+
+local activeTracking = {}
+local activeESP = {}
+local espEnabled = {}
+
+local function isAdmin(player)
+    for _, id in ipairs(adminIds) do
+        if player.UserId == id then
+            return true
+        end
+    end
+    return false
+end
+
+local function findPlayer(name)
+    name = name:lower()
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player.Name:lower():sub(1, #name) == name then
+            return player
+        end
+    end
+    return nil
+end
+
+local function stopTracking(admin)
+    if activeTracking[admin.UserId] then
+        if activeTracking[admin.UserId].connection then
+            activeTracking[admin.UserId].connection:Disconnect()
+        end
+        activeTracking[admin.UserId] = nil
+        return true
+    end
+    return false
+end
+
+local function createESPHighlight(target, admin)
+    if not target.Character then return nil end
+    
+    -- Remove existing highlight
+    local existingHighlight = target.Character:FindFirstChild("AdminESP")
+    if existingHighlight then
+        existingHighlight:Destroy()
+    end
+    
+    local highlight = Instance.new("Highlight")
+    highlight.Name = "AdminESP"
+    highlight.Adornee = target.Character
+    highlight.FillColor = Color3.fromRGB(255, 0, 0)
+    highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+    highlight.FillTransparency = 0.5
+    highlight.OutlineTransparency = 0
+    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    highlight.Parent = target.Character
+    
+    -- Billboard for name and distance
+    local billboardGui = Instance.new("BillboardGui")
+    billboardGui.Name = "AdminESPInfo"
+    billboardGui.Adornee = target.Character:FindFirstChild("Head")
+    billboardGui.Size = UDim2.new(0, 200, 0, 50)
+    billboardGui.StudsOffset = Vector3.new(0, 3, 0)
+    billboardGui.AlwaysOnTop = true
+    billboardGui.Parent = target.Character
+    
+    local nameLabel = Instance.new("TextLabel")
+    nameLabel.Name = "NameLabel"
+    nameLabel.Size = UDim2.new(1, 0, 0.5, 0)
+    nameLabel.BackgroundTransparency = 1
+    nameLabel.Text = target.Name
+    nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    nameLabel.TextStrokeTransparency = 0
+    nameLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    nameLabel.TextSize = 14
+    nameLabel.Font = Enum.Font.GothamBold
+    nameLabel.Parent = billboardGui
+    
+    local distanceLabel = Instance.new("TextLabel")
+    distanceLabel.Name = "DistanceLabel"
+    distanceLabel.Size = UDim2.new(1, 0, 0.5, 0)
+    distanceLabel.Position = UDim2.new(0, 0, 0.5, 0)
+    distanceLabel.BackgroundTransparency = 1
+    distanceLabel.Text = "0 studs"
+    distanceLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
+    distanceLabel.TextStrokeTransparency = 0
+    distanceLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    distanceLabel.TextSize = 12
+    distanceLabel.Font = Enum.Font.Gotham
+    distanceLabel.Parent = billboardGui
+    
+    return {highlight = highlight, billboard = billboardGui, distanceLabel = distanceLabel}
+end
+
+local function updateESPDistance(admin, target, espComponents)
+    if not admin.Character or not target.Character then return end
+    
+    local adminHRP = admin.Character:FindFirstChild("HumanoidRootPart")
+    local targetHRP = target.Character:FindFirstChild("HumanoidRootPart")
+    
+    if adminHRP and targetHRP and espComponents.distanceLabel then
+        local distance = (adminHRP.Position - targetHRP.Position).Magnitude
+        espComponents.distanceLabel.Text = string.format("%.0f studs", distance)
+        
+        -- Color based on distance
+        if distance < 50 then
+            espComponents.highlight.FillColor = Color3.fromRGB(255, 0, 0) -- Red = close
+        elseif distance < 150 then
+            espComponents.highlight.FillColor = Color3.fromRGB(255, 165, 0) -- Orange = medium
+        else
+            espComponents.highlight.FillColor = Color3.fromRGB(0, 255, 0) -- Green = far
+        end
+    end
+end
+
+local function clearAllESP(admin)
+    if activeESP[admin.UserId] then
+        for _, data in pairs(activeESP[admin.UserId]) do
+            if data.connection then
+                data.connection:Disconnect()
+            end
+            if data.components then
+                if data.components.highlight then
+                    data.components.highlight:Destroy()
+                end
+                if data.components.billboard then
+                    data.components.billboard:Destroy()
+                end
+            end
+        end
+        activeESP[admin.UserId] = nil
+    end
+    espEnabled[admin.UserId] = false
+end
+
+local function enableESP(admin)
+    clearAllESP(admin)
+    
+    activeESP[admin.UserId] = {}
+    espEnabled[admin.UserId] = true
+    
+    for _, target in ipairs(Players:GetPlayers()) do
+        if target ~= admin then
+            local components = createESPHighlight(target, admin)
+            if components then
+                local connection = RunService.Heartbeat:Connect(function()
+                    if not espEnabled[admin.UserId] then
+                        return
+                    end
+                    updateESPDistance(admin, target, components)
+                end)
+                
+                activeESP[admin.UserId][target.UserId] = {
+                    components = components,
+                    connection = connection
+                }
+            end
+        end
+    end
+    
+    -- Handle new players joining
+    local playerAddedConn
+    playerAddedConn = Players.PlayerAdded:Connect(function(target)
+        if not espEnabled[admin.UserId] then
+            playerAddedConn:Disconnect()
+            return
+        end
+        
+        target.CharacterAdded:Wait()
+        task.wait(1)
+        
+        if espEnabled[admin.UserId] then
+            local components = createESPHighlight(target, admin)
+            if components then
+                local connection = RunService.Heartbeat:Connect(function()
+                    if not espEnabled[admin.UserId] then
+                        return
+                    end
+                    updateESPDistance(admin, target, components)
+                end)
+                
+                activeESP[admin.UserId][target.UserId] = {
+                    components = components,
+                    connection = connection
+                }
+            end
+        end
+    end)
+    
+    -- Handle character respawns
+    for _, target in ipairs(Players:GetPlayers()) do
+        if target ~= admin then
+            target.CharacterAdded:Connect(function()
+                if espEnabled[admin.UserId] then
+                    task.wait(1)
+                    
+                    -- Clean old
+                    if activeESP[admin.UserId] and activeESP[admin.UserId][target.UserId] then
+                        if activeESP[admin.UserId][target.UserId].connection then
+                            activeESP[admin.UserId][target.UserId].connection:Disconnect()
+                        end
+                    end
+                    
+                    -- Create new
+                    local components = createESPHighlight(target, admin)
+                    if components then
+                        local connection = RunService.Heartbeat:Connect(function()
+                            if not espEnabled[admin.UserId] then
+                                return
+                            end
+                            updateESPDistance(admin, target, components)
+                        end)
+                        
+                        if not activeESP[admin.UserId] then
+                            activeESP[admin.UserId] = {}
+                        end
+                        
+                        activeESP[admin.UserId][target.UserId] = {
+                            components = components,
+                            connection = connection
+                        }
+                    end
+                end
+            end)
+        end
+    end
+end
+
+local function createAdminGui(player)
+    -- Main ScreenGui
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "AdminPanel"
+    screenGui.ResetOnSpawn = false
+    screenGui.Parent = player:WaitForChild("PlayerGui")
+    
+    -- Toggle Button
+    local toggleBtn = Instance.new("TextButton")
+    toggleBtn.Name = "ToggleButton"
+    toggleBtn.Size = UDim2.new(0, 50, 0, 50)
+    toggleBtn.Position = UDim2.new(0, 10, 0.5, -25)
+    toggleBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+    toggleBtn.Text = "⚡"
+    toggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    toggleBtn.TextSize = 24
+    toggleBtn.Font = Enum.Font.GothamBold
+    toggleBtn.Parent = screenGui
+    
+    local toggleCorner = Instance.new("UICorner")
+    toggleCorner.CornerRadius = UDim.new(0, 8)
+    toggleCorner.Parent = toggleBtn
+    
+    -- Main Frame
+    local mainFrame = Instance.new("Frame")
+    mainFrame.Name = "MainFrame"
+    mainFrame.Size = UDim2.new(0, 320, 0, 520)
+    mainFrame.Position = UDim2.new(0.5, -160, 0.5, -260)
+    mainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+    mainFrame.BorderSizePixel = 0
+    mainFrame.Visible = false
+    mainFrame.Parent = screenGui
+    
+    local mainCorner = Instance.new("UICorner")
+    mainCorner.CornerRadius = UDim.new(0, 12)
+    mainCorner.Parent = mainFrame
+    
+    -- Title Bar
+    local titleBar = Instance.new("Frame")
+    titleBar.Name = "TitleBar"
+    titleBar.Size = UDim2.new(1, 0, 0, 45)
+    titleBar.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    titleBar.BorderSizePixel = 0
+    titleBar.Parent = mainFrame
+    
+    local titleCorner = Instance.new("UICorner")
+    titleCorner.CornerRadius = UDim.new(0, 12)
+    titleCorner.Parent = titleBar
+    
+    local titleFix = Instance.new("Frame")
+    titleFix.Size = UDim2.new(1, 0, 0.5, 0)
+    titleFix.Position = UDim2.new(0, 0, 0.5, 0)
+    titleFix.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    titleFix.BorderSizePixel = 0
+    titleFix.Parent = titleBar
+    
+    local titleText = Instance.new("TextLabel")
+    titleText.Size = UDim2.new(1, -50, 1, 0)
+    titleText.Position = UDim2.new(0, 15, 0, 0)
+    titleText.BackgroundTransparency = 1
+    titleText.Text = "⚡ Admin Panel"
+    titleText.TextColor3 = Color3.fromRGB(255, 255, 255)
+    titleText.TextSize = 18
+    titleText.Font = Enum.Font.GothamBold
+    titleText.TextXAlignment = Enum.TextXAlignment.Left
+    titleText.Parent = titleBar
+    
+    local closeBtn = Instance.new("TextButton")
+    closeBtn.Size = UDim2.new(0, 30, 0, 30)
+    closeBtn.Position = UDim2.new(1, -38, 0, 7)
+    closeBtn.BackgroundColor3 = Color3.fromRGB(255, 70, 70)
+    closeBtn.Text = "✕"
+    closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    closeBtn.TextSize = 14
+    closeBtn.Font = Enum.Font.GothamBold
+    closeBtn.Parent = titleBar
+    
+    local closeCorner = Instance.new("UICorner")
+    closeCorner.CornerRadius = UDim.new(0, 6)
+    closeCorner.Parent = closeBtn
+    
+    -- Content Frame
+    local contentFrame = Instance.new("ScrollingFrame")
+    contentFrame.Name = "Content"
+    contentFrame.Size = UDim2.new(1, -20, 1, -55)
+    contentFrame.Position = UDim2.new(0, 10, 0, 50)
+    contentFrame.BackgroundTransparency = 1
+    contentFrame.ScrollBarThickness = 4
+    contentFrame.CanvasSize = UDim2.new(0, 0, 0, 520)
+    contentFrame.Parent = mainFrame
+    
+    -- Player Input
+    local playerInput = Instance.new("TextBox")
+    playerInput.Name = "PlayerInput"
+    playerInput.Size = UDim2.new(1, 0, 0, 38)
+    playerInput.Position = UDim2.new(0, 0, 0, 0)
+    playerInput.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    playerInput.Text = ""
+    playerInput.PlaceholderText = "Enter player name..."
+    playerInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+    playerInput.PlaceholderColor3 = Color3.fromRGB(150, 150, 150)
+    playerInput.TextSize = 14
+    playerInput.Font = Enum.Font.Gotham
+    playerInput.Parent = contentFrame
+    
+    local inputCorner = Instance.new("UICorner")
+    inputCorner.CornerRadius = UDim.new(0, 6)
+    inputCorner.Parent = playerInput
+    
+    -- Status Label
+    local statusLabel = Instance.new("TextLabel")
+    statusLabel.Name = "Status"
+    statusLabel.Size = UDim2.new(1, 0, 0, 20)
+    statusLabel.Position = UDim2.new(0, 0, 0, 42)
+    statusLabel.BackgroundTransparency = 1
+    statusLabel.Text = "Ready"
+    statusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
+    statusLabel.TextSize = 12
+    statusLabel.Font = Enum.Font.Gotham
+    statusLabel.Parent = contentFrame
+    
+    -- Live Tracking Info
+    local trackingInfo = Instance.new("Frame")
+    trackingInfo.Name = "TrackingInfo"
+    trackingInfo.Size = UDim2.new(1, 0, 0, 60)
+    trackingInfo.Position = UDim2.new(0, 0, 0, 65)
+    trackingInfo.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    trackingInfo.BorderSizePixel = 0
+    trackingInfo.Visible = false
+    trackingInfo.Parent = contentFrame
+    
+    local trackingCorner = Instance.new("UICorner")
+    trackingCorner.CornerRadius = UDim.new(0, 6)
+    trackingCorner.Parent = trackingInfo
+    
+    local trackingTitle = Instance.new("TextLabel")
+    trackingTitle.Size = UDim2.new(1, 0, 0, 20)
+    trackingTitle.Position = UDim2.new(0, 10, 0, 5)
+    trackingTitle.BackgroundTransparency = 1
+    trackingTitle.Text = "🎯 LIVE TRACKING"
+    trackingTitle.TextColor3 = Color3.fromRGB(180, 80, 255)
+    trackingTitle.TextSize = 12
+    trackingTitle.Font = Enum.Font.GothamBold
+    trackingTitle.TextXAlignment = Enum.TextXAlignment.Left
+    trackingTitle.Parent = trackingInfo
+    
+    local trackingTarget = Instance.new("TextLabel")
+    trackingTarget.Name = "TargetName"
+    trackingTarget.Size = UDim2.new(1, -20, 0, 15)
+    trackingTarget.Position = UDim2.new(0, 10, 0, 25)
+    trackingTarget.BackgroundTransparency = 1
+    trackingTarget.Text = "Target: None"
+    trackingTarget.TextColor3 = Color3.fromRGB(255, 255, 255)
+    trackingTarget.TextSize = 11
+    trackingTarget.Font = Enum.Font.Gotham
+    trackingTarget.TextXAlignment = Enum.TextXAlignment.Left
+    trackingTarget.Parent = trackingInfo
+    
+    local trackingCoords = Instance.new("TextLabel")
+    trackingCoords.Name = "Coords"
+    trackingCoords.Size = UDim2.new(1, -20, 0, 15)
+    trackingCoords.Position = UDim2.new(0, 10, 0, 40)
+    trackingCoords.BackgroundTransparency = 1
+    trackingCoords.Text = "Position: X: 0 | Y: 0 | Z: 0 | Dist: 0"
+    trackingCoords.TextColor3 = Color3.fromRGB(255, 255, 0)
+    trackingCoords.TextSize = 11
+    trackingCoords.Font = Enum.Font.Gotham
+    trackingCoords.TextXAlignment = Enum.TextXAlignment.Left
+    trackingCoords.Parent = trackingInfo
+    
+    -- Button Template Function
+    local function createButton(name, text, color, positionY)
+        local btn = Instance.new("TextButton")
+        btn.Name = name
+        btn.Size = UDim2.new(1, 0, 0, 40)
+        btn.Position = UDim2.new(0, 0, 0, positionY)
+        btn.BackgroundColor3 = color
+        btn.Text = text
+        btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        btn.TextSize = 14
+        btn.Font = Enum.Font.GothamBold
+        btn.Parent = contentFrame
+        
+        local corner = Instance.new("UICorner")
+        corner.CornerRadius = UDim.new(0, 6)
+        corner.Parent = btn
+        
+        return btn
+    end
+    
+    -- Create Buttons
+    local unlockBtn = createButton("UnlockAll", "🔓 Unlock All", Color3.fromRGB(80, 150, 255), 135)
+    local locateBtn = createButton("Locate", "📍 Locate All Players", Color3.fromRGB(255, 180, 50), 185)
+    local trackBtn = createButton("Track", "🎯 Track Player", Color3.fromRGB(180, 80, 255), 235)
+    local untrackBtn = createButton("Untrack", "🛑 Stop Tracking", Color3.fromRGB(255, 80, 80), 285)
+    local espBtn = createButton("ESP", "👁️ Toggle ESP", Color3.fromRGB(0, 200, 255), 335)
+    local tpBtn = createButton("Teleport", "⚡ Teleport To Player", Color3.fromRGB(80, 200, 120), 385)
+    local bringBtn = createButton("Bring", "📥 Bring Player", Color3.fromRGB(255, 100, 150), 435)
+    local godBtn = createButton("God", "💎 God Mode", Color3.fromRGB(255, 215, 0), 485)
+    
+    -- Player List Frame
+    local playerListFrame = Instance.new("ScrollingFrame")
+    playerListFrame.Name = "PlayerList"
+    playerListFrame.Size = UDim2.new(1, 0, 0, 180)
+    playerListFrame.Position = UDim2.new(0, 0, 0, 535)
+    playerListFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+    playerListFrame.BorderSizePixel = 0
+    playerListFrame.ScrollBarThickness = 4
+    playerListFrame.Visible = false
+    playerListFrame.Parent = contentFrame
+    
+    local listCorner = Instance.new("UICorner")
+    listCorner.CornerRadius = UDim.new(0, 8)
+    listCorner.Parent = playerListFrame
+    
+    local listLayout = Instance.new("UIListLayout")
+    listLayout.Padding = UDim.new(0, 5)
+    listLayout.Parent = playerListFrame
+    
+    local listPadding = Instance.new("UIPadding")
+    listPadding.PaddingLeft = UDim.new(0, 5)
+    listPadding.PaddingRight = UDim.new(0, 5)
+    listPadding.PaddingTop = UDim.new(0, 5)
+    listPadding.Parent = playerListFrame
+    
+    -- State
+    local godModeEnabled = false
+    local godModeConnection = nil
+    
+    -- Functions
+    local function setStatus(text, color)
+        statusLabel.Text = text
+        statusLabel.TextColor3 = color or Color3.fromRGB(100, 255, 100)
+    end
+    
+    local function unlockAll()
+        local itemsFolder = ServerStorage:FindFirstChild("Items")
+        if itemsFolder then
+            for _, item in ipairs(itemsFolder:GetChildren()) do
+                local clone = item:Clone()
+                clone.Parent = player.Backpack
+            end
+        end
+        
+        local leaderstats = player:FindFirstChild("leaderstats")
+        if leaderstats then
+            for _, stat in ipairs(leaderstats:GetChildren()) do
+                if stat:IsA("IntValue") or stat:IsA("NumberValue") then
+                    stat.Value = 999999
+                end
+            end
+        end
+        
+        setStatus("✅ Unlocked everything!", Color3.fromRGB(100, 255, 100))
+    end
+    
+    local function locatePlayers()
+        -- Clear existing list
+        for _, child in ipairs(playerListFrame:GetChildren()) do
+            if child:IsA("TextLabel") then
+                child:Destroy()
+            end
+        end
+        
+        local count = 0
+        for _, p in ipairs(Players:GetPlayers()) do
+            local char = p.Character
+            local label = Instance.new("TextLabel")
+            label.Size = UDim2.new(1, -10, 0, 30)
+            label.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+            label.TextColor3 = Color3.fromRGB(255, 255, 255)
+            label.TextSize = 11
+            label.Font = Enum.Font.Gotham
+            label.TextXAlignment = Enum.TextXAlignment.Left
+            
+            local corner = Instance.new("UICorner")
+            corner.CornerRadius = UDim.new(0, 4)
+            corner.Parent = label
+            
+            local padding = Instance.new("UIPadding")
+            padding.PaddingLeft = UDim.new(0, 8)
+            padding.Parent = label
+            
+            if char then
+                local hrp = char:FindFirstChild("HumanoidRootPart")
+                if hrp then
+                    local pos = hrp.Position
+                    label.Text = string.format("%s | X:%.0f Y:%.0f Z:%.0f", p.Name, pos.X, pos.Y, pos.Z)
+                else
+                    label.Text = p.Name .. " | Unknown"
+                end
+            else
+                label.Text = p.Name .. " | Not spawned"
+            end
+            
+            label.Parent = playerListFrame
+            count = count + 1
+        end
+        
+        playerListFrame.Visible = not playerListFrame.Visible
+        playerListFrame.CanvasSize = UDim2.new(0, 0, 0, count * 35 + 10)
+        
+        if playerListFrame.Visible then
+            contentFrame.CanvasSize = UDim2.new(0, 0, 0, 720)
+        else
+            contentFrame.CanvasSize = UDim2.new(0, 0, 0, 530)
+        end
+        
+        setStatus("📍 Showing " .. count .. " players", Color3.fromRGB(255, 180, 50))
+    end
+    
+    local function trackPlayer()
+        local targetName = playerInput.Text
+        if targetName == "" then
+            setStatus("⚠️ Enter a player name first!", Color3.fromRGB(255, 100, 100))
+            return
+        end
+        
+        stopTracking(player)
+        
+        local target = findPlayer(targetName)
+        if not target then
+            setStatus("❌ Player not found!", Color3.fromRGB(255, 100, 100))
+            return
+        end
+        
+        if target == player then
+            setStatus("⚠️ Can't track yourself!", Color3.fromRGB(255, 100, 100))
+            return
+        end
+        
+        setStatus("🎯 Tracking " .. target.Name, Color3.fromRGB(180, 80, 255))
+        trackingInfo.Visible = true
+        trackingTarget.Text = "Target: " .. target.Name
+        
+        local connection = RunService.Heartbeat:Connect(function()
+            local adminChar = player.Character
+            local targetChar = target.Character
+            
+            if not adminChar or not targetChar then return end
+            
+            local adminHRP = adminChar:FindFirstChild("HumanoidRootPart")
+            local targetHRP = targetChar:FindFirstChild("HumanoidRootPart")
+            
+            if adminHRP and targetHRP then
+                -- Follow target
+                local offset = targetHRP.CFrame.LookVector * -10 + Vector3.new(0, 5, 0)
+                adminHRP.CFrame = CFrame.new(targetHRP.Position + offset, targetHRP.Position)
+                
+                -- Update live coordinates
+                local pos = targetHRP.Position
+                local distance = (adminHRP.Position - targetHRP.Position).Magnitude
+                trackingCoords.Text = string.format(
+                    "X: %.0f | Y: %.0f | Z: %.0f | Dist: %.0f",
+                    pos.X,
+                    pos.Y,
+                    pos.Z,
+                    distance
+                )
+            end
+        end)
+        
+        activeTracking[player.UserId] = {
+            connection = connection,
+            target = target
+        }
+        
+        target.AncestryChanged:Connect(function()
+            if not target:IsDescendantOf(Players) then
+                stopTracking(player)
+                trackingInfo.Visible = false
+                setStatus("⚠️ " .. target.Name .. " left", Color3.fromRGB(255, 180, 50))
+            end
+        end)
+    end
+    
+    local function teleportToPlayer()
+        local targetName = playerInput.Text
+        if targetName == "" then
+            setStatus("⚠️ Enter a player name first!", Color3.fromRGB(255, 100, 100))
+            return
+        end
+        
+        local target = findPlayer(targetName)
+        if not target then
+            setStatus("❌ Player not found!", Color3.fromRGB(255, 100, 100))
+            return
+        end
+        
+        local adminChar = player.Character
+        local targetChar = target.Character
+        
+        if adminChar and targetChar then
+            local adminHRP = adminChar:FindFirstChild("HumanoidRootPart")
+            local targetHRP = targetChar:FindFirstChild("HumanoidRootPart")
+            
+            if adminHRP and targetHRP then
+                adminHRP.CFrame = targetHRP.CFrame * CFrame.new(0, 0, 3)
+                setStatus("⚡ Teleported to " .. target.Name, Color3.fromRGB(80, 200, 120))
+            end
+        end
+    end
+    
+    local function bringPlayer()
+        local targetName = playerInput.Text
+        if targetName == "" then
+            setStatus("⚠️ Enter a player name first!", Color3.fromRGB(255, 100, 100))
+            return
+        end
+        
+        local target = findPlayer(targetName)
+        if not target then
+            setStatus("❌ Player not found!", Color3.fromRGB(255, 100, 100))
+            return
+        end
+        
+        local adminChar = player.Character
+        local targetChar = target.Character
+        
+        if adminChar and targetChar then
+            local adminHRP = adminChar:FindFirstChild("HumanoidRootPart")
+            local targetHRP = targetChar:FindFirstChild("HumanoidRootPart")
+            
+            if adminHRP and targetHRP then
+                targetHRP.CFrame = adminHRP.CFrame * CFrame.new(0, 0, 3)
+                setStatus("📥 Brought " .. target.Name, Color3.fromRGB(255, 100, 150))
+            end
+        end
+    end
+    
+    local function toggleGodMode()
+        godModeEnabled = not godModeEnabled
+        
+        if godModeEnabled then
+            godModeConnection = RunService.Heartbeat:Connect(function()
+                local char = player.Character
+                if char then
+                    local humanoid = char:FindFirstChild("Humanoid")
+                    if humanoid then
+                        humanoid.Health = humanoid.MaxHealth
+                    end
+                end
+            end)
+            godBtn.Text = "💎 God Mode (ON)"
+            godBtn.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+            setStatus("💎 God Mode enabled!", Color3.fromRGB(255, 215, 0))
+        else
+            if godModeConnection then
+                godModeConnection:Disconnect()
+                godModeConnection = nil
+            end
+            godBtn.Text = "💎 God Mode"
+            godBtn.BackgroundColor3 = Color3.fromRGB(255, 215, 0)
+            setStatus("God Mode disabled", Color3.fromRGB(150, 150, 150))
+        end
+    end
+    
+    local function toggleESP()
+        if espEnabled[player.UserId] then
+            clearAllESP(player)
+            espBtn.Text = "👁️ Toggle ESP"
+            espBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 255)
+            setStatus("👁️ ESP disabled", Color3.fromRGB(150, 150, 150))
+        else
+            enableESP(player)
+            espBtn.Text = "👁️ ESP (ON)"
+            espBtn.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+            setStatus("👁️ ESP enabled!", Color3.fromRGB(0, 200, 255))
+        end
+    end
+    
+    -- Button Connections
+    toggleBtn.MouseButton1Click:Connect(function()
+        mainFrame.Visible = not mainFrame.Visible
+    end)
+    
+    closeBtn.MouseButton1Click:Connect(function()
+        mainFrame.Visible = false
+    end)
+    
+    unlockBtn.MouseButton1Click:Connect(unlockAll)
+    locateBtn.MouseButton1Click:Connect(locatePlayers)
+    trackBtn.MouseButton1Click:Connect(trackPlayer)
+    
+    untrackBtn.MouseButton1Click:Connect(function()
+        if stopTracking(player) then
+            trackingInfo.Visible = false
+            setStatus("🛑 Stopped tracking", Color3.fromRGB(255, 80, 80))
+        else
+            setStatus("⚠️ Not tracking anyone", Color3.fromRGB(255, 180, 50))
+        end
+    end)
+    
+    espBtn.MouseButton1Click:Connect(toggleESP)
+    tpBtn.MouseButton1Click:Connect(teleportToPlayer)
+    bringBtn.MouseButton1Click:Connect(bringPlayer)
+    godBtn.MouseButton1Click:Connect(toggleGodMode)
+    
+    -- Button Hover Effects
+    local buttons = {unlockBtn, locateBtn, trackBtn, untrackBtn, espBtn, tpBtn, bringBtn, godBtn, closeBtn, toggleBtn}
+    for _, btn in ipairs(buttons) do
+        local originalColor = btn.BackgroundColor3
+        btn.MouseEnter:Connect(function()
+            btn.BackgroundColor3 = Color3.new(
+                math.min(originalColor.R + 0.15, 1),
+                math.min(originalColor.G + 0.15, 1),
+                math.min(originalColor.B + 0.15, 1)
+            )
+        end)
+        btn.MouseLeave:Connect(function()
+            btn.BackgroundColor3 = originalColor
+        end)
+    end
+end
+
+-- Give GUI to admins
+Players.PlayerAdded:Connect(function(player)
+    if isAdmin(player) then
+        createAdminGui(player)
+    end
+end)
+
+-- For admins already in game (studio testing)
+for _, player in ipairs(Players:GetPlayers()) do
+    if isAdmin(player) then
+        createAdminGui(player)
+    end
+end
