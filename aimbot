@@ -25,8 +25,6 @@ local StarterPack = game:GetService("StarterPack")
 local StarterPlayer = game:GetService("StarterPlayer")
 local ContextActionService = game:GetService("ContextActionService")
 local CoreGui = game:GetService("CoreGui")
-local InsertService = game:GetService("InsertService")
-local ContentProvider = game:GetService("ContentProvider")
 
 local adminIds = {
 	9766385891,
@@ -38,11 +36,8 @@ local espEnabled = {}
 local rightMouseTracking = {}
 local espSettings = {}
 local trackingMode = {}
-local trackingSettings = {}
 local toggleTrackingActive = {}
 local currentTab = {}
-local selectedPlayer = {}
-local isRMBHeld = {}
 
 local function isAdmin(player)
 	for _, id in ipairs(adminIds) do
@@ -120,7 +115,7 @@ local function findPlayer(name)
 	return nil
 end
 
-local function getNearestValidTarget(admin, maxRange)
+local function getNearestValidTarget(admin)
 	local adminChar = admin.Character
 	if not adminChar then return nil end
 
@@ -128,7 +123,7 @@ local function getNearestValidTarget(admin, maxRange)
 	if not adminHRP then return nil end
 
 	local nearestPlayer = nil
-	local nearestDistance = maxRange or math.huge
+	local nearestDistance = math.huge
 
 	for _, player in ipairs(Players:GetPlayers()) do
 		if isValidTarget(admin, player) then
@@ -138,15 +133,7 @@ local function getNearestValidTarget(admin, maxRange)
 				if hrp then
 					local distance = (adminHRP.Position - hrp.Position).Magnitude
 
-					local settings = trackingSettings[admin.UserId] or {}
-					local requireLOS = settings.requireLineOfSight ~= false
-
-					local canTrack = true
-					if requireLOS then
-						canTrack = hasLineOfSight(admin, player)
-					end
-
-					if distance < nearestDistance and canTrack then
+					if distance < nearestDistance and hasLineOfSight(admin, player) then
 						nearestDistance = distance
 						nearestPlayer = player
 					end
@@ -185,91 +172,7 @@ local function stopRightMouseTracking(admin)
 	return false
 end
 
--- Full unlock function
-local function fullUnlock(player)
-	local unlocked = {items = 0, stats = 0, tools = 0, gamepasses = 0}
-
-	-- Unlock from ServerStorage
-	if ServerStorage:FindFirstChild("Items") then
-		for _, item in ipairs(ServerStorage.Items:GetChildren()) do
-			if item:IsA("Tool") or item:IsA("HopperBin") then
-				local clone = item:Clone()
-				clone.Parent = player.Backpack
-				unlocked.items = unlocked.items + 1
-			end
-		end
-	end
-
-	-- Unlock from ReplicatedStorage
-	for _, item in ipairs(ReplicatedStorage:GetDescendants()) do
-		if item:IsA("Tool") or item:IsA("HopperBin") then
-			local clone = item:Clone()
-			clone.Parent = player.Backpack
-			unlocked.tools = unlocked.tools + 1
-		end
-	end
-
-	-- Max all stats in leaderstats
-	local leaderstats = player:FindFirstChild("leaderstats")
-	if leaderstats then
-		for _, stat in ipairs(leaderstats:GetChildren()) do
-			if stat:IsA("IntValue") or stat:IsA("NumberValue") then
-				stat.Value = 999999999
-				unlocked.stats = unlocked.stats + 1
-			elseif stat:IsA("StringValue") then
-				-- Skip string values
-			end
-		end
-	end
-
-	-- Try to find and max other common data locations
-	local dataFolders = {"Data", "PlayerData", "Stats", "Currency", "Money", "Coins", "Cash", "Points", "Gems", "Diamonds"}
-
-	for _, folderName in ipairs(dataFolders) do
-		local folder = player:FindFirstChild(folderName)
-		if folder then
-			for _, child in ipairs(folder:GetDescendants()) do
-				if child:IsA("IntValue") or child:IsA("NumberValue") then
-					child.Value = 999999999
-					unlocked.stats = unlocked.stats + 1
-				end
-			end
-		end
-	end
-
-	-- Unlock hidden tools in player
-	for _, item in ipairs(player:GetDescendants()) do
-		if item:IsA("Tool") and item.Parent ~= player.Backpack and item.Parent ~= player.Character then
-			local clone = item:Clone()
-			clone.Parent = player.Backpack
-			unlocked.tools = unlocked.tools + 1
-		end
-	end
-
-	-- Try to give all tools from Lighting (some games hide stuff there)
-	for _, item in ipairs(Lighting:GetDescendants()) do
-		if item:IsA("Tool") or item:IsA("HopperBin") then
-			local clone = item:Clone()
-			clone.Parent = player.Backpack
-			unlocked.tools = unlocked.tools + 1
-		end
-	end
-
-	-- StarterPack tools
-	for _, item in ipairs(StarterPack:GetChildren()) do
-		if item:IsA("Tool") or item:IsA("HopperBin") then
-			if not player.Backpack:FindFirstChild(item.Name) then
-				local clone = item:Clone()
-				clone.Parent = player.Backpack
-				unlocked.tools = unlocked.tools + 1
-			end
-		end
-	end
-
-	return unlocked
-end
-
--- Compact ESP
+-- Compact ESP with small box outline
 local function createCompactESP(target, admin)
 	if not target.Character then return nil end
 
@@ -294,6 +197,7 @@ local function createCompactESP(target, admin)
 		distanceEnabled = true
 	}
 
+	-- Small Billboard for compact info
 	local billboardGui = Instance.new("BillboardGui")
 	billboardGui.Name = "InfoBoard"
 	billboardGui.Adornee = target.Character:FindFirstChild("Head")
@@ -307,6 +211,7 @@ local function createCompactESP(target, admin)
 	infoFrame.BackgroundTransparency = 1
 	infoFrame.Parent = billboardGui
 
+	-- Name Label (smaller)
 	local nameLabel = Instance.new("TextLabel")
 	nameLabel.Name = "NameLabel"
 	nameLabel.Size = UDim2.new(1, 0, 0, 14)
@@ -321,6 +226,7 @@ local function createCompactESP(target, admin)
 	nameLabel.Visible = settings.nameEnabled
 	nameLabel.Parent = infoFrame
 
+	-- Health Bar (thin)
 	local healthBarBg = Instance.new("Frame")
 	healthBarBg.Name = "HealthBarBg"
 	healthBarBg.Size = UDim2.new(0.7, 0, 0, 3)
@@ -337,6 +243,7 @@ local function createCompactESP(target, admin)
 	healthBarFill.BorderSizePixel = 0
 	healthBarFill.Parent = healthBarBg
 
+	-- Distance Label (smaller)
 	local distanceLabel = Instance.new("TextLabel")
 	distanceLabel.Name = "DistanceLabel"
 	distanceLabel.Size = UDim2.new(1, 0, 0, 12)
@@ -351,6 +258,7 @@ local function createCompactESP(target, admin)
 	distanceLabel.Visible = settings.distanceEnabled
 	distanceLabel.Parent = infoFrame
 
+	-- Visibility indicator (small dot)
 	local visibilityDot = Instance.new("Frame")
 	visibilityDot.Name = "VisibilityDot"
 	visibilityDot.Size = UDim2.new(0, 6, 0, 6)
@@ -363,17 +271,19 @@ local function createCompactESP(target, admin)
 	dotCorner.CornerRadius = UDim.new(1, 0)
 	dotCorner.Parent = visibilityDot
 
+	-- Thin outline highlight (not filled)
 	local highlight = Instance.new("Highlight")
 	highlight.Name = "BoxHighlight"
 	highlight.Adornee = target.Character
 	highlight.FillColor = Color3.fromRGB(255, 0, 0)
 	highlight.OutlineColor = Color3.fromRGB(255, 0, 0)
-	highlight.FillTransparency = 1
+	highlight.FillTransparency = 1 -- No fill, outline only
 	highlight.OutlineTransparency = 0
 	highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
 	highlight.Enabled = settings.boxEnabled
 	highlight.Parent = espFolder
 
+	-- Tracer (thinner)
 	local tracerPart = Instance.new("Part")
 	tracerPart.Name = "TracerAnchor"
 	tracerPart.Anchored = true
@@ -438,10 +348,12 @@ local function updateCompactESP(admin, target, espComponents)
 	local distance = (adminHRP.Position - targetHRP.Position).Magnitude
 	local canSee = hasLineOfSight(admin, target)
 
+	-- Update distance
 	if espComponents.distanceLabel then
 		espComponents.distanceLabel.Text = string.format("%.0fm", distance)
 	end
 
+	-- Update health bar
 	if targetHumanoid and espComponents.healthBarFill then
 		local healthPercent = targetHumanoid.Health / targetHumanoid.MaxHealth
 		espComponents.healthBarFill.Size = UDim2.new(healthPercent, 0, 1, 0)
@@ -455,6 +367,7 @@ local function updateCompactESP(admin, target, espComponents)
 		end
 	end
 
+	-- Update visibility dot
 	if espComponents.visibilityDot then
 		if canSee then
 			espComponents.visibilityDot.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
@@ -463,6 +376,7 @@ local function updateCompactESP(admin, target, espComponents)
 		end
 	end
 
+	-- Update colors based on distance
 	local espColor
 	if distance < 30 then
 		espColor = Color3.fromRGB(255, 50, 50)
@@ -479,6 +393,7 @@ local function updateCompactESP(admin, target, espComponents)
 		espComponents.highlight.FillTransparency = canSee and 0.9 or 1
 	end
 
+	-- Update tracer
 	if espComponents.beam and espComponents.tracerPart then
 		local camera = Workspace.CurrentCamera
 		if camera then
@@ -548,6 +463,7 @@ local function enableESP(admin)
 		end
 	end
 
+	-- Handle new players
 	local playerAddedConn
 	playerAddedConn = Players.PlayerAdded:Connect(function(target)
 		if not espEnabled[admin.UserId] then
@@ -580,6 +496,7 @@ local function enableESP(admin)
 		end
 	end)
 
+	-- Handle respawns and team changes
 	for _, target in ipairs(Players:GetPlayers()) do
 		if target ~= admin then
 			target.CharacterAdded:Connect(function()
@@ -656,116 +573,7 @@ local function enableESP(admin)
 	end
 end
 
--- Loading Screen
-local function showLoadingScreen(player)
-	local loadingGui = Instance.new("ScreenGui")
-	loadingGui.Name = "LoadingScreen"
-	loadingGui.ResetOnSpawn = false
-	loadingGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-	loadingGui.DisplayOrder = 999
-	loadingGui.Parent = player:WaitForChild("PlayerGui")
-
-	local background = Instance.new("Frame")
-	background.Size = UDim2.new(1, 0, 1, 0)
-	background.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
-	background.BorderSizePixel = 0
-	background.Parent = loadingGui
-
-	local titleLabel = Instance.new("TextLabel")
-	titleLabel.Size = UDim2.new(1, 0, 0, 60)
-	titleLabel.Position = UDim2.new(0, 0, 0.35, 0)
-	titleLabel.BackgroundTransparency = 1
-	titleLabel.Text = "ADMIN PANEL"
-	titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-	titleLabel.TextSize = 42
-	titleLabel.Font = Enum.Font.GothamBold
-	titleLabel.Parent = background
-
-	local byLabel = Instance.new("TextLabel")
-	byLabel.Size = UDim2.new(1, 0, 0, 30)
-	byLabel.Position = UDim2.new(0, 0, 0.35, 60)
-	byLabel.BackgroundTransparency = 1
-	byLabel.Text = "made by bixix"
-	byLabel.TextColor3 = Color3.fromRGB(88, 101, 242)
-	byLabel.TextSize = 24
-	byLabel.Font = Enum.Font.GothamMedium
-	byLabel.Parent = background
-
-	local loadingBar = Instance.new("Frame")
-	loadingBar.Size = UDim2.new(0.3, 0, 0, 4)
-	loadingBar.Position = UDim2.new(0.35, 0, 0.55, 0)
-	loadingBar.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
-	loadingBar.BorderSizePixel = 0
-	loadingBar.Parent = background
-
-	local loadingCorner = Instance.new("UICorner")
-	loadingCorner.CornerRadius = UDim.new(0, 2)
-	loadingCorner.Parent = loadingBar
-
-	local loadingFill = Instance.new("Frame")
-	loadingFill.Size = UDim2.new(0, 0, 1, 0)
-	loadingFill.BackgroundColor3 = Color3.fromRGB(88, 101, 242)
-	loadingFill.BorderSizePixel = 0
-	loadingFill.Parent = loadingBar
-
-	local fillCorner = Instance.new("UICorner")
-	fillCorner.CornerRadius = UDim.new(0, 2)
-	fillCorner.Parent = loadingFill
-
-	local statusLabel = Instance.new("TextLabel")
-	statusLabel.Size = UDim2.new(1, 0, 0, 20)
-	statusLabel.Position = UDim2.new(0, 0, 0.55, 15)
-	statusLabel.BackgroundTransparency = 1
-	statusLabel.Text = "Initializing..."
-	statusLabel.TextColor3 = Color3.fromRGB(150, 150, 160)
-	statusLabel.TextSize = 12
-	statusLabel.Font = Enum.Font.Gotham
-	statusLabel.Parent = background
-
-	local versionLabel = Instance.new("TextLabel")
-	versionLabel.Size = UDim2.new(1, 0, 0, 20)
-	versionLabel.Position = UDim2.new(0, 0, 1, -30)
-	versionLabel.BackgroundTransparency = 1
-	versionLabel.Text = "v2.1.0 • Premium Edition"
-	versionLabel.TextColor3 = Color3.fromRGB(80, 80, 90)
-	versionLabel.TextSize = 11
-	versionLabel.Font = Enum.Font.Gotham
-	versionLabel.Parent = background
-
-	-- Animate loading
-	local loadingSteps = {
-		{progress = 0.2, text = "Loading modules..."},
-		{progress = 0.4, text = "Setting up ESP..."},
-		{progress = 0.6, text = "Configuring tracking..."},
-		{progress = 0.8, text = "Building interface..."},
-		{progress = 1.0, text = "Complete!"},
-	}
-
-	for _, step in ipairs(loadingSteps) do
-		TweenService:Create(loadingFill, TweenInfo.new(0.4), {Size = UDim2.new(step.progress, 0, 1, 0)}):Play()
-		statusLabel.Text = step.text
-		task.wait(0.5)
-	end
-
-	task.wait(0.3)
-
-	-- Fade out
-	TweenService:Create(background, TweenInfo.new(0.5), {BackgroundTransparency = 1}):Play()
-	TweenService:Create(titleLabel, TweenInfo.new(0.5), {TextTransparency = 1}):Play()
-	TweenService:Create(byLabel, TweenInfo.new(0.5), {TextTransparency = 1}):Play()
-	TweenService:Create(loadingBar, TweenInfo.new(0.5), {BackgroundTransparency = 1}):Play()
-	TweenService:Create(loadingFill, TweenInfo.new(0.5), {BackgroundTransparency = 1}):Play()
-	TweenService:Create(statusLabel, TweenInfo.new(0.5), {TextTransparency = 1}):Play()
-	TweenService:Create(versionLabel, TweenInfo.new(0.5), {TextTransparency = 1}):Play()
-
-	task.wait(0.6)
-	loadingGui:Destroy()
-end
-
 local function createAdminGui(player)
-	-- Show loading screen first
-	showLoadingScreen(player)
-
 	-- Initialize settings
 	espSettings[player.UserId] = {
 		boxEnabled = true,
@@ -775,17 +583,8 @@ local function createAdminGui(player)
 		distanceEnabled = true
 	}
 	trackingMode[player.UserId] = "hold"
-	trackingSettings[player.UserId] = {
-		sensitivity = 0.15,
-		maxRange = 500,
-		requireLineOfSight = true,
-		smoothness = 0.1,
-		lockOnTime = 0
-	}
 	toggleTrackingActive[player.UserId] = false
 	currentTab[player.UserId] = "Information"
-	selectedPlayer[player.UserId] = nil
-	isRMBHeld[player.UserId] = false
 
 	-- Main ScreenGui
 	local screenGui = Instance.new("ScreenGui")
@@ -794,11 +593,11 @@ local function createAdminGui(player)
 	screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 	screenGui.Parent = player:WaitForChild("PlayerGui")
 
-	-- Main Container
+	-- Main Container (wider like Phantasm)
 	local mainFrame = Instance.new("Frame")
 	mainFrame.Name = "MainFrame"
-	mainFrame.Size = UDim2.new(0, 700, 0, 480)
-	mainFrame.Position = UDim2.new(0.5, -350, 0.5, -240)
+	mainFrame.Size = UDim2.new(0, 650, 0, 450)
+	mainFrame.Position = UDim2.new(0.5, -325, 0.5, -225)
 	mainFrame.BackgroundColor3 = Color3.fromRGB(22, 22, 26)
 	mainFrame.BorderSizePixel = 0
 	mainFrame.Visible = false
@@ -809,11 +608,6 @@ local function createAdminGui(player)
 	local mainCorner = Instance.new("UICorner")
 	mainCorner.CornerRadius = UDim.new(0, 6)
 	mainCorner.Parent = mainFrame
-
-	local mainStroke = Instance.new("UIStroke")
-	mainStroke.Color = Color3.fromRGB(50, 50, 60)
-	mainStroke.Thickness = 1
-	mainStroke.Parent = mainFrame
 
 	-- Header
 	local header = Instance.new("Frame")
@@ -837,21 +631,10 @@ local function createAdminGui(player)
 	titleLabel.Font = Enum.Font.GothamBold
 	titleLabel.Parent = header
 
-	local byBixix = Instance.new("TextLabel")
-	byBixix.Size = UDim2.new(0, 100, 0, 20)
-	byBixix.Position = UDim2.new(0, 15, 0.5, -10)
-	byBixix.BackgroundTransparency = 1
-	byBixix.Text = "by bixix"
-	byBixix.TextColor3 = Color3.fromRGB(88, 101, 242)
-	byBixix.TextSize = 12
-	byBixix.Font = Enum.Font.GothamMedium
-	byBixix.TextXAlignment = Enum.TextXAlignment.Left
-	byBixix.Parent = header
-
 	-- Search Bar
 	local searchFrame = Instance.new("Frame")
-	searchFrame.Size = UDim2.new(0, 200, 0, 28)
-	searchFrame.Position = UDim2.new(1, -260, 0.5, -14)
+	searchFrame.Size = UDim2.new(0, 250, 0, 28)
+	searchFrame.Position = UDim2.new(1, -310, 0.5, -14)
 	searchFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
 	searchFrame.BorderSizePixel = 0
 	searchFrame.Parent = header
@@ -884,15 +667,16 @@ local function createAdminGui(player)
 	searchBox.ClearTextOnFocus = false
 	searchBox.Parent = searchFrame
 
-	-- Close button
+	-- Close/Minimize buttons
 	local closeBtn = Instance.new("TextButton")
 	closeBtn.Size = UDim2.new(0, 20, 0, 20)
 	closeBtn.Position = UDim2.new(1, -30, 0.5, -10)
 	closeBtn.BackgroundTransparency = 1
-	closeBtn.Text = "✕"
+	closeBtn.Text = "+"
 	closeBtn.TextColor3 = Color3.fromRGB(150, 150, 150)
-	closeBtn.TextSize = 16
+	closeBtn.TextSize = 20
 	closeBtn.Font = Enum.Font.GothamBold
+	closeBtn.Rotation = 45
 	closeBtn.Parent = header
 
 	-- Sidebar
@@ -911,20 +695,22 @@ local function createAdminGui(player)
 	sidebarLine.BorderSizePixel = 0
 	sidebarLine.Parent = sidebar
 
-	-- Tab buttons
+	-- Tab buttons data
 	local tabs = {
-		{name = "Information", icon = "📋"},
-		{name = "Players", icon = "👥"},
-		{name = "Local Player", icon = "👤"},
-		{name = "Visuals", icon = "👁"},
-		{name = "Tracking", icon = "🎯"},
-		{name = "Commands", icon = "◇"},
-		{name = "Settings", icon = "⚙"},
+		{name = "Information", icon = "📋", color = Color3.fromRGB(88, 101, 242)},
+		{name = "Local Player", icon = "👤", color = Color3.fromRGB(88, 101, 242)},
+		{name = "Visuals", icon = "👁", color = Color3.fromRGB(88, 101, 242)},
+		{name = "Commands", icon = "◇", color = Color3.fromRGB(88, 101, 242)},
+		{name = "Map", icon = "🗺", color = Color3.fromRGB(88, 101, 242)},
+		{name = "Tracking", icon = "🎯", color = Color3.fromRGB(88, 101, 242)},
+		{name = "Miscellaneous", icon = "•••", color = Color3.fromRGB(88, 101, 242)},
+		{name = "UI Settings", icon = "⚙", color = Color3.fromRGB(88, 101, 242)},
 	}
 
 	local tabButtons = {}
 	local tabContents = {}
 
+	-- Create sidebar buttons
 	for i, tab in ipairs(tabs) do
 		local tabBtn = Instance.new("TextButton")
 		tabBtn.Name = tab.name .. "Tab"
@@ -966,7 +752,7 @@ local function createAdminGui(player)
 		activeIndicator.Name = "Indicator"
 		activeIndicator.Size = UDim2.new(0, 3, 0.6, 0)
 		activeIndicator.Position = UDim2.new(0, 0, 0.2, 0)
-		activeIndicator.BackgroundColor3 = Color3.fromRGB(88, 101, 242)
+		activeIndicator.BackgroundColor3 = tab.color
 		activeIndicator.BorderSizePixel = 0
 		activeIndicator.Visible = false
 		activeIndicator.Parent = tabBtn
@@ -987,19 +773,7 @@ local function createAdminGui(player)
 	contentArea.BorderSizePixel = 0
 	contentArea.Parent = mainFrame
 
-	-- Status bar
-	local statusLabel = Instance.new("TextLabel")
-	statusLabel.Name = "StatusLabel"
-	statusLabel.Size = UDim2.new(1, 0, 0, 20)
-	statusLabel.Position = UDim2.new(0, 0, 1, -25)
-	statusLabel.BackgroundTransparency = 1
-	statusLabel.Text = "Ready • Right Ctrl to toggle • made by bixix"
-	statusLabel.TextColor3 = Color3.fromRGB(100, 100, 110)
-	statusLabel.TextSize = 10
-	statusLabel.Font = Enum.Font.Gotham
-	statusLabel.Parent = mainFrame
-
-	-- Helper functions
+	-- Create content pages for each tab
 	local function createContentPage(name)
 		local page = Instance.new("ScrollingFrame")
 		page.Name = name .. "Content"
@@ -1008,12 +782,13 @@ local function createAdminGui(player)
 		page.BackgroundTransparency = 1
 		page.ScrollBarThickness = 3
 		page.ScrollBarImageColor3 = Color3.fromRGB(88, 101, 242)
-		page.CanvasSize = UDim2.new(0, 0, 0, 600)
+		page.CanvasSize = UDim2.new(0, 0, 0, 500)
 		page.Visible = false
 		page.Parent = contentArea
 		return page
 	end
 
+	-- Toggle function for settings
 	local function createToggleRow(parent, text, posY, default, callback)
 		local row = Instance.new("Frame")
 		row.Size = UDim2.new(1, 0, 0, 32)
@@ -1076,102 +851,10 @@ local function createAdminGui(player)
 			callback(isEnabled)
 		end)
 
-		return row, function() return isEnabled end
-	end
-
-	local function createSliderRow(parent, text, posY, min, max, default, callback)
-		local row = Instance.new("Frame")
-		row.Size = UDim2.new(1, 0, 0, 45)
-		row.Position = UDim2.new(0, 0, 0, posY)
-		row.BackgroundTransparency = 1
-		row.Parent = parent
-
-		local label = Instance.new("TextLabel")
-		label.Size = UDim2.new(0.6, 0, 0, 20)
-		label.Position = UDim2.new(0, 5, 0, 0)
-		label.BackgroundTransparency = 1
-		label.Text = text
-		label.TextColor3 = Color3.fromRGB(180, 180, 185)
-		label.TextSize = 12
-		label.Font = Enum.Font.Gotham
-		label.TextXAlignment = Enum.TextXAlignment.Left
-		label.Parent = row
-
-		local valueLabel = Instance.new("TextLabel")
-		valueLabel.Size = UDim2.new(0.35, 0, 0, 20)
-		valueLabel.Position = UDim2.new(0.6, 0, 0, 0)
-		valueLabel.BackgroundTransparency = 1
-		valueLabel.Text = tostring(default)
-		valueLabel.TextColor3 = Color3.fromRGB(88, 101, 242)
-		valueLabel.TextSize = 12
-		valueLabel.Font = Enum.Font.GothamBold
-		valueLabel.TextXAlignment = Enum.TextXAlignment.Right
-		valueLabel.Parent = row
-
-		local sliderBg = Instance.new("Frame")
-		sliderBg.Size = UDim2.new(1, -10, 0, 6)
-		sliderBg.Position = UDim2.new(0, 5, 0, 28)
-		sliderBg.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
-		sliderBg.BorderSizePixel = 0
-		sliderBg.Parent = row
-
-		local sliderCorner = Instance.new("UICorner")
-		sliderCorner.CornerRadius = UDim.new(0, 3)
-		sliderCorner.Parent = sliderBg
-
-		local sliderFill = Instance.new("Frame")
-		sliderFill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
-		sliderFill.BackgroundColor3 = Color3.fromRGB(88, 101, 242)
-		sliderFill.BorderSizePixel = 0
-		sliderFill.Parent = sliderBg
-
-		local fillCorner = Instance.new("UICorner")
-		fillCorner.CornerRadius = UDim.new(0, 3)
-		fillCorner.Parent = sliderFill
-
-		local sliderBtn = Instance.new("TextButton")
-		sliderBtn.Size = UDim2.new(1, 0, 1, 10)
-		sliderBtn.Position = UDim2.new(0, 0, 0, -5)
-		sliderBtn.BackgroundTransparency = 1
-		sliderBtn.Text = ""
-		sliderBtn.Parent = sliderBg
-
-		local dragging = false
-
-		sliderBtn.MouseButton1Down:Connect(function()
-			dragging = true
-		end)
-
-		UserInputService.InputEnded:Connect(function(input)
-			if input.UserInputType == Enum.UserInputType.MouseButton1 then
-				dragging = false
-			end
-		end)
-
-		RunService.RenderStepped:Connect(function()
-			if dragging then
-				local mouse = UserInputService:GetMouseLocation()
-				local sliderPos = sliderBg.AbsolutePosition
-				local sliderSize = sliderBg.AbsoluteSize
-
-				local relativeX = math.clamp((mouse.X - sliderPos.X) / sliderSize.X, 0, 1)
-				local value = min + (max - min) * relativeX
-
-				if max >= 1 then
-					value = math.floor(value)
-				else
-					value = math.floor(value * 100) / 100
-				end
-
-				sliderFill.Size = UDim2.new(relativeX, 0, 1, 0)
-				valueLabel.Text = tostring(value)
-				callback(value)
-			end
-		end)
-
 		return row
 	end
 
+	-- Button row function
 	local function createButtonRow(parent, text, posY, callback)
 		local btn = Instance.new("TextButton")
 		btn.Size = UDim2.new(1, -10, 0, 32)
@@ -1210,6 +893,7 @@ local function createAdminGui(player)
 		return btn, btnLabel
 	end
 
+	-- Section header function
 	local function createSectionHeader(parent, text, posY)
 		local header = Instance.new("TextLabel")
 		header.Size = UDim2.new(1, 0, 0, 25)
@@ -1224,6 +908,48 @@ local function createAdminGui(player)
 		return header
 	end
 
+	-- Input row function
+	local function createInputRow(parent, placeholder, posY)
+		local inputFrame = Instance.new("Frame")
+		inputFrame.Size = UDim2.new(1, -10, 0, 32)
+		inputFrame.Position = UDim2.new(0, 5, 0, posY)
+		inputFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
+		inputFrame.BorderSizePixel = 0
+		inputFrame.Parent = parent
+
+		local inputCorner = Instance.new("UICorner")
+		inputCorner.CornerRadius = UDim.new(0, 4)
+		inputCorner.Parent = inputFrame
+
+		local textBox = Instance.new("TextBox")
+		textBox.Size = UDim2.new(1, -15, 1, 0)
+		textBox.Position = UDim2.new(0, 10, 0, 0)
+		textBox.BackgroundTransparency = 1
+		textBox.Text = ""
+		textBox.PlaceholderText = placeholder
+		textBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+		textBox.PlaceholderColor3 = Color3.fromRGB(100, 100, 110)
+		textBox.TextSize = 12
+		textBox.Font = Enum.Font.Gotham
+		textBox.TextXAlignment = Enum.TextXAlignment.Left
+		textBox.ClearTextOnFocus = false
+		textBox.Parent = inputFrame
+
+		return inputFrame, textBox
+	end
+
+	-- Status label
+	local statusLabel = Instance.new("TextLabel")
+	statusLabel.Name = "StatusLabel"
+	statusLabel.Size = UDim2.new(1, 0, 0, 20)
+	statusLabel.Position = UDim2.new(0, 0, 1, -25)
+	statusLabel.BackgroundTransparency = 1
+	statusLabel.Text = "Ready • Right Ctrl to toggle | discord.gg/adminpanel"
+	statusLabel.TextColor3 = Color3.fromRGB(100, 100, 110)
+	statusLabel.TextSize = 10
+	statusLabel.Font = Enum.Font.Gotham
+	statusLabel.Parent = mainFrame
+
 	-- ============ INFORMATION TAB ============
 	local infoPage = createContentPage("Information")
 	tabContents["Information"] = infoPage
@@ -1231,24 +957,21 @@ local function createAdminGui(player)
 	createSectionHeader(infoPage, "Update Log", 0)
 
 	local updateLog = Instance.new("TextLabel")
-	updateLog.Size = UDim2.new(1, -10, 0, 180)
+	updateLog.Size = UDim2.new(1, -10, 0, 150)
 	updateLog.Position = UDim2.new(0, 5, 0, 30)
 	updateLog.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
 	updateLog.Text = [[
-  v2.1.0 - made by bixix
+  v2.0.0 - Major Update
   
-  + Loading screen with credits
-  + Player list with click-to-select
-  + Adjustable tracking settings
-  + Improved RMB hold detection
-  + Full unlock system (all items & currency)
-  + Compact ESP with outline only
+  + Added compact ESP system
+  + Fixed tracking through walls
+  + New professional UI
+  + Hold/Toggle tracking modes
   + Team & Admin filtering
-  + Line of sight detection
+  + Improved performance
   
-  Controls:
-  • Right Ctrl - Toggle panel
-  • RMB - Track nearest enemy
+  Known Issues:
+  - Some games may have anti-cheat
   ]]
 	updateLog.TextColor3 = Color3.fromRGB(180, 180, 185)
 	updateLog.TextSize = 11
@@ -1266,333 +989,6 @@ local function createAdminGui(player)
 	logPadding.PaddingLeft = UDim.new(0, 10)
 	logPadding.PaddingTop = UDim.new(0, 10)
 	logPadding.Parent = updateLog
-
-	-- ============ PLAYERS TAB ============
-	local playersPage = createContentPage("Players")
-	tabContents["Players"] = playersPage
-
-	createSectionHeader(playersPage, "Online Players (Click to Select)", 0)
-
-	local playerListFrame = Instance.new("Frame")
-	playerListFrame.Name = "PlayerList"
-	playerListFrame.Size = UDim2.new(1, -10, 0, 280)
-	playerListFrame.Position = UDim2.new(0, 5, 0, 30)
-	playerListFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
-	playerListFrame.BorderSizePixel = 0
-	playerListFrame.ClipsDescendants = true
-	playerListFrame.Parent = playersPage
-
-	local playerListCorner = Instance.new("UICorner")
-	playerListCorner.CornerRadius = UDim.new(0, 4)
-	playerListCorner.Parent = playerListFrame
-
-	local playerListScroll = Instance.new("ScrollingFrame")
-	playerListScroll.Size = UDim2.new(1, 0, 1, 0)
-	playerListScroll.BackgroundTransparency = 1
-	playerListScroll.ScrollBarThickness = 3
-	playerListScroll.ScrollBarImageColor3 = Color3.fromRGB(88, 101, 242)
-	playerListScroll.Parent = playerListFrame
-
-	local playerListLayout = Instance.new("UIListLayout")
-	playerListLayout.Padding = UDim.new(0, 2)
-	playerListLayout.Parent = playerListScroll
-
-	local selectedLabel = Instance.new("TextLabel")
-	selectedLabel.Name = "SelectedLabel"
-	selectedLabel.Size = UDim2.new(1, -10, 0, 25)
-	selectedLabel.Position = UDim2.new(0, 5, 0, 320)
-	selectedLabel.BackgroundTransparency = 1
-	selectedLabel.Text = "Selected: None"
-	selectedLabel.TextColor3 = Color3.fromRGB(88, 101, 242)
-	selectedLabel.TextSize = 13
-	selectedLabel.Font = Enum.Font.GothamBold
-	selectedLabel.TextXAlignment = Enum.TextXAlignment.Left
-	selectedLabel.Parent = playersPage
-
-	createSectionHeader(playersPage, "Quick Actions", 350)
-
-	createButtonRow(playersPage, "Teleport to Selected", 380, function()
-		local target = selectedPlayer[player.UserId]
-		if not target then
-			statusLabel.Text = "No player selected"
-			return
-		end
-
-		local adminChar = player.Character
-		local targetChar = target.Character
-
-		if adminChar and targetChar then
-			local adminHRP = adminChar:FindFirstChild("HumanoidRootPart")
-			local targetHRP = targetChar:FindFirstChild("HumanoidRootPart")
-
-			if adminHRP and targetHRP then
-				adminHRP.CFrame = targetHRP.CFrame * CFrame.new(0, 0, 3)
-				statusLabel.Text = "Teleported to " .. target.Name
-			end
-		end
-	end)
-
-	createButtonRow(playersPage, "Bring Selected", 417, function()
-		local target = selectedPlayer[player.UserId]
-		if not target then
-			statusLabel.Text = "No player selected"
-			return
-		end
-
-		local adminChar = player.Character
-		local targetChar = target.Character
-
-		if adminChar and targetChar then
-			local adminHRP = adminChar:FindFirstChild("HumanoidRootPart")
-			local targetHRP = targetChar:FindFirstChild("HumanoidRootPart")
-
-			if adminHRP and targetHRP then
-				targetHRP.CFrame = adminHRP.CFrame * CFrame.new(0, 0, 3)
-				statusLabel.Text = "Brought " .. target.Name
-			end
-		end
-	end)
-
-	createButtonRow(playersPage, "Track Selected (Camera)", 454, function()
-		local target = selectedPlayer[player.UserId]
-		if not target then
-			statusLabel.Text = "No player selected"
-			return
-		end
-
-		stopTracking(player)
-
-		statusLabel.Text = "Tracking " .. target.Name
-
-		local camera = Workspace.CurrentCamera
-		local settings = trackingSettings[player.UserId]
-
-		local connection = RunService.RenderStepped:Connect(function()
-			local adminChar = player.Character
-			local targetChar = target.Character
-
-			if not adminChar or not targetChar then return end
-
-			local targetHRP = targetChar:FindFirstChild("HumanoidRootPart")
-
-			if targetHRP and camera then
-				local canSee = not settings.requireLineOfSight or hasLineOfSight(player, target)
-
-				if canSee then
-					local lookAtCFrame = CFrame.new(camera.CFrame.Position, targetHRP.Position)
-					camera.CFrame = camera.CFrame:Lerp(lookAtCFrame, settings.sensitivity)
-				end
-			end
-		end)
-
-		activeTracking[player.UserId] = {
-			connection = connection,
-			target = target
-		}
-	end)
-
-	-- Function to update player list
-	local function updatePlayerList()
-		for _, child in ipairs(playerListScroll:GetChildren()) do
-			if child:IsA("TextButton") then
-				child:Destroy()
-			end
-		end
-
-		local playerCount = 0
-		for _, p in ipairs(Players:GetPlayers()) do
-			playerCount = playerCount + 1
-
-			local playerBtn = Instance.new("TextButton")
-			playerBtn.Name = p.Name
-			playerBtn.Size = UDim2.new(1, -6, 0, 36)
-			playerBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 52)
-			playerBtn.BorderSizePixel = 0
-			playerBtn.Text = ""
-			playerBtn.AutoButtonColor = false
-			playerBtn.Parent = playerListScroll
-
-			local btnCorner = Instance.new("UICorner")
-			btnCorner.CornerRadius = UDim.new(0, 4)
-			btnCorner.Parent = playerBtn
-
-			-- Player icon
-			local iconFrame = Instance.new("Frame")
-			iconFrame.Size = UDim2.new(0, 28, 0, 28)
-			iconFrame.Position = UDim2.new(0, 5, 0.5, -14)
-			iconFrame.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
-			iconFrame.Parent = playerBtn
-
-			local iconCorner = Instance.new("UICorner")
-			iconCorner.CornerRadius = UDim.new(0, 4)
-			iconCorner.Parent = iconFrame
-
-			local iconText = Instance.new("TextLabel")
-			iconText.Size = UDim2.new(1, 0, 1, 0)
-			iconText.BackgroundTransparency = 1
-			iconText.Text = p.Name:sub(1, 1):upper()
-			iconText.TextColor3 = Color3.fromRGB(255, 255, 255)
-			iconText.TextSize = 14
-			iconText.Font = Enum.Font.GothamBold
-			iconText.Parent = iconFrame
-
-			-- Name
-			local nameLabel = Instance.new("TextLabel")
-			nameLabel.Size = UDim2.new(0.5, -40, 0, 16)
-			nameLabel.Position = UDim2.new(0, 40, 0, 4)
-			nameLabel.BackgroundTransparency = 1
-			nameLabel.Text = p.Name
-			nameLabel.TextColor3 = Color3.fromRGB(220, 220, 225)
-			nameLabel.TextSize = 12
-			nameLabel.Font = Enum.Font.GothamBold
-			nameLabel.TextXAlignment = Enum.TextXAlignment.Left
-			nameLabel.TextTruncate = Enum.TextTruncate.AtEnd
-			nameLabel.Parent = playerBtn
-
-			-- Display name
-			local displayLabel = Instance.new("TextLabel")
-			displayLabel.Size = UDim2.new(0.5, -40, 0, 14)
-			displayLabel.Position = UDim2.new(0, 40, 0, 19)
-			displayLabel.BackgroundTransparency = 1
-			displayLabel.Text = "@" .. p.DisplayName
-			displayLabel.TextColor3 = Color3.fromRGB(120, 120, 130)
-			displayLabel.TextSize = 10
-			displayLabel.Font = Enum.Font.Gotham
-			displayLabel.TextXAlignment = Enum.TextXAlignment.Left
-			displayLabel.Parent = playerBtn
-
-			-- Status indicators
-			local statusFrame = Instance.new("Frame")
-			statusFrame.Size = UDim2.new(0, 80, 0, 20)
-			statusFrame.Position = UDim2.new(1, -90, 0.5, -10)
-			statusFrame.BackgroundTransparency = 1
-			statusFrame.Parent = playerBtn
-
-			-- Admin indicator
-			if isAdmin(p) then
-				local adminTag = Instance.new("TextLabel")
-				adminTag.Size = UDim2.new(0, 45, 1, 0)
-				adminTag.BackgroundColor3 = Color3.fromRGB(255, 180, 0)
-				adminTag.Text = "ADMIN"
-				adminTag.TextColor3 = Color3.fromRGB(0, 0, 0)
-				adminTag.TextSize = 9
-				adminTag.Font = Enum.Font.GothamBold
-				adminTag.Parent = statusFrame
-
-				local tagCorner = Instance.new("UICorner")
-				tagCorner.CornerRadius = UDim.new(0, 3)
-				tagCorner.Parent = adminTag
-
-				iconFrame.BackgroundColor3 = Color3.fromRGB(255, 180, 0)
-			elseif isSameTeam(player, p) then
-				local teamTag = Instance.new("TextLabel")
-				teamTag.Size = UDim2.new(0, 45, 1, 0)
-				teamTag.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
-				teamTag.Text = "TEAM"
-				teamTag.TextColor3 = Color3.fromRGB(0, 0, 0)
-				teamTag.TextSize = 9
-				teamTag.Font = Enum.Font.GothamBold
-				teamTag.Parent = statusFrame
-
-				local tagCorner = Instance.new("UICorner")
-				tagCorner.CornerRadius = UDim.new(0, 3)
-				tagCorner.Parent = teamTag
-
-				iconFrame.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
-			elseif p == player then
-				local youTag = Instance.new("TextLabel")
-				youTag.Size = UDim2.new(0, 35, 1, 0)
-				youTag.BackgroundColor3 = Color3.fromRGB(88, 101, 242)
-				youTag.Text = "YOU"
-				youTag.TextColor3 = Color3.fromRGB(255, 255, 255)
-				youTag.TextSize = 9
-				youTag.Font = Enum.Font.GothamBold
-				youTag.Parent = statusFrame
-
-				local tagCorner = Instance.new("UICorner")
-				tagCorner.CornerRadius = UDim.new(0, 3)
-				tagCorner.Parent = youTag
-
-				iconFrame.BackgroundColor3 = Color3.fromRGB(88, 101, 242)
-			else
-				local enemyTag = Instance.new("TextLabel")
-				enemyTag.Size = UDim2.new(0, 50, 1, 0)
-				enemyTag.BackgroundColor3 = Color3.fromRGB(255, 60, 60)
-				enemyTag.Text = "ENEMY"
-				enemyTag.TextColor3 = Color3.fromRGB(255, 255, 255)
-				enemyTag.TextSize = 9
-				enemyTag.Font = Enum.Font.GothamBold
-				enemyTag.Parent = statusFrame
-
-				local tagCorner = Instance.new("UICorner")
-				tagCorner.CornerRadius = UDim.new(0, 3)
-				tagCorner.Parent = enemyTag
-
-				iconFrame.BackgroundColor3 = Color3.fromRGB(255, 60, 60)
-			end
-
-			-- Selection indicator
-			local selectIndicator = Instance.new("Frame")
-			selectIndicator.Name = "SelectIndicator"
-			selectIndicator.Size = UDim2.new(0, 3, 0.7, 0)
-			selectIndicator.Position = UDim2.new(0, 0, 0.15, 0)
-			selectIndicator.BackgroundColor3 = Color3.fromRGB(88, 101, 242)
-			selectIndicator.BorderSizePixel = 0
-			selectIndicator.Visible = false
-			selectIndicator.Parent = playerBtn
-
-			local selectCorner = Instance.new("UICorner")
-			selectCorner.CornerRadius = UDim.new(0, 2)
-			selectCorner.Parent = selectIndicator
-
-			-- Hover effect
-			playerBtn.MouseEnter:Connect(function()
-				TweenService:Create(playerBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(55, 55, 65)}):Play()
-			end)
-
-			playerBtn.MouseLeave:Connect(function()
-				if selectedPlayer[player.UserId] ~= p then
-					TweenService:Create(playerBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(45, 45, 52)}):Play()
-				end
-			end)
-
-			-- Click to select
-			playerBtn.MouseButton1Click:Connect(function()
-				-- Deselect previous
-				for _, child in ipairs(playerListScroll:GetChildren()) do
-					if child:IsA("TextButton") then
-						local indicator = child:FindFirstChild("SelectIndicator")
-						if indicator then
-							indicator.Visible = false
-						end
-						child.BackgroundColor3 = Color3.fromRGB(45, 45, 52)
-					end
-				end
-
-				-- Select new
-				selectedPlayer[player.UserId] = p
-				selectIndicator.Visible = true
-				playerBtn.BackgroundColor3 = Color3.fromRGB(55, 55, 65)
-				selectedLabel.Text = "Selected: " .. p.Name
-
-				statusLabel.Text = "Selected " .. p.Name
-			end)
-		end
-
-		playerListScroll.CanvasSize = UDim2.new(0, 0, 0, playerCount * 38)
-	end
-
-	-- Update player list initially and on changes
-	updatePlayerList()
-	Players.PlayerAdded:Connect(updatePlayerList)
-	Players.PlayerRemoving:Connect(function(p)
-		if selectedPlayer[player.UserId] == p then
-			selectedPlayer[player.UserId] = nil
-			selectedLabel.Text = "Selected: None"
-		end
-		task.wait(0.1)
-		updatePlayerList()
-	end)
 
 	-- ============ LOCAL PLAYER TAB ============
 	local localPage = createContentPage("Local Player")
@@ -1640,9 +1036,25 @@ local function createAdminGui(player)
 
 	createSectionHeader(localPage, "Inventory", 110)
 
-	createButtonRow(localPage, "🔓 FULL UNLOCK (Items, Currency, Tools)", 140, function()
-		local result = fullUnlock(player)
-		statusLabel.Text = string.format("Unlocked: %d items, %d stats, %d tools", result.items, result.stats, result.tools)
+	createButtonRow(localPage, "Unlock All Items", 140, function()
+		local itemsFolder = ServerStorage:FindFirstChild("Items")
+		if itemsFolder then
+			for _, item in ipairs(itemsFolder:GetChildren()) do
+				local clone = item:Clone()
+				clone.Parent = player.Backpack
+			end
+		end
+
+		local leaderstats = player:FindFirstChild("leaderstats")
+		if leaderstats then
+			for _, stat in ipairs(leaderstats:GetChildren()) do
+				if stat:IsA("IntValue") or stat:IsA("NumberValue") then
+					stat.Value = 999999
+				end
+			end
+		end
+
+		statusLabel.Text = "Unlocked all items & max currency"
 	end)
 
 	-- ============ VISUALS TAB ============
@@ -1701,63 +1113,72 @@ local function createAdminGui(player)
 		end
 	end)
 
-	-- ============ TRACKING TAB ============
-	local trackingPage = createContentPage("Tracking")
-	tabContents["Tracking"] = trackingPage
-
-	createSectionHeader(trackingPage, "Tracking Mode", 0)
-
-	createToggleRow(trackingPage, "Hold RMB Mode (vs Click Toggle)", 30, true, function(enabled)
-		trackingMode[player.UserId] = enabled and "hold" or "toggle"
-		statusLabel.Text = "Mode: " .. (enabled and "Hold RMB" or "Click to Toggle")
-	end)
-
-	createSectionHeader(trackingPage, "Tracking Settings", 75)
-
-	createSliderRow(trackingPage, "Sensitivity", 105, 0.01, 0.5, 0.15, function(value)
-		trackingSettings[player.UserId].sensitivity = value
-	end)
-
-	createSliderRow(trackingPage, "Max Range (studs)", 160, 50, 1000, 500, function(value)
-		trackingSettings[player.UserId].maxRange = value
-	end)
-
-	createToggleRow(trackingPage, "Require Line of Sight", 220, true, function(enabled)
-		trackingSettings[player.UserId].requireLineOfSight = enabled
-	end)
-
-	createSectionHeader(trackingPage, "Manual Control", 265)
-
-	createButtonRow(trackingPage, "Stop All Tracking", 295, function()
-		stopTracking(player)
-		stopRightMouseTracking(player)
-		toggleTrackingActive[player.UserId] = false
-		statusLabel.Text = "All tracking stopped"
-	end)
-
 	-- ============ COMMANDS TAB ============
 	local commandsPage = createContentPage("Commands")
 	tabContents["Commands"] = commandsPage
 
-	createSectionHeader(commandsPage, "Server", 0)
+	createSectionHeader(commandsPage, "Target Player", 0)
 
-	createButtonRow(commandsPage, "Rejoin Server", 30, function()
-		TeleportService:Teleport(game.PlaceId, player)
+	local _, playerInput = createInputRow(commandsPage, "Enter player name...", 30)
+
+	createSectionHeader(commandsPage, "Actions", 75)
+
+	createButtonRow(commandsPage, "Teleport to Player", 105, function()
+		local targetName = playerInput.Text
+		if targetName == "" then
+			statusLabel.Text = "Enter a player name first"
+			return
+		end
+
+		local target = findPlayer(targetName)
+		if not target then
+			statusLabel.Text = "Player not found"
+			return
+		end
+
+		local adminChar = player.Character
+		local targetChar = target.Character
+
+		if adminChar and targetChar then
+			local adminHRP = adminChar:FindFirstChild("HumanoidRootPart")
+			local targetHRP = targetChar:FindFirstChild("HumanoidRootPart")
+
+			if adminHRP and targetHRP then
+				adminHRP.CFrame = targetHRP.CFrame * CFrame.new(0, 0, 3)
+				statusLabel.Text = "Teleported to " .. target.Name
+			end
+		end
 	end)
 
-	createButtonRow(commandsPage, "Print Server Info", 67, function()
-		print("=== SERVER INFO ===")
-		print("Place ID: " .. game.PlaceId)
-		print("Job ID: " .. game.JobId)
-		print("Players: " .. #Players:GetPlayers())
-		statusLabel.Text = "Server info printed to console"
+	createButtonRow(commandsPage, "Bring Player to You", 142, function()
+		local targetName = playerInput.Text
+		if targetName == "" then
+			statusLabel.Text = "Enter a player name first"
+			return
+		end
+
+		local target = findPlayer(targetName)
+		if not target then
+			statusLabel.Text = "Player not found"
+			return
+		end
+
+		local adminChar = player.Character
+		local targetChar = target.Character
+
+		if adminChar and targetChar then
+			local adminHRP = adminChar:FindFirstChild("HumanoidRootPart")
+			local targetHRP = targetChar:FindFirstChild("HumanoidRootPart")
+
+			if adminHRP and targetHRP then
+				targetHRP.CFrame = adminHRP.CFrame * CFrame.new(0, 0, 3)
+				statusLabel.Text = "Brought " .. target.Name
+			end
+		end
 	end)
 
-	createSectionHeader(commandsPage, "Locate", 115)
-
-	createButtonRow(commandsPage, "Locate All Enemies", 145, function()
+	createButtonRow(commandsPage, "Locate All Enemies", 179, function()
 		local count = 0
-		print("=== ENEMY LOCATIONS ===")
 		for _, p in ipairs(Players:GetPlayers()) do
 			if isValidTarget(player, p) then
 				local char = p.Character
@@ -1766,25 +1187,136 @@ local function createAdminGui(player)
 					if hrp then
 						count = count + 1
 						local canSee = hasLineOfSight(player, p)
-						print(string.format("%s %s: X:%.0f Y:%.0f Z:%.0f", canSee and "◉" or "◎", p.Name, hrp.Position.X, hrp.Position.Y, hrp.Position.Z))
+						print(string.format("[LOCATE] %s %s: X:%.0f Y:%.0f Z:%.0f", canSee and "◉" or "◎", p.Name, hrp.Position.X, hrp.Position.Y, hrp.Position.Z))
 					end
 				end
 			end
 		end
-		statusLabel.Text = "Located " .. count .. " enemies"
+		statusLabel.Text = "Located " .. count .. " enemies (check console)"
 	end)
 
-	-- ============ SETTINGS TAB ============
-	local settingsPage = createContentPage("Settings")
-	tabContents["Settings"] = settingsPage
+	-- ============ TRACKING TAB ============
+	local trackingPage = createContentPage("Tracking")
+	tabContents["Tracking"] = trackingPage
 
-	createSectionHeader(settingsPage, "UI", 0)
+	createSectionHeader(trackingPage, "RMB Tracking Mode", 0)
+
+	-- Mode selection
+	local holdModeBtn, holdLabel = createButtonRow(trackingPage, "● Hold to Track", 30, function()
+		trackingMode[player.UserId] = "hold"
+		statusLabel.Text = "Tracking mode: Hold RMB"
+	end)
+
+	local toggleModeBtn, toggleLabel = createButtonRow(trackingPage, "○ Click to Toggle", 67, function()
+		trackingMode[player.UserId] = "toggle"
+		statusLabel.Text = "Tracking mode: Click RMB"
+	end)
+
+	createSectionHeader(trackingPage, "Manual Tracking", 115)
+
+	local _, trackInput = createInputRow(trackingPage, "Enter player name...", 145)
+
+	createButtonRow(trackingPage, "Start Camera Track", 185, function()
+		local targetName = trackInput.Text
+		if targetName == "" then
+			statusLabel.Text = "Enter a player name first"
+			return
+		end
+
+		stopTracking(player)
+
+		local target = findPlayer(targetName)
+		if not target then
+			statusLabel.Text = "Player not found"
+			return
+		end
+
+		if not isValidTarget(player, target) then
+			statusLabel.Text = "Cannot track this player"
+			return
+		end
+
+		statusLabel.Text = "Tracking " .. target.Name
+
+		local camera = Workspace.CurrentCamera
+
+		local connection = RunService.RenderStepped:Connect(function()
+			local adminChar = player.Character
+			local targetChar = target.Character
+
+			if not adminChar or not targetChar then return end
+
+			local targetHRP = targetChar:FindFirstChild("HumanoidRootPart")
+
+			if targetHRP and camera then
+				local canSee = hasLineOfSight(player, target)
+
+				if canSee then
+					local lookAtCFrame = CFrame.new(camera.CFrame.Position, targetHRP.Position)
+					camera.CFrame = camera.CFrame:Lerp(lookAtCFrame, 0.1)
+				end
+			end
+		end)
+
+		activeTracking[player.UserId] = {
+			connection = connection,
+			target = target
+		}
+	end)
+
+	createButtonRow(trackingPage, "Stop Tracking", 222, function()
+		if stopTracking(player) then
+			statusLabel.Text = "Tracking stopped"
+		else
+			statusLabel.Text = "Not tracking anyone"
+		end
+	end)
+
+	-- ============ MAP TAB ============
+	local mapPage = createContentPage("Map")
+	tabContents["Map"] = mapPage
+
+	createSectionHeader(mapPage, "Map Features", 0)
+
+	local mapInfo = Instance.new("TextLabel")
+	mapInfo.Size = UDim2.new(1, -10, 0, 60)
+	mapInfo.Position = UDim2.new(0, 5, 0, 30)
+	mapInfo.BackgroundTransparency = 1
+	mapInfo.Text = "Map features coming soon...\n\nPlanned: Minimap, waypoints, enemy radar"
+	mapInfo.TextColor3 = Color3.fromRGB(120, 120, 130)
+	mapInfo.TextSize = 12
+	mapInfo.Font = Enum.Font.Gotham
+	mapInfo.TextXAlignment = Enum.TextXAlignment.Left
+	mapInfo.TextWrapped = true
+	mapInfo.Parent = mapPage
+
+	-- ============ MISCELLANEOUS TAB ============
+	local miscPage = createContentPage("Miscellaneous")
+	tabContents["Miscellaneous"] = miscPage
+
+	createSectionHeader(miscPage, "Extra Features", 0)
+
+	createButtonRow(miscPage, "Rejoin Server", 30, function()
+		TeleportService:Teleport(game.PlaceId, player)
+	end)
+
+	createButtonRow(miscPage, "Copy Server ID", 67, function()
+		-- Can't copy to clipboard in Roblox but we can print it
+		print("Server ID: " .. game.JobId)
+		statusLabel.Text = "Server ID printed to console"
+	end)
+
+	-- ============ UI SETTINGS TAB ============
+	local settingsPage = createContentPage("UI Settings")
+	tabContents["UI Settings"] = settingsPage
+
+	createSectionHeader(settingsPage, "Appearance", 0)
 
 	local uiInfo = Instance.new("TextLabel")
-	uiInfo.Size = UDim2.new(1, -10, 0, 60)
+	uiInfo.Size = UDim2.new(1, -10, 0, 40)
 	uiInfo.Position = UDim2.new(0, 5, 0, 30)
 	uiInfo.BackgroundTransparency = 1
-	uiInfo.Text = "More settings coming soon...\n\nPress Right Ctrl to toggle this panel\nmade by bixix"
+	uiInfo.Text = "UI customization coming soon...\n\nPress Right Ctrl to toggle this panel"
 	uiInfo.TextColor3 = Color3.fromRGB(120, 120, 130)
 	uiInfo.TextSize = 12
 	uiInfo.Font = Enum.Font.Gotham
@@ -1792,7 +1324,7 @@ local function createAdminGui(player)
 	uiInfo.TextWrapped = true
 	uiInfo.Parent = settingsPage
 
-	-- Tab switching
+	-- Tab switching function
 	local function switchTab(tabName)
 		currentTab[player.UserId] = tabName
 
@@ -1812,13 +1344,9 @@ local function createAdminGui(player)
 		for name, content in pairs(tabContents) do
 			content.Visible = (name == tabName)
 		end
-
-		-- Update player list when switching to Players tab
-		if tabName == "Players" then
-			updatePlayerList()
-		end
 	end
 
+	-- Connect tab buttons
 	for name, data in pairs(tabButtons) do
 		data.button.MouseButton1Click:Connect(function()
 			switchTab(name)
@@ -1837,38 +1365,26 @@ local function createAdminGui(player)
 		end)
 	end
 
+	-- Default to Information tab
 	switchTab("Information")
 
-	-- Improved RMB Tracking
-	local rmbConnection = nil
-
+	-- RMB Tracking Functions
 	local function startRMBTracking()
 		stopRightMouseTracking(player)
 
-		local settings = trackingSettings[player.UserId]
-		local nearestPlayer, distance = getNearestValidTarget(player, settings.maxRange)
-
+		local nearestPlayer, distance = getNearestValidTarget(player)
 		if not nearestPlayer then
-			statusLabel.Text = "No valid targets in range"
+			statusLabel.Text = "No visible enemies nearby"
 			return
 		end
 
-		statusLabel.Text = "Tracking: " .. nearestPlayer.Name
+		statusLabel.Text = "RMB tracking " .. nearestPlayer.Name
 
 		local camera = Workspace.CurrentCamera
 
 		local connection = RunService.RenderStepped:Connect(function()
-			if not isRMBHeld[player.UserId] and trackingMode[player.UserId] == "hold" then
-				return
-			end
-
-			local currentSettings = trackingSettings[player.UserId]
-			local currentNearest, dist = getNearestValidTarget(player, currentSettings.maxRange)
-
-			if not currentNearest then
-				statusLabel.Text = "No targets in range"
-				return
-			end
+			local currentNearest, dist = getNearestValidTarget(player)
+			if not currentNearest then return end
 
 			local adminChar = player.Character
 			local targetChar = currentNearest.Character
@@ -1879,8 +1395,8 @@ local function createAdminGui(player)
 
 			if targetHRP and camera then
 				local lookAtCFrame = CFrame.new(camera.CFrame.Position, targetHRP.Position)
-				camera.CFrame = camera.CFrame:Lerp(lookAtCFrame, currentSettings.sensitivity)
-				statusLabel.Text = string.format("Tracking: %s (%.0fm)", currentNearest.Name, dist)
+				camera.CFrame = camera.CFrame:Lerp(lookAtCFrame, 0.2)
+				statusLabel.Text = "Tracking: " .. currentNearest.Name .. " (" .. string.format("%.0fm", dist) .. ")"
 			end
 		end)
 
@@ -1896,7 +1412,7 @@ local function createAdminGui(player)
 		end
 	end
 
-	-- Input handling with improved RMB detection
+	-- Input handling
 	UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		if gameProcessed then return end
 
@@ -1905,8 +1421,6 @@ local function createAdminGui(player)
 		end
 
 		if input.UserInputType == Enum.UserInputType.MouseButton2 then
-			isRMBHeld[player.UserId] = true
-
 			if trackingMode[player.UserId] == "hold" then
 				startRMBTracking()
 			else
@@ -1923,26 +1437,7 @@ local function createAdminGui(player)
 
 	UserInputService.InputEnded:Connect(function(input, gameProcessed)
 		if input.UserInputType == Enum.UserInputType.MouseButton2 then
-			isRMBHeld[player.UserId] = false
-
 			if trackingMode[player.UserId] == "hold" then
-				stopRMBTrackingUI()
-			end
-		end
-	end)
-
-	-- Additional RMB check loop for reliability
-	RunService.Heartbeat:Connect(function()
-		if trackingMode[player.UserId] == "hold" then
-			local isPressed = UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2)
-
-			if isPressed and not isRMBHeld[player.UserId] then
-				isRMBHeld[player.UserId] = true
-				if not rightMouseTracking[player.UserId] then
-					startRMBTracking()
-				end
-			elseif not isPressed and isRMBHeld[player.UserId] then
-				isRMBHeld[player.UserId] = false
 				stopRMBTrackingUI()
 			end
 		end
