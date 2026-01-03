@@ -1194,39 +1194,53 @@ local function createAdminGui(player)
         camTrackingSettings[player.UserId].prediction = enabled
     end)
     
-    local targetSection = createSection(trackingPage, "Target", 245, 0, 230, 180)
+    -- Aimlock Section (moved from Visuals)
+    local aimlockSection = createSection(trackingPage, "Aimlock", 245, 0, 230, 140)
     
+    createDropdown(aimlockSection, "Lock Part", 8, 16, {"Head", "HumanoidRootPart", "UpperTorso", "Torso"}, "Head", function(val)
+        camTrackingSettings[player.UserId].lockPart = val
+    end)
+    
+    createSlider(aimlockSection, "Smoothness:", 8, 60, 0.05, 0.5, 0.1, function(val)
+        camTrackingSettings[player.UserId].smoothness = val
+    end)
+    
+    createCheckbox(aimlockSection, "Velocity Predict", 8, 98, false, function(enabled)
+        camTrackingSettings[player.UserId].prediction = enabled
+    end)
+    
+    -- Status labels (no box, just floating text)
     local targetNameLabel = Instance.new("TextLabel")
-    targetNameLabel.Size = UDim2.new(1, -16, 0, 16)
-    targetNameLabel.Position = UDim2.new(0, 8, 0, 16)
+    targetNameLabel.Size = UDim2.new(0, 200, 0, 16)
+    targetNameLabel.Position = UDim2.new(0, 8, 0, 150)
     targetNameLabel.BackgroundTransparency = 1
     targetNameLabel.Text = "Target: None"
     targetNameLabel.TextColor3 = Colors.AccentBright
     targetNameLabel.TextSize = 11
     targetNameLabel.Font = Enum.Font.GothamBold
     targetNameLabel.TextXAlignment = Enum.TextXAlignment.Left
-    targetNameLabel.Parent = targetSection
+    targetNameLabel.Parent = trackingPage
     
     local targetDistLabel = Instance.new("TextLabel")
-    targetDistLabel.Size = UDim2.new(1, -16, 0, 14)
-    targetDistLabel.Position = UDim2.new(0, 8, 0, 34)
+    targetDistLabel.Size = UDim2.new(0, 200, 0, 14)
+    targetDistLabel.Position = UDim2.new(0, 8, 0, 168)
     targetDistLabel.BackgroundTransparency = 1
     targetDistLabel.Text = "Distance: 0m | Status: --"
     targetDistLabel.TextColor3 = Colors.Text
     targetDistLabel.TextSize = 10
     targetDistLabel.Font = Enum.Font.Gotham
     targetDistLabel.TextXAlignment = Enum.TextXAlignment.Left
-    targetDistLabel.Parent = targetSection
+    targetDistLabel.Parent = trackingPage
     
     local targetHealthBg = Instance.new("Frame")
-    targetHealthBg.Size = UDim2.new(1, -16, 0, 8)
-    targetHealthBg.Position = UDim2.new(0, 8, 0, 54)
+    targetHealthBg.Size = UDim2.new(0, 200, 0, 6)
+    targetHealthBg.Position = UDim2.new(0, 8, 0, 186)
     targetHealthBg.BackgroundColor3 = Colors.BackgroundLight
     targetHealthBg.BorderSizePixel = 0
-    targetHealthBg.Parent = targetSection
+    targetHealthBg.Parent = trackingPage
     
     local targetHealthCorner = Instance.new("UICorner")
-    targetHealthCorner.CornerRadius = UDim.new(0, 4)
+    targetHealthCorner.CornerRadius = UDim.new(0, 3)
     targetHealthCorner.Parent = targetHealthBg
     
     local targetHealthFill = Instance.new("Frame")
@@ -1236,84 +1250,8 @@ local function createAdminGui(player)
     targetHealthFill.Parent = targetHealthBg
     
     local targetHealthCorner2 = Instance.new("UICorner")
-    targetHealthCorner2.CornerRadius = UDim.new(0, 4)
+    targetHealthCorner2.CornerRadius = UDim.new(0, 3)
     targetHealthCorner2.Parent = targetHealthFill
-    
-    local _, playerInput = createInput(targetSection, "Player name...", 8, 75, 140)
-    
-    createButton(targetSection, "Track", 8, 105, 70, function()
-        local targetName = playerInput.Text
-        if targetName == "" then
-            statusLabel.Text = "⚠ Enter player name"
-            return
-        end
-        
-        stopTracking(player)
-        
-        local target = findPlayer(targetName)
-        if not target then
-            statusLabel.Text = "⚠ Player not found"
-            return
-        end
-        
-        if not isValidTarget(player, target) then
-            statusLabel.Text = "⚠ Invalid target"
-            return
-        end
-        
-        statusLabel.Text = "🎯 Tracking: " .. target.Name
-        targetNameLabel.Text = "Target: " .. target.Name
-        
-        local camera = Workspace.CurrentCamera
-        local settings = camTrackingSettings[player.UserId]
-        
-        local connection = RunService.RenderStepped:Connect(function()
-            local adminChar = player.Character
-            local targetChar = target.Character
-            if not adminChar or not targetChar then return end
-            
-            local adminHRP = adminChar:FindFirstChild("HumanoidRootPart")
-            local targetPart = targetChar:FindFirstChild(settings.lockPart) or targetChar:FindFirstChild("Head")
-            local targetHumanoid = targetChar:FindFirstChild("Humanoid")
-            
-            if adminHRP and targetPart and camera then
-                local targetPos = targetPart.Position
-                
-                -- Prediction
-                if settings.prediction then
-                    local targetHRP = targetChar:FindFirstChild("HumanoidRootPart")
-                    if targetHRP then
-                        local velocity = targetHRP.AssemblyLinearVelocity
-                        targetPos = targetPos + velocity * 0.1
-                    end
-                end
-                
-                local distance = (adminHRP.Position - targetPos).Magnitude
-                local canSee = hasLineOfSight(player, target)
-                
-                local lookAtCFrame = CFrame.new(camera.CFrame.Position, targetPos)
-                camera.CFrame = camera.CFrame:Lerp(lookAtCFrame, settings.smoothness)
-                
-                targetDistLabel.Text = string.format("Distance: %dm | %s", math.floor(distance), canSee and "VISIBLE" or "HIDDEN")
-                targetDistLabel.TextColor3 = canSee and Colors.Health_High or Colors.Health_Low
-                
-                if targetHumanoid then
-                    local healthPercent = targetHumanoid.Health / targetHumanoid.MaxHealth
-                    targetHealthFill.Size = UDim2.new(healthPercent, 0, 1, 0)
-                    targetHealthFill.BackgroundColor3 = getHealthColor(healthPercent)
-                end
-            end
-        end)
-        
-        activeTracking[player.UserId] = { connection = connection, target = target }
-    end)
-    
-    createButton(targetSection, "Stop", 85, 105, 60, function()
-        if stopTracking(player) then
-            targetNameLabel.Text = "Target: None"
-            statusLabel.Text = "✓ Tracking stopped"
-        end
-    end)
     
     -- ===== ESP TAB =====
     local espPage = Instance.new("Frame")
@@ -1432,22 +1370,7 @@ local function createAdminGui(player)
         end
     end)
     
-    -- Camera Tracking Section
-    local camSection = createSection(visualsPage, "Camera Tracking", 245, 0, 230, 140)
-    
-    createDropdown(camSection, "Lock Part", 8, 16, {"Head", "HumanoidRootPart", "UpperTorso", "Torso"}, "Head", function(val)
-        camTrackingSettings[player.UserId].lockPart = val
-    end)
-    
-    createSlider(camSection, "Smoothness:", 8, 60, 0.05, 0.5, 0.1, function(val)
-        camTrackingSettings[player.UserId].smoothness = val
-    end)
-    
-    createCheckbox(camSection, "Velocity Predict", 8, 98, false, function(enabled)
-        camTrackingSettings[player.UserId].prediction = enabled
-    end)
-    
-    local thirdPersonSection = createSection(visualsPage, "Third Person", 0, 110, 230, 70)
+    local thirdPersonSection = createSection(visualsPage, "Third Person", 245, 0, 230, 70)
     
     createCheckbox(thirdPersonSection, "Enable", 8, 16, false, nil)
     createSlider(thirdPersonSection, "Distance:", 8, 38, 5, 30, 12, nil)
@@ -1623,11 +1546,11 @@ local function createAdminGui(player)
         end
     end)
     
-    -- Loaded Notification (bottom right)
+    -- Loaded Notification (bottom middle)
     local loadedNotif = Instance.new("TextLabel")
     loadedNotif.Name = "LoadedNotification"
     loadedNotif.Size = UDim2.new(0, 200, 0, 30)
-    loadedNotif.Position = UDim2.new(1, -210, 1, -40)
+    loadedNotif.Position = UDim2.new(0.5, -100, 1, -40)
     loadedNotif.BackgroundColor3 = Colors.Background
     loadedNotif.BackgroundTransparency = 0.3
     loadedNotif.BorderSizePixel = 0
