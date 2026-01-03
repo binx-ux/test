@@ -27,7 +27,7 @@ local ContextActionService = game:GetService("ContextActionService")
 local CoreGui = game:GetService("CoreGui")
 
 local adminIds = {
-    9766385891, -- Your admin
+    3905919471, -- Your admin
 }
 
 local activeTracking = {}
