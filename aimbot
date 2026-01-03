@@ -1,4 +1,5 @@
 -- ServerScriptService
+-- AIRHUB Style Admin Panel
 
 -- Services
 local Players = game:GetService("Players")
@@ -35,8 +36,30 @@ local activeESP = {}
 local espEnabled = {}
 local rightMouseTracking = {}
 local espSettings = {}
-local trackingMode = {} -- "hold" or "toggle"
+local trackingMode = {}
 local toggleTrackingActive = {}
+
+-- AIRHUB Color Scheme
+local Colors = {
+    Background = Color3.fromRGB(25, 15, 35),
+    BackgroundTransparent = Color3.fromRGB(30, 20, 45),
+    Accent = Color3.fromRGB(130, 80, 200),
+    AccentBright = Color3.fromRGB(160, 100, 255),
+    AccentDark = Color3.fromRGB(80, 50, 140),
+    Border = Color3.fromRGB(60, 40, 90),
+    Text = Color3.fromRGB(220, 210, 240),
+    TextDim = Color3.fromRGB(140, 130, 160),
+    TabActive = Color3.fromRGB(50, 30, 80),
+    TabInactive = Color3.fromRGB(35, 25, 55),
+    CheckboxOn = Color3.fromRGB(130, 80, 200),
+    CheckboxOff = Color3.fromRGB(50, 40, 70),
+    SliderFill = Color3.fromRGB(130, 80, 200),
+    SliderBg = Color3.fromRGB(40, 30, 60),
+    DropdownBg = Color3.fromRGB(35, 25, 55),
+    Success = Color3.fromRGB(80, 200, 120),
+    Warning = Color3.fromRGB(255, 180, 80),
+    Danger = Color3.fromRGB(255, 80, 80),
+}
 
 local function isAdmin(player)
     for _, id in ipairs(adminIds) do
@@ -178,7 +201,6 @@ local function createBoxESP(target, admin)
         return nil
     end
     
-    -- Clean up existing
     local existingFolder = target.Character:FindFirstChild("AdminESP_" .. admin.UserId)
     if existingFolder then
         existingFolder:Destroy()
@@ -197,7 +219,6 @@ local function createBoxESP(target, admin)
         skeletonEnabled = false
     }
     
-    -- Billboard GUI for info
     local billboardGui = Instance.new("BillboardGui")
     billboardGui.Name = "InfoBoard"
     billboardGui.Adornee = target.Character:FindFirstChild("Head")
@@ -211,14 +232,13 @@ local function createBoxESP(target, admin)
     infoFrame.BackgroundTransparency = 1
     infoFrame.Parent = billboardGui
     
-    -- Name Label
     local nameLabel = Instance.new("TextLabel")
     nameLabel.Name = "NameLabel"
     nameLabel.Size = UDim2.new(1, 0, 0, 18)
     nameLabel.Position = UDim2.new(0, 0, 0, 0)
     nameLabel.BackgroundTransparency = 1
     nameLabel.Text = target.Name
-    nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    nameLabel.TextColor3 = Colors.AccentBright
     nameLabel.TextStrokeTransparency = 0
     nameLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
     nameLabel.TextSize = 14
@@ -226,12 +246,11 @@ local function createBoxESP(target, admin)
     nameLabel.Visible = settings.nameEnabled
     nameLabel.Parent = infoFrame
     
-    -- Health Bar Background
     local healthBarBg = Instance.new("Frame")
     healthBarBg.Name = "HealthBarBg"
     healthBarBg.Size = UDim2.new(0.8, 0, 0, 6)
     healthBarBg.Position = UDim2.new(0.1, 0, 0, 20)
-    healthBarBg.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    healthBarBg.BackgroundColor3 = Colors.SliderBg
     healthBarBg.BorderSizePixel = 0
     healthBarBg.Visible = settings.healthEnabled
     healthBarBg.Parent = infoFrame
@@ -240,11 +259,10 @@ local function createBoxESP(target, admin)
     healthBarBgCorner.CornerRadius = UDim.new(0, 3)
     healthBarBgCorner.Parent = healthBarBg
     
-    -- Health Bar Fill
     local healthBarFill = Instance.new("Frame")
     healthBarFill.Name = "HealthBarFill"
     healthBarFill.Size = UDim2.new(1, 0, 1, 0)
-    healthBarFill.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+    healthBarFill.BackgroundColor3 = Colors.Success
     healthBarFill.BorderSizePixel = 0
     healthBarFill.Parent = healthBarBg
     
@@ -252,14 +270,13 @@ local function createBoxESP(target, admin)
     healthBarFillCorner.CornerRadius = UDim.new(0, 3)
     healthBarFillCorner.Parent = healthBarFill
     
-    -- Distance Label
     local distanceLabel = Instance.new("TextLabel")
     distanceLabel.Name = "DistanceLabel"
     distanceLabel.Size = UDim2.new(1, 0, 0, 16)
     distanceLabel.Position = UDim2.new(0, 0, 0, 28)
     distanceLabel.BackgroundTransparency = 1
     distanceLabel.Text = "0m"
-    distanceLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
+    distanceLabel.TextColor3 = Colors.Warning
     distanceLabel.TextStrokeTransparency = 0
     distanceLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
     distanceLabel.TextSize = 12
@@ -267,44 +284,40 @@ local function createBoxESP(target, admin)
     distanceLabel.Visible = settings.distanceEnabled
     distanceLabel.Parent = infoFrame
     
-    -- Visibility Label
     local visibilityLabel = Instance.new("TextLabel")
     visibilityLabel.Name = "VisibilityLabel"
     visibilityLabel.Size = UDim2.new(1, 0, 0, 14)
     visibilityLabel.Position = UDim2.new(0, 0, 0, 44)
     visibilityLabel.BackgroundTransparency = 1
     visibilityLabel.Text = "VISIBLE"
-    visibilityLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+    visibilityLabel.TextColor3 = Colors.Success
     visibilityLabel.TextStrokeTransparency = 0
     visibilityLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
     visibilityLabel.TextSize = 10
     visibilityLabel.Font = Enum.Font.GothamBold
     visibilityLabel.Parent = infoFrame
     
-    -- Box Highlight
     local highlight = Instance.new("Highlight")
     highlight.Name = "BoxHighlight"
     highlight.Adornee = target.Character
-    highlight.FillColor = Color3.fromRGB(255, 0, 0)
-    highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+    highlight.FillColor = Colors.Accent
+    highlight.OutlineColor = Colors.AccentBright
     highlight.FillTransparency = 0.7
     highlight.OutlineTransparency = 0
     highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
     highlight.Enabled = settings.boxEnabled
     highlight.Parent = espFolder
     
-    -- Selection Box (3D Box)
     local selectionBox = Instance.new("SelectionBox")
     selectionBox.Name = "SelectionBox"
     selectionBox.Adornee = target.Character
-    selectionBox.Color3 = Color3.fromRGB(255, 0, 0)
+    selectionBox.Color3 = Colors.Accent
     selectionBox.LineThickness = 0.05
-    selectionBox.SurfaceColor3 = Color3.fromRGB(255, 0, 0)
+    selectionBox.SurfaceColor3 = Colors.Accent
     selectionBox.SurfaceTransparency = 0.9
     selectionBox.Visible = settings.boxEnabled
     selectionBox.Parent = espFolder
     
-    -- Tracer Line
     local tracerPart = Instance.new("Part")
     tracerPart.Name = "TracerAnchor"
     tracerPart.Anchored = true
@@ -315,7 +328,7 @@ local function createBoxESP(target, admin)
     
     local beam = Instance.new("Beam")
     beam.Name = "Tracer"
-    beam.Color = ColorSequence.new(Color3.fromRGB(255, 0, 0))
+    beam.Color = ColorSequence.new(Colors.Accent)
     beam.Transparency = NumberSequence.new(0.3)
     beam.Width0 = 0.1
     beam.Width1 = 0.1
@@ -370,52 +383,47 @@ local function updateBoxESP(admin, target, espComponents)
     local distance = (adminHRP.Position - targetHRP.Position).Magnitude
     local canSee = hasLineOfSight(admin, target)
     
-    -- Update distance
     if espComponents.distanceLabel then
         espComponents.distanceLabel.Text = string.format("%.0fm", distance)
     end
     
-    -- Update health bar
     if targetHumanoid and espComponents.healthBarFill then
         local healthPercent = targetHumanoid.Health / targetHumanoid.MaxHealth
         espComponents.healthBarFill.Size = UDim2.new(healthPercent, 0, 1, 0)
         
-        -- Color based on health
         if healthPercent > 0.6 then
-            espComponents.healthBarFill.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+            espComponents.healthBarFill.BackgroundColor3 = Colors.Success
         elseif healthPercent > 0.3 then
-            espComponents.healthBarFill.BackgroundColor3 = Color3.fromRGB(255, 255, 0)
+            espComponents.healthBarFill.BackgroundColor3 = Colors.Warning
         else
-            espComponents.healthBarFill.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+            espComponents.healthBarFill.BackgroundColor3 = Colors.Danger
         end
     end
     
-    -- Update visibility
     if espComponents.visibilityLabel then
         if canSee then
             espComponents.visibilityLabel.Text = "◉ VISIBLE"
-            espComponents.visibilityLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+            espComponents.visibilityLabel.TextColor3 = Colors.Success
         else
             espComponents.visibilityLabel.Text = "◎ COVERED"
-            espComponents.visibilityLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+            espComponents.visibilityLabel.TextColor3 = Colors.Danger
         end
     end
     
-    -- Update colors based on distance
     local espColor
     if distance < 50 then
-        espColor = Color3.fromRGB(255, 0, 0) -- Red = Close
+        espColor = Colors.Danger
     elseif distance < 100 then
-        espColor = Color3.fromRGB(255, 165, 0) -- Orange = Medium
+        espColor = Colors.Warning
     elseif distance < 200 then
-        espColor = Color3.fromRGB(255, 255, 0) -- Yellow = Far
+        espColor = Color3.fromRGB(255, 255, 0)
     else
-        espColor = Color3.fromRGB(0, 255, 0) -- Green = Very far
+        espColor = Colors.Success
     end
     
     if espComponents.highlight then
         espComponents.highlight.FillColor = espColor
-        espComponents.highlight.OutlineColor = canSee and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(150, 150, 150)
+        espComponents.highlight.OutlineColor = canSee and Colors.AccentBright or Colors.TextDim
         espComponents.highlight.FillTransparency = canSee and 0.7 or 0.9
     end
     
@@ -424,7 +432,6 @@ local function updateBoxESP(admin, target, espComponents)
         espComponents.selectionBox.SurfaceColor3 = espColor
     end
     
-    -- Update tracer
     if espComponents.beam and espComponents.tracerPart then
         local camera = Workspace.CurrentCamera
         if camera then
@@ -611,7 +618,7 @@ local function createAdminGui(player)
         healthEnabled = true,
         distanceEnabled = true
     }
-    trackingMode[player.UserId] = "hold" -- Default to hold
+    trackingMode[player.UserId] = "hold"
     toggleTrackingActive[player.UserId] = false
     
     -- Main ScreenGui
@@ -621,12 +628,13 @@ local function createAdminGui(player)
     screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     screenGui.Parent = player:WaitForChild("PlayerGui")
     
-    -- Main Frame
+    -- Main Frame - AIRHUB Style
     local mainFrame = Instance.new("Frame")
     mainFrame.Name = "MainFrame"
-    mainFrame.Size = UDim2.new(0, 380, 0, 650)
-    mainFrame.Position = UDim2.new(0.5, -190, 0.5, -325)
-    mainFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 22)
+    mainFrame.Size = UDim2.new(0, 450, 0, 320)
+    mainFrame.Position = UDim2.new(0.5, -225, 0.5, -160)
+    mainFrame.BackgroundColor3 = Colors.Background
+    mainFrame.BackgroundTransparency = 0.1
     mainFrame.BorderSizePixel = 0
     mainFrame.Visible = false
     mainFrame.Active = true
@@ -634,625 +642,613 @@ local function createAdminGui(player)
     mainFrame.Parent = screenGui
     
     local mainCorner = Instance.new("UICorner")
-    mainCorner.CornerRadius = UDim.new(0, 8)
+    mainCorner.CornerRadius = UDim.new(0, 4)
     mainCorner.Parent = mainFrame
     
     local mainStroke = Instance.new("UIStroke")
-    mainStroke.Color = Color3.fromRGB(60, 60, 70)
+    mainStroke.Color = Colors.Border
     mainStroke.Thickness = 1
     mainStroke.Parent = mainFrame
     
-    -- Header
-    local header = Instance.new("Frame")
-    header.Name = "Header"
-    header.Size = UDim2.new(1, 0, 0, 50)
-    header.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
-    header.BorderSizePixel = 0
-    header.Parent = mainFrame
+    -- Title Bar
+    local titleBar = Instance.new("Frame")
+    titleBar.Name = "TitleBar"
+    titleBar.Size = UDim2.new(1, 0, 0, 22)
+    titleBar.BackgroundColor3 = Colors.AccentDark
+    titleBar.BackgroundTransparency = 0.3
+    titleBar.BorderSizePixel = 0
+    titleBar.Parent = mainFrame
     
-    local headerCorner = Instance.new("UICorner")
-    headerCorner.CornerRadius = UDim.new(0, 8)
-    headerCorner.Parent = header
+    local titleCorner = Instance.new("UICorner")
+    titleCorner.CornerRadius = UDim.new(0, 4)
+    titleCorner.Parent = titleBar
     
-    local headerFix = Instance.new("Frame")
-    headerFix.Size = UDim2.new(1, 0, 0.5, 0)
-    headerFix.Position = UDim2.new(0, 0, 0.5, 0)
-    headerFix.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
-    headerFix.BorderSizePixel = 0
-    headerFix.Parent = header
+    -- Fix bottom corners of title bar
+    local titleFix = Instance.new("Frame")
+    titleFix.Size = UDim2.new(1, 0, 0, 4)
+    titleFix.Position = UDim2.new(0, 0, 1, -4)
+    titleFix.BackgroundColor3 = Colors.AccentDark
+    titleFix.BackgroundTransparency = 0.3
+    titleFix.BorderSizePixel = 0
+    titleFix.Parent = titleBar
     
-    -- Logo/Icon
-    local logoFrame = Instance.new("Frame")
-    logoFrame.Size = UDim2.new(0, 36, 0, 36)
-    logoFrame.Position = UDim2.new(0, 10, 0.5, -18)
-    logoFrame.BackgroundColor3 = Color3.fromRGB(88, 101, 242)
-    logoFrame.Parent = header
+    -- Title Text
+    local titleText = Instance.new("TextLabel")
+    titleText.Size = UDim2.new(1, -50, 1, 0)
+    titleText.Position = UDim2.new(0, 8, 0, 0)
+    titleText.BackgroundTransparency = 1
+    titleText.Text = "Admin V1.0 |"
+    titleText.TextColor3 = Colors.Text
+    titleText.TextSize = 11
+    titleText.Font = Enum.Font.Code
+    titleText.TextXAlignment = Enum.TextXAlignment.Left
+    titleText.Parent = titleBar
     
-    local logoCorner = Instance.new("UICorner")
-    logoCorner.CornerRadius = UDim.new(0, 8)
-    logoCorner.Parent = logoFrame
+    -- Settings Icon
+    local settingsBtn = Instance.new("TextButton")
+    settingsBtn.Size = UDim2.new(0, 20, 0, 20)
+    settingsBtn.Position = UDim2.new(1, -25, 0, 1)
+    settingsBtn.BackgroundTransparency = 1
+    settingsBtn.Text = "⚙"
+    settingsBtn.TextColor3 = Colors.TextDim
+    settingsBtn.TextSize = 14
+    settingsBtn.Font = Enum.Font.Gotham
+    settingsBtn.Parent = titleBar
     
-    local logoText = Instance.new("TextLabel")
-    logoText.Size = UDim2.new(1, 0, 1, 0)
-    logoText.BackgroundTransparency = 1
-    logoText.Text = "A"
-    logoText.TextColor3 = Color3.fromRGB(255, 255, 255)
-    logoText.TextSize = 20
-    logoText.Font = Enum.Font.GothamBold
-    logoText.Parent = logoFrame
+    -- Tab Container
+    local tabContainer = Instance.new("Frame")
+    tabContainer.Name = "TabContainer"
+    tabContainer.Size = UDim2.new(1, 0, 0, 20)
+    tabContainer.Position = UDim2.new(0, 0, 0, 22)
+    tabContainer.BackgroundTransparency = 1
+    tabContainer.BorderSizePixel = 0
+    tabContainer.Parent = mainFrame
     
-    -- Title
-    local titleLabel = Instance.new("TextLabel")
-    titleLabel.Size = UDim2.new(0, 200, 0, 20)
-    titleLabel.Position = UDim2.new(0, 55, 0, 8)
-    titleLabel.BackgroundTransparency = 1
-    titleLabel.Text = "ADMIN CONTROL PANEL"
-    titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    titleLabel.TextSize = 14
-    titleLabel.Font = Enum.Font.GothamBold
-    titleLabel.TextXAlignment = Enum.TextXAlignment.Left
-    titleLabel.Parent = header
+    -- Tab buttons
+    local tabs = {"Tracking", "ESP", "Visuals", "Teleport", "Functions"}
+    local tabButtons = {}
+    local currentTab = "Tracking"
+    local tabWidth = 1 / #tabs
     
-    local subtitleLabel = Instance.new("TextLabel")
-    subtitleLabel.Size = UDim2.new(0, 200, 0, 14)
-    subtitleLabel.Position = UDim2.new(0, 55, 0, 28)
-    subtitleLabel.BackgroundTransparency = 1
-    subtitleLabel.Text = "Press Right Ctrl to toggle"
-    subtitleLabel.TextColor3 = Color3.fromRGB(120, 120, 130)
-    subtitleLabel.TextSize = 11
-    subtitleLabel.Font = Enum.Font.Gotham
-    subtitleLabel.TextXAlignment = Enum.TextXAlignment.Left
-    subtitleLabel.Parent = header
-    
-    -- Close Button
-    local closeBtn = Instance.new("TextButton")
-    closeBtn.Size = UDim2.new(0, 30, 0, 30)
-    closeBtn.Position = UDim2.new(1, -40, 0.5, -15)
-    closeBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
-    closeBtn.Text = "✕"
-    closeBtn.TextColor3 = Color3.fromRGB(180, 180, 180)
-    closeBtn.TextSize = 14
-    closeBtn.Font = Enum.Font.GothamBold
-    closeBtn.Parent = header
-    
-    local closeCorner = Instance.new("UICorner")
-    closeCorner.CornerRadius = UDim.new(0, 6)
-    closeCorner.Parent = closeBtn
-    
-    -- Status Bar
-    local statusBar = Instance.new("Frame")
-    statusBar.Name = "StatusBar"
-    statusBar.Size = UDim2.new(1, -20, 0, 35)
-    statusBar.Position = UDim2.new(0, 10, 0, 58)
-    statusBar.BackgroundColor3 = Color3.fromRGB(30, 35, 45)
-    statusBar.BorderSizePixel = 0
-    statusBar.Parent = mainFrame
-    
-    local statusCorner = Instance.new("UICorner")
-    statusCorner.CornerRadius = UDim.new(0, 6)
-    statusCorner.Parent = statusBar
-    
-    local statusDot = Instance.new("Frame")
-    statusDot.Size = UDim2.new(0, 8, 0, 8)
-    statusDot.Position = UDim2.new(0, 12, 0.5, -4)
-    statusDot.BackgroundColor3 = Color3.fromRGB(0, 255, 100)
-    statusDot.Parent = statusBar
-    
-    local statusDotCorner = Instance.new("UICorner")
-    statusDotCorner.CornerRadius = UDim.new(1, 0)
-    statusDotCorner.Parent = statusDot
-    
-    local statusLabel = Instance.new("TextLabel")
-    statusLabel.Name = "StatusText"
-    statusLabel.Size = UDim2.new(1, -30, 1, 0)
-    statusLabel.Position = UDim2.new(0, 28, 0, 0)
-    statusLabel.BackgroundTransparency = 1
-    statusLabel.Text = "System Ready • RMB to track nearest enemy"
-    statusLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
-    statusLabel.TextSize = 11
-    statusLabel.Font = Enum.Font.Gotham
-    statusLabel.TextXAlignment = Enum.TextXAlignment.Left
-    statusLabel.Parent = statusBar
-    
-    -- Content Container
-    local contentFrame = Instance.new("ScrollingFrame")
-    contentFrame.Name = "Content"
-    contentFrame.Size = UDim2.new(1, -20, 1, -105)
-    contentFrame.Position = UDim2.new(0, 10, 0, 100)
-    contentFrame.BackgroundTransparency = 1
-    contentFrame.ScrollBarThickness = 3
-    contentFrame.ScrollBarImageColor3 = Color3.fromRGB(88, 101, 242)
-    contentFrame.CanvasSize = UDim2.new(0, 0, 0, 850)
-    contentFrame.Parent = mainFrame
-    
-    -- Section Creator Function
-    local function createSection(name, posY)
-        local section = Instance.new("Frame")
-        section.Name = name .. "Section"
-        section.Size = UDim2.new(1, 0, 0, 25)
-        section.Position = UDim2.new(0, 0, 0, posY)
-        section.BackgroundTransparency = 1
-        section.Parent = contentFrame
+    for i, tabName in ipairs(tabs) do
+        local tabBtn = Instance.new("TextButton")
+        tabBtn.Name = tabName .. "Tab"
+        tabBtn.Size = UDim2.new(tabWidth, -2, 1, 0)
+        tabBtn.Position = UDim2.new((i-1) * tabWidth, 1, 0, 0)
+        tabBtn.BackgroundColor3 = i == 1 and Colors.TabActive or Colors.TabInactive
+        tabBtn.BackgroundTransparency = 0.3
+        tabBtn.BorderSizePixel = 0
+        tabBtn.Text = tabName
+        tabBtn.TextColor3 = i == 1 and Colors.AccentBright or Colors.TextDim
+        tabBtn.TextSize = 10
+        tabBtn.Font = Enum.Font.Code
+        tabBtn.AutoButtonColor = false
+        tabBtn.Parent = tabContainer
         
-        local sectionLine = Instance.new("Frame")
-        sectionLine.Size = UDim2.new(0, 3, 1, -6)
-        sectionLine.Position = UDim2.new(0, 0, 0, 3)
-        sectionLine.BackgroundColor3 = Color3.fromRGB(88, 101, 242)
-        sectionLine.BorderSizePixel = 0
-        sectionLine.Parent = section
+        tabButtons[tabName] = tabBtn
+    end
+    
+    -- Content Area
+    local contentArea = Instance.new("Frame")
+    contentArea.Name = "ContentArea"
+    contentArea.Size = UDim2.new(1, -16, 1, -56)
+    contentArea.Position = UDim2.new(0, 8, 0, 48)
+    contentArea.BackgroundTransparency = 1
+    contentArea.BorderSizePixel = 0
+    contentArea.Parent = mainFrame
+    
+    -- Status Label at bottom
+    local statusLabel = Instance.new("TextLabel")
+    statusLabel.Name = "StatusLabel"
+    statusLabel.Size = UDim2.new(1, -16, 0, 14)
+    statusLabel.Position = UDim2.new(0, 8, 1, -18)
+    statusLabel.BackgroundTransparency = 1
+    statusLabel.Text = "Ready | RMB to track nearest"
+    statusLabel.TextColor3 = Colors.TextDim
+    statusLabel.TextSize = 9
+    statusLabel.Font = Enum.Font.Code
+    statusLabel.TextXAlignment = Enum.TextXAlignment.Left
+    statusLabel.Parent = mainFrame
+    
+    -- Helper Functions for AIRHUB style components
+    local function createSection(parent, title, posY, width, height)
+        local section = Instance.new("Frame")
+        section.Name = title .. "Section"
+        section.Size = UDim2.new(0, width, 0, height)
+        section.Position = UDim2.new(0, 0, 0, posY)
+        section.BackgroundColor3 = Colors.BackgroundTransparent
+        section.BackgroundTransparency = 0.5
+        section.BorderSizePixel = 0
+        section.Parent = parent
         
         local sectionCorner = Instance.new("UICorner")
-        sectionCorner.CornerRadius = UDim.new(0, 2)
-        sectionCorner.Parent = sectionLine
+        sectionCorner.CornerRadius = UDim.new(0, 3)
+        sectionCorner.Parent = section
         
-        local sectionLabel = Instance.new("TextLabel")
-        sectionLabel.Size = UDim2.new(1, -15, 1, 0)
-        sectionLabel.Position = UDim2.new(0, 12, 0, 0)
-        sectionLabel.BackgroundTransparency = 1
-        sectionLabel.Text = name
-        sectionLabel.TextColor3 = Color3.fromRGB(150, 150, 160)
-        sectionLabel.TextSize = 11
-        sectionLabel.Font = Enum.Font.GothamBold
-        sectionLabel.TextXAlignment = Enum.TextXAlignment.Left
-        sectionLabel.Parent = section
+        local sectionStroke = Instance.new("UIStroke")
+        sectionStroke.Color = Colors.Border
+        sectionStroke.Thickness = 1
+        sectionStroke.Parent = section
+        
+        local sectionTitle = Instance.new("TextLabel")
+        sectionTitle.Size = UDim2.new(0, #title * 7, 0, 12)
+        sectionTitle.Position = UDim2.new(0, 6, 0, -6)
+        sectionTitle.BackgroundColor3 = Colors.Background
+        sectionTitle.BorderSizePixel = 0
+        sectionTitle.Text = title
+        sectionTitle.TextColor3 = Colors.TextDim
+        sectionTitle.TextSize = 9
+        sectionTitle.Font = Enum.Font.Code
+        sectionTitle.Parent = section
         
         return section
     end
     
-    -- Button Creator Function
-    local function createButton(name, text, icon, color, posY, callback)
+    local function createCheckbox(parent, text, posX, posY, default, callback)
+        local container = Instance.new("Frame")
+        container.Size = UDim2.new(0, 100, 0, 16)
+        container.Position = UDim2.new(0, posX, 0, posY)
+        container.BackgroundTransparency = 1
+        container.Parent = parent
+        
+        local checkbox = Instance.new("Frame")
+        checkbox.Size = UDim2.new(0, 12, 0, 12)
+        checkbox.Position = UDim2.new(0, 0, 0, 2)
+        checkbox.BackgroundColor3 = default and Colors.CheckboxOn or Colors.CheckboxOff
+        checkbox.BorderSizePixel = 0
+        checkbox.Parent = container
+        
+        local checkCorner = Instance.new("UICorner")
+        checkCorner.CornerRadius = UDim.new(0, 2)
+        checkCorner.Parent = checkbox
+        
+        local checkStroke = Instance.new("UIStroke")
+        checkStroke.Color = Colors.Accent
+        checkStroke.Thickness = 1
+        checkStroke.Parent = checkbox
+        
+        local checkMark = Instance.new("TextLabel")
+        checkMark.Size = UDim2.new(1, 0, 1, 0)
+        checkMark.BackgroundTransparency = 1
+        checkMark.Text = default and "✓" or ""
+        checkMark.TextColor3 = Colors.Text
+        checkMark.TextSize = 10
+        checkMark.Font = Enum.Font.GothamBold
+        checkMark.Parent = checkbox
+        
+        local label = Instance.new("TextLabel")
+        label.Size = UDim2.new(0, 80, 0, 16)
+        label.Position = UDim2.new(0, 16, 0, 0)
+        label.BackgroundTransparency = 1
+        label.Text = text
+        label.TextColor3 = Colors.Text
+        label.TextSize = 9
+        label.Font = Enum.Font.Code
+        label.TextXAlignment = Enum.TextXAlignment.Left
+        label.Parent = container
+        
+        local isEnabled = default
+        
         local btn = Instance.new("TextButton")
-        btn.Name = name
-        btn.Size = UDim2.new(1, 0, 0, 42)
-        btn.Position = UDim2.new(0, 0, 0, posY)
-        btn.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
-        btn.BorderSizePixel = 0
+        btn.Size = UDim2.new(1, 0, 1, 0)
+        btn.BackgroundTransparency = 1
         btn.Text = ""
+        btn.Parent = container
+        
+        btn.MouseButton1Click:Connect(function()
+            isEnabled = not isEnabled
+            checkbox.BackgroundColor3 = isEnabled and Colors.CheckboxOn or Colors.CheckboxOff
+            checkMark.Text = isEnabled and "✓" or ""
+            if callback then callback(isEnabled) end
+        end)
+        
+        return container, function() return isEnabled end, function(val)
+            isEnabled = val
+            checkbox.BackgroundColor3 = isEnabled and Colors.CheckboxOn or Colors.CheckboxOff
+            checkMark.Text = isEnabled and "✓" or ""
+        end
+    end
+    
+    local function createDropdown(parent, label, posX, posY, options, default, callback)
+        local container = Instance.new("Frame")
+        container.Size = UDim2.new(0, 120, 0, 32)
+        container.Position = UDim2.new(0, posX, 0, posY)
+        container.BackgroundTransparency = 1
+        container.Parent = parent
+        
+        local labelText = Instance.new("TextLabel")
+        labelText.Size = UDim2.new(1, 0, 0, 12)
+        labelText.BackgroundTransparency = 1
+        labelText.Text = label
+        labelText.TextColor3 = Colors.TextDim
+        labelText.TextSize = 9
+        labelText.Font = Enum.Font.Code
+        labelText.TextXAlignment = Enum.TextXAlignment.Left
+        labelText.Parent = container
+        
+        local dropBtn = Instance.new("TextButton")
+        dropBtn.Size = UDim2.new(1, 0, 0, 18)
+        dropBtn.Position = UDim2.new(0, 0, 0, 14)
+        dropBtn.BackgroundColor3 = Colors.DropdownBg
+        dropBtn.BorderSizePixel = 0
+        dropBtn.Text = default
+        dropBtn.TextColor3 = Colors.Text
+        dropBtn.TextSize = 9
+        dropBtn.Font = Enum.Font.Code
+        dropBtn.AutoButtonColor = false
+        dropBtn.Parent = container
+        
+        local dropCorner = Instance.new("UICorner")
+        dropCorner.CornerRadius = UDim.new(0, 2)
+        dropCorner.Parent = dropBtn
+        
+        local dropStroke = Instance.new("UIStroke")
+        dropStroke.Color = Colors.Border
+        dropStroke.Thickness = 1
+        dropStroke.Parent = dropBtn
+        
+        local arrow = Instance.new("TextLabel")
+        arrow.Size = UDim2.new(0, 12, 1, 0)
+        arrow.Position = UDim2.new(1, -14, 0, 0)
+        arrow.BackgroundTransparency = 1
+        arrow.Text = "▼"
+        arrow.TextColor3 = Colors.Accent
+        arrow.TextSize = 8
+        arrow.Font = Enum.Font.Code
+        arrow.Parent = dropBtn
+        
+        local currentSelection = default
+        local isOpen = false
+        
+        local optionsFrame = Instance.new("Frame")
+        optionsFrame.Size = UDim2.new(1, 0, 0, #options * 18)
+        optionsFrame.Position = UDim2.new(0, 0, 1, 2)
+        optionsFrame.BackgroundColor3 = Colors.DropdownBg
+        optionsFrame.BorderSizePixel = 0
+        optionsFrame.Visible = false
+        optionsFrame.ZIndex = 10
+        optionsFrame.Parent = dropBtn
+        
+        local optCorner = Instance.new("UICorner")
+        optCorner.CornerRadius = UDim.new(0, 2)
+        optCorner.Parent = optionsFrame
+        
+        local optStroke = Instance.new("UIStroke")
+        optStroke.Color = Colors.Border
+        optStroke.Thickness = 1
+        optStroke.Parent = optionsFrame
+        
+        for i, opt in ipairs(options) do
+            local optBtn = Instance.new("TextButton")
+            optBtn.Size = UDim2.new(1, 0, 0, 18)
+            optBtn.Position = UDim2.new(0, 0, 0, (i-1) * 18)
+            optBtn.BackgroundTransparency = 1
+            optBtn.Text = opt
+            optBtn.TextColor3 = Colors.Text
+            optBtn.TextSize = 9
+            optBtn.Font = Enum.Font.Code
+            optBtn.ZIndex = 11
+            optBtn.Parent = optionsFrame
+            
+            optBtn.MouseEnter:Connect(function()
+                optBtn.TextColor3 = Colors.AccentBright
+            end)
+            
+            optBtn.MouseLeave:Connect(function()
+                optBtn.TextColor3 = Colors.Text
+            end)
+            
+            optBtn.MouseButton1Click:Connect(function()
+                currentSelection = opt
+                dropBtn.Text = opt
+                isOpen = false
+                optionsFrame.Visible = false
+                arrow.Text = "▼"
+                if callback then callback(opt) end
+            end)
+        end
+        
+        dropBtn.MouseButton1Click:Connect(function()
+            isOpen = not isOpen
+            optionsFrame.Visible = isOpen
+            arrow.Text = isOpen and "▲" or "▼"
+        end)
+        
+        return container, function() return currentSelection end
+    end
+    
+    local function createSlider(parent, label, posX, posY, min, max, default, callback)
+        local container = Instance.new("Frame")
+        container.Size = UDim2.new(0, 130, 0, 32)
+        container.Position = UDim2.new(0, posX, 0, posY)
+        container.BackgroundTransparency = 1
+        container.Parent = parent
+        
+        local labelText = Instance.new("TextLabel")
+        labelText.Size = UDim2.new(0.7, 0, 0, 12)
+        labelText.BackgroundTransparency = 1
+        labelText.Text = label
+        labelText.TextColor3 = Colors.TextDim
+        labelText.TextSize = 9
+        labelText.Font = Enum.Font.Code
+        labelText.TextXAlignment = Enum.TextXAlignment.Left
+        labelText.Parent = container
+        
+        local valueLabel = Instance.new("TextLabel")
+        valueLabel.Size = UDim2.new(0.3, 0, 0, 12)
+        valueLabel.Position = UDim2.new(0.7, 0, 0, 0)
+        valueLabel.BackgroundTransparency = 1
+        valueLabel.Text = tostring(default)
+        valueLabel.TextColor3 = Colors.Accent
+        valueLabel.TextSize = 9
+        valueLabel.Font = Enum.Font.Code
+        valueLabel.TextXAlignment = Enum.TextXAlignment.Right
+        valueLabel.Parent = container
+        
+        local sliderBg = Instance.new("Frame")
+        sliderBg.Size = UDim2.new(1, 0, 0, 6)
+        sliderBg.Position = UDim2.new(0, 0, 0, 18)
+        sliderBg.BackgroundColor3 = Colors.SliderBg
+        sliderBg.BorderSizePixel = 0
+        sliderBg.Parent = container
+        
+        local sliderCorner = Instance.new("UICorner")
+        sliderCorner.CornerRadius = UDim.new(0, 3)
+        sliderCorner.Parent = sliderBg
+        
+        local sliderFill = Instance.new("Frame")
+        sliderFill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
+        sliderFill.BackgroundColor3 = Colors.SliderFill
+        sliderFill.BorderSizePixel = 0
+        sliderFill.Parent = sliderBg
+        
+        local fillCorner = Instance.new("UICorner")
+        fillCorner.CornerRadius = UDim.new(0, 3)
+        fillCorner.Parent = sliderFill
+        
+        local currentValue = default
+        local dragging = false
+        
+        local sliderBtn = Instance.new("TextButton")
+        sliderBtn.Size = UDim2.new(1, 0, 1, 10)
+        sliderBtn.Position = UDim2.new(0, 0, 0, -5)
+        sliderBtn.BackgroundTransparency = 1
+        sliderBtn.Text = ""
+        sliderBtn.Parent = sliderBg
+        
+        sliderBtn.MouseButton1Down:Connect(function()
+            dragging = true
+        end)
+        
+        UserInputService.InputEnded:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                dragging = false
+            end
+        end)
+        
+        RunService.RenderStepped:Connect(function()
+            if dragging then
+                local mouse = player:GetMouse()
+                local relativeX = (mouse.X - sliderBg.AbsolutePosition.X) / sliderBg.AbsoluteSize.X
+                relativeX = math.clamp(relativeX, 0, 1)
+                currentValue = math.floor(min + relativeX * (max - min))
+                sliderFill.Size = UDim2.new(relativeX, 0, 1, 0)
+                valueLabel.Text = tostring(currentValue)
+                if callback then callback(currentValue) end
+            end
+        end)
+        
+        return container, function() return currentValue end
+    end
+    
+    local function createButton(parent, text, posX, posY, width, callback)
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(0, width, 0, 20)
+        btn.Position = UDim2.new(0, posX, 0, posY)
+        btn.BackgroundColor3 = Colors.AccentDark
+        btn.BackgroundTransparency = 0.5
+        btn.BorderSizePixel = 0
+        btn.Text = text
+        btn.TextColor3 = Colors.Text
+        btn.TextSize = 9
+        btn.Font = Enum.Font.Code
         btn.AutoButtonColor = false
-        btn.Parent = contentFrame
+        btn.Parent = parent
         
         local btnCorner = Instance.new("UICorner")
-        btnCorner.CornerRadius = UDim.new(0, 6)
+        btnCorner.CornerRadius = UDim.new(0, 2)
         btnCorner.Parent = btn
         
         local btnStroke = Instance.new("UIStroke")
-        btnStroke.Color = Color3.fromRGB(45, 45, 50)
+        btnStroke.Color = Colors.Accent
         btnStroke.Thickness = 1
         btnStroke.Parent = btn
         
-        local iconFrame = Instance.new("Frame")
-        iconFrame.Size = UDim2.new(0, 28, 0, 28)
-        iconFrame.Position = UDim2.new(0, 8, 0.5, -14)
-        iconFrame.BackgroundColor3 = color
-        iconFrame.Parent = btn
-        
-        local iconCorner = Instance.new("UICorner")
-        iconCorner.CornerRadius = UDim.new(0, 6)
-        iconCorner.Parent = iconFrame
-        
-        local iconLabel = Instance.new("TextLabel")
-        iconLabel.Size = UDim2.new(1, 0, 1, 0)
-        iconLabel.BackgroundTransparency = 1
-        iconLabel.Text = icon
-        iconLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-        iconLabel.TextSize = 14
-        iconLabel.Font = Enum.Font.GothamBold
-        iconLabel.Parent = iconFrame
-        
-        local btnLabel = Instance.new("TextLabel")
-        btnLabel.Name = "Label"
-        btnLabel.Size = UDim2.new(1, -50, 1, 0)
-        btnLabel.Position = UDim2.new(0, 45, 0, 0)
-        btnLabel.BackgroundTransparency = 1
-        btnLabel.Text = text
-        btnLabel.TextColor3 = Color3.fromRGB(220, 220, 220)
-        btnLabel.TextSize = 13
-        btnLabel.Font = Enum.Font.GothamMedium
-        btnLabel.TextXAlignment = Enum.TextXAlignment.Left
-        btnLabel.Parent = btn
-        
-        -- Hover effects
         btn.MouseEnter:Connect(function()
-            TweenService:Create(btn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(40, 40, 48)}):Play()
-            TweenService:Create(btnStroke, TweenInfo.new(0.15), {Color = color}):Play()
+            TweenService:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = Colors.Accent}):Play()
         end)
         
         btn.MouseLeave:Connect(function()
-            TweenService:Create(btn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(30, 30, 35)}):Play()
-            TweenService:Create(btnStroke, TweenInfo.new(0.15), {Color = Color3.fromRGB(45, 45, 50)}):Play()
+            TweenService:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = Colors.AccentDark}):Play()
         end)
         
         btn.MouseButton1Click:Connect(callback)
         
-        return btn, btnLabel, iconFrame
+        return btn
     end
     
-    -- Toggle Creator Function
-    local function createToggle(name, text, posY, default, callback)
-        local toggle = Instance.new("Frame")
-        toggle.Name = name
-        toggle.Size = UDim2.new(1, 0, 0, 38)
-        toggle.Position = UDim2.new(0, 0, 0, posY)
-        toggle.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
-        toggle.BorderSizePixel = 0
-        toggle.Parent = contentFrame
-        
-        local toggleCorner = Instance.new("UICorner")
-        toggleCorner.CornerRadius = UDim.new(0, 6)
-        toggleCorner.Parent = toggle
-        
-        local toggleLabel = Instance.new("TextLabel")
-        toggleLabel.Size = UDim2.new(1, -70, 1, 0)
-        toggleLabel.Position = UDim2.new(0, 12, 0, 0)
-        toggleLabel.BackgroundTransparency = 1
-        toggleLabel.Text = text
-        toggleLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
-        toggleLabel.TextSize = 12
-        toggleLabel.Font = Enum.Font.Gotham
-        toggleLabel.TextXAlignment = Enum.TextXAlignment.Left
-        toggleLabel.Parent = toggle
-        
-        local toggleBg = Instance.new("Frame")
-        toggleBg.Name = "ToggleBg"
-        toggleBg.Size = UDim2.new(0, 44, 0, 22)
-        toggleBg.Position = UDim2.new(1, -54, 0.5, -11)
-        toggleBg.BackgroundColor3 = default and Color3.fromRGB(88, 101, 242) or Color3.fromRGB(50, 50, 55)
-        toggleBg.BorderSizePixel = 0
-        toggleBg.Parent = toggle
-        
-        local toggleBgCorner = Instance.new("UICorner")
-        toggleBgCorner.CornerRadius = UDim.new(1, 0)
-        toggleBgCorner.Parent = toggleBg
-        
-        local toggleCircle = Instance.new("Frame")
-        toggleCircle.Name = "Circle"
-        toggleCircle.Size = UDim2.new(0, 18, 0, 18)
-        toggleCircle.Position = default and UDim2.new(1, -20, 0.5, -9) or UDim2.new(0, 2, 0.5, -9)
-        toggleCircle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-        toggleCircle.BorderSizePixel = 0
-        toggleCircle.Parent = toggleBg
-        
-        local toggleCircleCorner = Instance.new("UICorner")
-        toggleCircleCorner.CornerRadius = UDim.new(1, 0)
-        toggleCircleCorner.Parent = toggleCircle
-        
-        local isEnabled = default
-        
-        local toggleBtn = Instance.new("TextButton")
-        toggleBtn.Size = UDim2.new(1, 0, 1, 0)
-        toggleBtn.BackgroundTransparency = 1
-        toggleBtn.Text = ""
-        toggleBtn.Parent = toggle
-        
-        toggleBtn.MouseButton1Click:Connect(function()
-            isEnabled = not isEnabled
-            
-            if isEnabled then
-                TweenService:Create(toggleBg, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(88, 101, 242)}):Play()
-                TweenService:Create(toggleCircle, TweenInfo.new(0.2), {Position = UDim2.new(1, -20, 0.5, -9)}):Play()
-            else
-                TweenService:Create(toggleBg, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(50, 50, 55)}):Play()
-                TweenService:Create(toggleCircle, TweenInfo.new(0.2), {Position = UDim2.new(0, 2, 0.5, -9)}):Play()
-            end
-            
-            callback(isEnabled)
-        end)
-        
-        return toggle, function() return isEnabled end, function(value)
-            isEnabled = value
-            if isEnabled then
-                toggleBg.BackgroundColor3 = Color3.fromRGB(88, 101, 242)
-                toggleCircle.Position = UDim2.new(1, -20, 0.5, -9)
-            else
-                toggleBg.BackgroundColor3 = Color3.fromRGB(50, 50, 55)
-                toggleCircle.Position = UDim2.new(0, 2, 0.5, -9)
-            end
-        end
-    end
-    
-    -- Dropdown Creator Function
-    local function createDropdown(name, text, options, posY, default, callback)
-        local dropdown = Instance.new("Frame")
-        dropdown.Name = name
-        dropdown.Size = UDim2.new(1, 0, 0, 38)
-        dropdown.Position = UDim2.new(0, 0, 0, posY)
-        dropdown.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
-        dropdown.BorderSizePixel = 0
-        dropdown.ClipsDescendants = true
-        dropdown.Parent = contentFrame
-        
-        local dropdownCorner = Instance.new("UICorner")
-        dropdownCorner.CornerRadius = UDim.new(0, 6)
-        dropdownCorner.Parent = dropdown
-        
-        local dropdownLabel = Instance.new("TextLabel")
-        dropdownLabel.Size = UDim2.new(0.5, 0, 0, 38)
-        dropdownLabel.Position = UDim2.new(0, 12, 0, 0)
-        dropdownLabel.BackgroundTransparency = 1
-        dropdownLabel.Text = text
-        dropdownLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
-        dropdownLabel.TextSize = 12
-        dropdownLabel.Font = Enum.Font.Gotham
-        dropdownLabel.TextXAlignment = Enum.TextXAlignment.Left
-        dropdownLabel.Parent = dropdown
-        
-        local selectedLabel = Instance.new("TextLabel")
-        selectedLabel.Name = "Selected"
-        selectedLabel.Size = UDim2.new(0.4, 0, 0, 38)
-        selectedLabel.Position = UDim2.new(0.55, 0, 0, 0)
-        selectedLabel.BackgroundTransparency = 1
-        selectedLabel.Text = default
-        selectedLabel.TextColor3 = Color3.fromRGB(88, 101, 242)
-        selectedLabel.TextSize = 12
-        selectedLabel.Font = Enum.Font.GothamBold
-        selectedLabel.TextXAlignment = Enum.TextXAlignment.Right
-        selectedLabel.Parent = dropdown
-        
-        local dropdownArrow = Instance.new("TextLabel")
-        dropdownArrow.Size = UDim2.new(0, 20, 0, 38)
-        dropdownArrow.Position = UDim2.new(1, -25, 0, 0)
-        dropdownArrow.BackgroundTransparency = 1
-        dropdownArrow.Text = "▼"
-        dropdownArrow.TextColor3 = Color3.fromRGB(120, 120, 130)
-        dropdownArrow.TextSize = 10
-        dropdownArrow.Font = Enum.Font.Gotham
-        dropdownArrow.Parent = dropdown
-        
-        local isOpen = false
-        local currentSelection = default
-        
-        local optionsFrame = Instance.new("Frame")
-        optionsFrame.Name = "Options"
-        optionsFrame.Size = UDim2.new(1, -10, 0, #options * 32)
-        optionsFrame.Position = UDim2.new(0, 5, 0, 42)
-        optionsFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
-        optionsFrame.BorderSizePixel = 0
-        optionsFrame.Visible = false
-        optionsFrame.Parent = dropdown
-        
-        local optionsCorner = Instance.new("UICorner")
-        optionsCorner.CornerRadius = UDim.new(0, 4)
-        optionsCorner.Parent = optionsFrame
-        
-        for i, option in ipairs(options) do
-            local optionBtn = Instance.new("TextButton")
-            optionBtn.Size = UDim2.new(1, 0, 0, 32)
-            optionBtn.Position = UDim2.new(0, 0, 0, (i - 1) * 32)
-            optionBtn.BackgroundTransparency = 1
-            optionBtn.Text = option
-            optionBtn.TextColor3 = Color3.fromRGB(180, 180, 180)
-            optionBtn.TextSize = 12
-            optionBtn.Font = Enum.Font.Gotham
-            optionBtn.Parent = optionsFrame
-            
-            optionBtn.MouseEnter:Connect(function()
-                optionBtn.TextColor3 = Color3.fromRGB(88, 101, 242)
-            end)
-            
-            optionBtn.MouseLeave:Connect(function()
-                optionBtn.TextColor3 = Color3.fromRGB(180, 180, 180)
-            end)
-            
-            optionBtn.MouseButton1Click:Connect(function()
-                currentSelection = option
-                selectedLabel.Text = option
-                isOpen = false
-                optionsFrame.Visible = false
-                dropdown.Size = UDim2.new(1, 0, 0, 38)
-                dropdownArrow.Text = "▼"
-                callback(option)
-            end)
-        end
-        
-        local dropdownBtn = Instance.new("TextButton")
-        dropdownBtn.Size = UDim2.new(1, 0, 0, 38)
-        dropdownBtn.BackgroundTransparency = 1
-        dropdownBtn.Text = ""
-        dropdownBtn.Parent = dropdown
-        
-        dropdownBtn.MouseButton1Click:Connect(function()
-            isOpen = not isOpen
-            optionsFrame.Visible = isOpen
-            
-            if isOpen then
-                dropdown.Size = UDim2.new(1, 0, 0, 42 + #options * 32)
-                dropdownArrow.Text = "▲"
-            else
-                dropdown.Size = UDim2.new(1, 0, 0, 38)
-                dropdownArrow.Text = "▼"
-            end
-        end)
-        
-        return dropdown, function() return currentSelection end
-    end
-    
-    -- Input Field Creator
-    local function createInput(name, placeholder, posY)
-        local input = Instance.new("Frame")
-        input.Name = name
-        input.Size = UDim2.new(1, 0, 0, 42)
-        input.Position = UDim2.new(0, 0, 0, posY)
-        input.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
-        input.BorderSizePixel = 0
-        input.Parent = contentFrame
+    local function createInput(parent, placeholder, posX, posY, width)
+        local inputFrame = Instance.new("Frame")
+        inputFrame.Size = UDim2.new(0, width, 0, 18)
+        inputFrame.Position = UDim2.new(0, posX, 0, posY)
+        inputFrame.BackgroundColor3 = Colors.DropdownBg
+        inputFrame.BorderSizePixel = 0
+        inputFrame.Parent = parent
         
         local inputCorner = Instance.new("UICorner")
-        inputCorner.CornerRadius = UDim.new(0, 6)
-        inputCorner.Parent = input
+        inputCorner.CornerRadius = UDim.new(0, 2)
+        inputCorner.Parent = inputFrame
         
         local inputStroke = Instance.new("UIStroke")
-        inputStroke.Color = Color3.fromRGB(45, 45, 50)
+        inputStroke.Color = Colors.Border
         inputStroke.Thickness = 1
-        inputStroke.Parent = input
-        
-        local searchIcon = Instance.new("TextLabel")
-        searchIcon.Size = UDim2.new(0, 30, 1, 0)
-        searchIcon.Position = UDim2.new(0, 8, 0, 0)
-        searchIcon.BackgroundTransparency = 1
-        searchIcon.Text = "🔍"
-        searchIcon.TextColor3 = Color3.fromRGB(100, 100, 110)
-        searchIcon.TextSize = 14
-        searchIcon.Font = Enum.Font.Gotham
-        searchIcon.Parent = input
+        inputStroke.Parent = inputFrame
         
         local textBox = Instance.new("TextBox")
-        textBox.Name = "TextBox"
-        textBox.Size = UDim2.new(1, -50, 1, 0)
-        textBox.Position = UDim2.new(0, 40, 0, 0)
+        textBox.Size = UDim2.new(1, -8, 1, 0)
+        textBox.Position = UDim2.new(0, 4, 0, 0)
         textBox.BackgroundTransparency = 1
         textBox.Text = ""
         textBox.PlaceholderText = placeholder
-        textBox.TextColor3 = Color3.fromRGB(220, 220, 220)
-        textBox.PlaceholderColor3 = Color3.fromRGB(100, 100, 110)
-        textBox.TextSize = 13
-        textBox.Font = Enum.Font.Gotham
+        textBox.TextColor3 = Colors.Text
+        textBox.PlaceholderColor3 = Colors.TextDim
+        textBox.TextSize = 9
+        textBox.Font = Enum.Font.Code
         textBox.TextXAlignment = Enum.TextXAlignment.Left
         textBox.ClearTextOnFocus = false
-        textBox.Parent = input
+        textBox.Parent = inputFrame
         
         textBox.Focused:Connect(function()
-            TweenService:Create(inputStroke, TweenInfo.new(0.15), {Color = Color3.fromRGB(88, 101, 242)}):Play()
+            TweenService:Create(inputStroke, TweenInfo.new(0.1), {Color = Colors.Accent}):Play()
         end)
         
         textBox.FocusLost:Connect(function()
-            TweenService:Create(inputStroke, TweenInfo.new(0.15), {Color = Color3.fromRGB(45, 45, 50)}):Play()
+            TweenService:Create(inputStroke, TweenInfo.new(0.1), {Color = Colors.Border}):Play()
         end)
         
-        return input, textBox
+        return inputFrame, textBox
     end
     
-    -- Live Tracking Panel
-    local trackingPanel = Instance.new("Frame")
-    trackingPanel.Name = "TrackingPanel"
-    trackingPanel.Size = UDim2.new(1, 0, 0, 100)
-    trackingPanel.Position = UDim2.new(0, 0, 0, 0)
-    trackingPanel.BackgroundColor3 = Color3.fromRGB(25, 30, 40)
-    trackingPanel.BorderSizePixel = 0
-    trackingPanel.Visible = false
-    trackingPanel.Parent = contentFrame
+    -- Create Tab Pages
+    local tabPages = {}
     
-    local trackingCorner = Instance.new("UICorner")
-    trackingCorner.CornerRadius = UDim.new(0, 6)
-    trackingCorner.Parent = trackingPanel
+    -- ===== TRACKING TAB =====
+    local trackingPage = Instance.new("Frame")
+    trackingPage.Name = "TrackingPage"
+    trackingPage.Size = UDim2.new(1, 0, 1, 0)
+    trackingPage.BackgroundTransparency = 1
+    trackingPage.Visible = true
+    trackingPage.Parent = contentArea
+    tabPages["Tracking"] = trackingPage
     
-    local trackingStroke = Instance.new("UIStroke")
-    trackingStroke.Color = Color3.fromRGB(88, 101, 242)
-    trackingStroke.Thickness = 1
-    trackingStroke.Parent = trackingPanel
+    -- Values Section (left)
+    local valuesSection = createSection(trackingPage, "Values", 0, 210, 100)
     
-    local trackingTitle = Instance.new("TextLabel")
-    trackingTitle.Size = UDim2.new(1, 0, 0, 25)
-    trackingTitle.Position = UDim2.new(0, 12, 0, 5)
-    trackingTitle.BackgroundTransparency = 1
-    trackingTitle.Text = "◉ LIVE TRACKING"
-    trackingTitle.TextColor3 = Color3.fromRGB(88, 101, 242)
-    trackingTitle.TextSize = 12
-    trackingTitle.Font = Enum.Font.GothamBold
-    trackingTitle.TextXAlignment = Enum.TextXAlignment.Left
-    trackingTitle.Parent = trackingPanel
-    
-    local trackingTarget = Instance.new("TextLabel")
-    trackingTarget.Name = "Target"
-    trackingTarget.Size = UDim2.new(1, -24, 0, 18)
-    trackingTarget.Position = UDim2.new(0, 12, 0, 28)
-    trackingTarget.BackgroundTransparency = 1
-    trackingTarget.Text = "Target: None"
-    trackingTarget.TextColor3 = Color3.fromRGB(200, 200, 200)
-    trackingTarget.TextSize = 11
-    trackingTarget.Font = Enum.Font.Gotham
-    trackingTarget.TextXAlignment = Enum.TextXAlignment.Left
-    trackingTarget.Parent = trackingPanel
-    
-    local trackingCoords = Instance.new("TextLabel")
-    trackingCoords.Name = "Coords"
-    trackingCoords.Size = UDim2.new(1, -24, 0, 18)
-    trackingCoords.Position = UDim2.new(0, 12, 0, 46)
-    trackingCoords.BackgroundTransparency = 1
-    trackingCoords.Text = "Position: X: 0 | Y: 0 | Z: 0"
-    trackingCoords.TextColor3 = Color3.fromRGB(255, 200, 100)
-    trackingCoords.TextSize = 11
-    trackingCoords.Font = Enum.Font.Gotham
-    trackingCoords.TextXAlignment = Enum.TextXAlignment.Left
-    trackingCoords.Parent = trackingPanel
-    
-    local trackingDist = Instance.new("TextLabel")
-    trackingDist.Name = "Distance"
-    trackingDist.Size = UDim2.new(0.5, -12, 0, 18)
-    trackingDist.Position = UDim2.new(0, 12, 0, 64)
-    trackingDist.BackgroundTransparency = 1
-    trackingDist.Text = "Distance: 0m"
-    trackingDist.TextColor3 = Color3.fromRGB(100, 200, 255)
-    trackingDist.TextSize = 11
-    trackingDist.Font = Enum.Font.Gotham
-    trackingDist.TextXAlignment = Enum.TextXAlignment.Left
-    trackingDist.Parent = trackingPanel
-    
-    local trackingStatus = Instance.new("TextLabel")
-    trackingStatus.Name = "Status"
-    trackingStatus.Size = UDim2.new(0.5, -12, 0, 18)
-    trackingStatus.Position = UDim2.new(0.5, 0, 0, 64)
-    trackingStatus.BackgroundTransparency = 1
-    trackingStatus.Text = "◉ VISIBLE"
-    trackingStatus.TextColor3 = Color3.fromRGB(0, 255, 100)
-    trackingStatus.TextSize = 11
-    trackingStatus.Font = Enum.Font.GothamBold
-    trackingStatus.TextXAlignment = Enum.TextXAlignment.Left
-    trackingStatus.Parent = trackingPanel
-    
-    local trackingHealth = Instance.new("Frame")
-    trackingHealth.Name = "HealthBar"
-    trackingHealth.Size = UDim2.new(1, -24, 0, 6)
-    trackingHealth.Position = UDim2.new(0, 12, 0, 86)
-    trackingHealth.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
-    trackingHealth.BorderSizePixel = 0
-    trackingHealth.Parent = trackingPanel
-    
-    local trackingHealthCorner = Instance.new("UICorner")
-    trackingHealthCorner.CornerRadius = UDim.new(0, 3)
-    trackingHealthCorner.Parent = trackingHealth
-    
-    local trackingHealthFill = Instance.new("Frame")
-    trackingHealthFill.Name = "Fill"
-    trackingHealthFill.Size = UDim2.new(1, 0, 1, 0)
-    trackingHealthFill.BackgroundColor3 = Color3.fromRGB(0, 255, 100)
-    trackingHealthFill.BorderSizePixel = 0
-    trackingHealthFill.Parent = trackingHealth
-    
-    local trackingHealthFillCorner = Instance.new("UICorner")
-    trackingHealthFillCorner.CornerRadius = UDim.new(0, 3)
-    trackingHealthFillCorner.Parent = trackingHealthFill
-    
-    -- Create UI Elements
-    local currentY = 0
-    
-    -- Target Input Section
-    createSection("TARGET", currentY)
-    currentY = currentY + 30
-    
-    local _, playerInput = createInput("PlayerInput", "Enter player name...", currentY)
-    currentY = currentY + 52
-    
-    -- Tracking Section
-    createSection("TRACKING", currentY)
-    currentY = currentY + 30
-    
-    local _, getTrackingMode = createDropdown("TrackingMode", "RMB Mode", {"Hold to Track", "Click to Toggle"}, currentY, "Hold to Track", function(option)
-        if option == "Hold to Track" then
-            trackingMode[player.UserId] = "hold"
+    createCheckbox(valuesSection, "Enabled", 8, 14, false, function(enabled)
+        if enabled then
+            local targetName = playerInput and playerInput.Text or ""
+            if targetName ~= "" then
+                local target = findPlayer(targetName)
+                if target and isValidTarget(player, target) then
+                    statusLabel.Text = "Tracking: " .. target.Name
+                end
+            end
         else
-            trackingMode[player.UserId] = "toggle"
+            stopTracking(player)
+            statusLabel.Text = "Tracking disabled"
         end
-        
-        local modeText = trackingMode[player.UserId] == "hold" and "Hold RMB" or "Click RMB"
-        statusLabel.Text = "Tracking mode: " .. modeText
     end)
-    currentY = currentY + 48
     
-    local trackBtn, trackLabel = createButton("Track", "Track Player (Camera)", "🎯", Color3.fromRGB(138, 43, 226), currentY, function()
+    createCheckbox(valuesSection, "Toggle", 8, 32, false, function(enabled)
+        trackingMode[player.UserId] = enabled and "toggle" or "hold"
+    end)
+    
+    local _, lockPartDropdown = createDropdown(valuesSection, "Lock Part", 8, 50, {"Head", "Torso", "Random"}, "Head", function(val)
+        -- Store lock part preference
+    end)
+    
+    -- Hotkey Section
+    local hotkeySection = createSection(trackingPage, "Hotkey", 105, 210, 55)
+    
+    local _, hotkeyInput = createInput(hotkeySection, "MouseButton2", 8, 14, 120)
+    createSlider(hotkeySection, "Sensitivity:", 8, 32, 0, 10, 6, function(val)
+        -- Sensitivity setting
+    end)
+    
+    -- Checks Section
+    local checksSection = createSection(trackingPage, "Checks", 165, 210, 65)
+    
+    createCheckbox(checksSection, "Team Check", 8, 14, true, nil)
+    createCheckbox(checksSection, "Wall Check", 8, 32, true, nil)
+    createCheckbox(checksSection, "Alive Check", 8, 50, true, nil)
+    
+    -- Target Info Section (right)
+    local targetSection = createSection(trackingPage, "Target Info", 0, 210, 150)
+    targetSection.Position = UDim2.new(0, 220, 0, 0)
+    
+    local targetNameLabel = Instance.new("TextLabel")
+    targetNameLabel.Size = UDim2.new(1, -16, 0, 16)
+    targetNameLabel.Position = UDim2.new(0, 8, 0, 14)
+    targetNameLabel.BackgroundTransparency = 1
+    targetNameLabel.Text = "Target: None"
+    targetNameLabel.TextColor3 = Colors.AccentBright
+    targetNameLabel.TextSize = 10
+    targetNameLabel.Font = Enum.Font.Code
+    targetNameLabel.TextXAlignment = Enum.TextXAlignment.Left
+    targetNameLabel.Parent = targetSection
+    
+    local targetCoordsLabel = Instance.new("TextLabel")
+    targetCoordsLabel.Size = UDim2.new(1, -16, 0, 14)
+    targetCoordsLabel.Position = UDim2.new(0, 8, 0, 32)
+    targetCoordsLabel.BackgroundTransparency = 1
+    targetCoordsLabel.Text = "X: 0 | Y: 0 | Z: 0"
+    targetCoordsLabel.TextColor3 = Colors.Warning
+    targetCoordsLabel.TextSize = 9
+    targetCoordsLabel.Font = Enum.Font.Code
+    targetCoordsLabel.TextXAlignment = Enum.TextXAlignment.Left
+    targetCoordsLabel.Parent = targetSection
+    
+    local targetDistLabel = Instance.new("TextLabel")
+    targetDistLabel.Size = UDim2.new(0.5, -8, 0, 14)
+    targetDistLabel.Position = UDim2.new(0, 8, 0, 48)
+    targetDistLabel.BackgroundTransparency = 1
+    targetDistLabel.Text = "Distance: 0m"
+    targetDistLabel.TextColor3 = Colors.Text
+    targetDistLabel.TextSize = 9
+    targetDistLabel.Font = Enum.Font.Code
+    targetDistLabel.TextXAlignment = Enum.TextXAlignment.Left
+    targetDistLabel.Parent = targetSection
+    
+    local targetVisLabel = Instance.new("TextLabel")
+    targetVisLabel.Size = UDim2.new(0.5, -8, 0, 14)
+    targetVisLabel.Position = UDim2.new(0.5, 0, 0, 48)
+    targetVisLabel.BackgroundTransparency = 1
+    targetVisLabel.Text = "◉ VISIBLE"
+    targetVisLabel.TextColor3 = Colors.Success
+    targetVisLabel.TextSize = 9
+    targetVisLabel.Font = Enum.Font.Code
+    targetVisLabel.TextXAlignment = Enum.TextXAlignment.Left
+    targetVisLabel.Parent = targetSection
+    
+    -- Health bar in target section
+    local targetHealthBg = Instance.new("Frame")
+    targetHealthBg.Size = UDim2.new(1, -16, 0, 8)
+    targetHealthBg.Position = UDim2.new(0, 8, 0, 68)
+    targetHealthBg.BackgroundColor3 = Colors.SliderBg
+    targetHealthBg.BorderSizePixel = 0
+    targetHealthBg.Parent = targetSection
+    
+    local targetHealthCorner = Instance.new("UICorner")
+    targetHealthCorner.CornerRadius = UDim.new(0, 4)
+    targetHealthCorner.Parent = targetHealthBg
+    
+    local targetHealthFill = Instance.new("Frame")
+    targetHealthFill.Size = UDim2.new(1, 0, 1, 0)
+    targetHealthFill.BackgroundColor3 = Colors.Success
+    targetHealthFill.BorderSizePixel = 0
+    targetHealthFill.Parent = targetHealthBg
+    
+    local targetHealthFillCorner = Instance.new("UICorner")
+    targetHealthFillCorner.CornerRadius = UDim.new(0, 4)
+    targetHealthFillCorner.Parent = targetHealthFill
+    
+    -- Player input
+    local _, playerInput = createInput(targetSection, "Player name...", 8, 90, 120)
+    
+    createButton(targetSection, "Track", 8, 115, 60, function()
         local targetName = playerInput.Text
         if targetName == "" then
-            statusLabel.Text = "⚠ Enter a player name first"
-            statusDot.BackgroundColor3 = Color3.fromRGB(255, 180, 0)
+            statusLabel.Text = "Enter a player name"
             return
         end
         
@@ -1260,42 +1256,17 @@ local function createAdminGui(player)
         
         local target = findPlayer(targetName)
         if not target then
-            statusLabel.Text = "✕ Player not found"
-            statusDot.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
+            statusLabel.Text = "Player not found"
             return
         end
         
-        if target == player then
-            statusLabel.Text = "⚠ Cannot track yourself"
-            statusDot.BackgroundColor3 = Color3.fromRGB(255, 180, 0)
+        if not isValidTarget(player, target) then
+            statusLabel.Text = "Invalid target"
             return
         end
         
-        if isAdmin(target) then
-            statusLabel.Text = "⚠ Cannot track admins"
-            statusDot.BackgroundColor3 = Color3.fromRGB(255, 180, 0)
-            return
-        end
-        
-        if isSameTeam(player, target) then
-            statusLabel.Text = "⚠ Cannot track teammates"
-            statusDot.BackgroundColor3 = Color3.fromRGB(255, 180, 0)
-            return
-        end
-        
-        statusLabel.Text = "◉ Tracking " .. target.Name
-        statusDot.BackgroundColor3 = Color3.fromRGB(138, 43, 226)
-        trackingPanel.Visible = true
-        trackingPanel.Position = UDim2.new(0, 0, 0, 0)
-        trackingTarget.Text = "Target: " .. target.Name
-        
-        -- Shift content down
-        for _, child in ipairs(contentFrame:GetChildren()) do
-            if child ~= trackingPanel and child:IsA("GuiObject") then
-                child.Position = child.Position + UDim2.new(0, 0, 0, 110)
-            end
-        end
-        contentFrame.CanvasSize = UDim2.new(0, 0, 0, 960)
+        statusLabel.Text = "Tracking: " .. target.Name
+        targetNameLabel.Text = "Target: " .. target.Name
         
         local camera = Workspace.CurrentCamera
         
@@ -1318,26 +1289,26 @@ local function createAdminGui(player)
                 if canSee then
                     local lookAtCFrame = CFrame.new(camera.CFrame.Position, targetPos)
                     camera.CFrame = camera.CFrame:Lerp(lookAtCFrame, 0.1)
-                    trackingStatus.Text = "◉ VISIBLE"
-                    trackingStatus.TextColor3 = Color3.fromRGB(0, 255, 100)
+                    targetVisLabel.Text = "◉ VISIBLE"
+                    targetVisLabel.TextColor3 = Colors.Success
                 else
-                    trackingStatus.Text = "◎ COVERED"
-                    trackingStatus.TextColor3 = Color3.fromRGB(255, 100, 100)
+                    targetVisLabel.Text = "◎ COVERED"
+                    targetVisLabel.TextColor3 = Colors.Danger
                 end
                 
-                trackingCoords.Text = string.format("Position: X: %.0f | Y: %.0f | Z: %.0f", targetPos.X, targetPos.Y, targetPos.Z)
-                trackingDist.Text = string.format("Distance: %.0fm", distance)
+                targetCoordsLabel.Text = string.format("X: %.0f | Y: %.0f | Z: %.0f", targetPos.X, targetPos.Y, targetPos.Z)
+                targetDistLabel.Text = string.format("Distance: %.0fm", distance)
                 
                 if targetHumanoid then
                     local healthPercent = targetHumanoid.Health / targetHumanoid.MaxHealth
-                    trackingHealthFill.Size = UDim2.new(healthPercent, 0, 1, 0)
+                    targetHealthFill.Size = UDim2.new(healthPercent, 0, 1, 0)
                     
                     if healthPercent > 0.6 then
-                        trackingHealthFill.BackgroundColor3 = Color3.fromRGB(0, 255, 100)
+                        targetHealthFill.BackgroundColor3 = Colors.Success
                     elseif healthPercent > 0.3 then
-                        trackingHealthFill.BackgroundColor3 = Color3.fromRGB(255, 200, 0)
+                        targetHealthFill.BackgroundColor3 = Colors.Warning
                     else
-                        trackingHealthFill.BackgroundColor3 = Color3.fromRGB(255, 60, 60)
+                        targetHealthFill.BackgroundColor3 = Colors.Danger
                     end
                 end
             end
@@ -1347,122 +1318,140 @@ local function createAdminGui(player)
             connection = connection,
             target = target
         }
-        
-        target.AncestryChanged:Connect(function()
-            if not target:IsDescendantOf(Players) then
-                stopTracking(player)
-                trackingPanel.Visible = false
-                for _, child in ipairs(contentFrame:GetChildren()) do
-                    if child ~= trackingPanel and child:IsA("GuiObject") then
-                        child.Position = child.Position - UDim2.new(0, 0, 0, 110)
-                    end
-                end
-                contentFrame.CanvasSize = UDim2.new(0, 0, 0, 850)
-                statusLabel.Text = "⚠ " .. target.Name .. " left the game"
-                statusDot.BackgroundColor3 = Color3.fromRGB(255, 180, 0)
-            end
-        end)
     end)
-    currentY = currentY + 52
     
-    local stopTrackBtn = createButton("StopTrack", "Stop Tracking", "🛑", Color3.fromRGB(220, 60, 60), currentY, function()
+    createButton(targetSection, "Stop", 75, 115, 55, function()
         if stopTracking(player) then
-            trackingPanel.Visible = false
-            for _, child in ipairs(contentFrame:GetChildren()) do
-                if child ~= trackingPanel and child:IsA("GuiObject") then
-                    child.Position = child.Position - UDim2.new(0, 0, 0, 110)
-                end
-            end
-            contentFrame.CanvasSize = UDim2.new(0, 0, 0, 850)
-            statusLabel.Text = "◉ Tracking stopped"
-            statusDot.BackgroundColor3 = Color3.fromRGB(0, 255, 100)
-        else
-            statusLabel.Text = "⚠ Not tracking anyone"
-            statusDot.BackgroundColor3 = Color3.fromRGB(255, 180, 0)
+            targetNameLabel.Text = "Target: None"
+            statusLabel.Text = "Tracking stopped"
         end
     end)
-    currentY = currentY + 52
     
-    -- ESP Section
-    createSection("ESP SETTINGS", currentY)
-    currentY = currentY + 30
+    -- ===== ESP TAB =====
+    local espPage = Instance.new("Frame")
+    espPage.Name = "ESPPage"
+    espPage.Size = UDim2.new(1, 0, 1, 0)
+    espPage.BackgroundTransparency = 1
+    espPage.Visible = false
+    espPage.Parent = contentArea
+    tabPages["ESP"] = espPage
     
-    local espBtn, espLabel, espIcon = createButton("ESP", "Toggle ESP (Enemies Only)", "👁", Color3.fromRGB(0, 180, 255), currentY, function()
-        if espEnabled[player.UserId] then
-            clearAllESP(player)
-            espLabel.Text = "Toggle ESP (Enemies Only)"
-            statusLabel.Text = "◉ ESP disabled"
-            statusDot.BackgroundColor3 = Color3.fromRGB(0, 255, 100)
-        else
+    -- ESP Settings Section
+    local espSettingsSection = createSection(espPage, "ESP Settings", 0, 210, 140)
+    
+    local espEnabledCheck
+    espEnabledCheck = createCheckbox(espSettingsSection, "Enabled", 8, 14, false, function(enabled)
+        if enabled then
             enableESP(player)
-            espLabel.Text = "ESP Active (Click to disable)"
-            statusLabel.Text = "◉ ESP enabled"
-            statusDot.BackgroundColor3 = Color3.fromRGB(0, 180, 255)
+            statusLabel.Text = "ESP Enabled"
+        else
+            clearAllESP(player)
+            statusLabel.Text = "ESP Disabled"
         end
     end)
-    currentY = currentY + 52
     
-    createToggle("BoxESP", "Box Highlight", currentY, true, function(enabled)
+    createCheckbox(espSettingsSection, "Box Highlight", 8, 32, true, function(enabled)
         espSettings[player.UserId].boxEnabled = enabled
         if espEnabled[player.UserId] then
             clearAllESP(player)
             enableESP(player)
         end
     end)
-    currentY = currentY + 44
     
-    createToggle("TracerESP", "Tracer Lines", currentY, true, function(enabled)
+    createCheckbox(espSettingsSection, "Tracers", 8, 50, true, function(enabled)
         espSettings[player.UserId].tracerEnabled = enabled
         if espEnabled[player.UserId] then
             clearAllESP(player)
             enableESP(player)
         end
     end)
-    currentY = currentY + 44
     
-    createToggle("NameESP", "Player Names", currentY, true, function(enabled)
+    createCheckbox(espSettingsSection, "Names", 8, 68, true, function(enabled)
         espSettings[player.UserId].nameEnabled = enabled
         if espEnabled[player.UserId] then
             clearAllESP(player)
             enableESP(player)
         end
     end)
-    currentY = currentY + 44
     
-    createToggle("HealthESP", "Health Bars", currentY, true, function(enabled)
+    createCheckbox(espSettingsSection, "Health Bars", 8, 86, true, function(enabled)
         espSettings[player.UserId].healthEnabled = enabled
         if espEnabled[player.UserId] then
             clearAllESP(player)
             enableESP(player)
         end
     end)
-    currentY = currentY + 44
     
-    createToggle("DistanceESP", "Distance Display", currentY, true, function(enabled)
+    createCheckbox(espSettingsSection, "Distance", 8, 104, true, function(enabled)
         espSettings[player.UserId].distanceEnabled = enabled
         if espEnabled[player.UserId] then
             clearAllESP(player)
             enableESP(player)
         end
     end)
-    currentY = currentY + 52
     
-    -- Player Actions Section
-    createSection("PLAYER ACTIONS", currentY)
-    currentY = currentY + 30
+    -- ESP Appearance Section
+    local espAppearSection = createSection(espPage, "Appearance", 0, 210, 100)
+    espAppearSection.Position = UDim2.new(0, 220, 0, 0)
     
-    createButton("Teleport", "Teleport to Player", "⚡", Color3.fromRGB(80, 200, 120), currentY, function()
-        local targetName = playerInput.Text
+    createSlider(espAppearSection, "Transparency:", 8, 14, 0, 10, 5, nil)
+    createSlider(espAppearSection, "Thickness:", 8, 50, 1, 5, 1, nil)
+    
+    -- ===== VISUALS TAB =====
+    local visualsPage = Instance.new("Frame")
+    visualsPage.Name = "VisualsPage"
+    visualsPage.Size = UDim2.new(1, 0, 1, 0)
+    visualsPage.BackgroundTransparency = 1
+    visualsPage.Visible = false
+    visualsPage.Parent = contentArea
+    tabPages["Visuals"] = visualsPage
+    
+    -- FOV Section
+    local fovSection = createSection(visualsPage, "Field Of View", 0, 210, 80)
+    
+    createCheckbox(fovSection, "Enabled", 8, 14, false, nil)
+    createCheckbox(fovSection, "Visible", 8, 32, true, nil)
+    createSlider(fovSection, "Amount:", 8, 50, 50, 120, 90, nil)
+    
+    -- FOV Circle Appearance
+    local fovAppearSection = createSection(visualsPage, "FOV Circle Appearance", 0, 210, 100)
+    fovAppearSection.Position = UDim2.new(0, 220, 0, 0)
+    
+    createCheckbox(fovAppearSection, "Filled", 8, 14, false, nil)
+    createSlider(fovAppearSection, "Transparency:", 8, 32, 0, 10, 5, nil)
+    createSlider(fovAppearSection, "Sides:", 8, 58, 3, 64, 60, nil)
+    createSlider(fovAppearSection, "Thickness:", 8, 84, 1, 5, 1, nil)
+    
+    -- Third Person Section
+    local thirdPersonSection = createSection(visualsPage, "Third Person", 90, 210, 55)
+    
+    createCheckbox(thirdPersonSection, "Enable Third Person", 8, 14, false, nil)
+    createSlider(thirdPersonSection, "Sensitivity:", 8, 32, 0, 10, 3, nil)
+    
+    -- ===== TELEPORT TAB =====
+    local teleportPage = Instance.new("Frame")
+    teleportPage.Name = "TeleportPage"
+    teleportPage.Size = UDim2.new(1, 0, 1, 0)
+    teleportPage.BackgroundTransparency = 1
+    teleportPage.Visible = false
+    teleportPage.Parent = contentArea
+    tabPages["Teleport"] = teleportPage
+    
+    -- Teleport Section
+    local tpSection = createSection(teleportPage, "Teleport Controls", 0, 210, 140)
+    
+    local _, tpInput = createInput(tpSection, "Player name...", 8, 14, 120)
+    
+    createButton(tpSection, "Teleport To", 8, 40, 90, function()
+        local targetName = tpInput.Text
         if targetName == "" then
-            statusLabel.Text = "⚠ Enter a player name first"
-            statusDot.BackgroundColor3 = Color3.fromRGB(255, 180, 0)
+            statusLabel.Text = "Enter a player name"
             return
         end
         
         local target = findPlayer(targetName)
         if not target then
-            statusLabel.Text = "✕ Player not found"
-            statusDot.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
+            statusLabel.Text = "Player not found"
             return
         end
         
@@ -1475,25 +1464,21 @@ local function createAdminGui(player)
             
             if adminHRP and targetHRP then
                 adminHRP.CFrame = targetHRP.CFrame * CFrame.new(0, 0, 3)
-                statusLabel.Text = "◉ Teleported to " .. target.Name
-                statusDot.BackgroundColor3 = Color3.fromRGB(80, 200, 120)
+                statusLabel.Text = "Teleported to " .. target.Name
             end
         end
     end)
-    currentY = currentY + 52
     
-    createButton("Bring", "Bring Player to You", "📥", Color3.fromRGB(255, 100, 150), currentY, function()
-        local targetName = playerInput.Text
+    createButton(tpSection, "Bring Player", 8, 68, 90, function()
+        local targetName = tpInput.Text
         if targetName == "" then
-            statusLabel.Text = "⚠ Enter a player name first"
-            statusDot.BackgroundColor3 = Color3.fromRGB(255, 180, 0)
+            statusLabel.Text = "Enter a player name"
             return
         end
         
         local target = findPlayer(targetName)
         if not target then
-            statusLabel.Text = "✕ Player not found"
-            statusDot.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
+            statusLabel.Text = "Player not found"
             return
         end
         
@@ -1506,17 +1491,13 @@ local function createAdminGui(player)
             
             if adminHRP and targetHRP then
                 targetHRP.CFrame = adminHRP.CFrame * CFrame.new(0, 0, 3)
-                statusLabel.Text = "◉ Brought " .. target.Name
-                statusDot.BackgroundColor3 = Color3.fromRGB(255, 100, 150)
+                statusLabel.Text = "Brought " .. target.Name
             end
         end
     end)
-    currentY = currentY + 52
     
-    createButton("Locate", "Locate All Enemies", "📍", Color3.fromRGB(255, 180, 50), currentY, function()
+    createButton(tpSection, "Locate All", 8, 96, 90, function()
         local count = 0
-        local output = "Enemies: "
-        
         for _, p in ipairs(Players:GetPlayers()) do
             if isValidTarget(player, p) then
                 local char = p.Character
@@ -1525,52 +1506,33 @@ local function createAdminGui(player)
                     if hrp then
                         count = count + 1
                         local canSee = hasLineOfSight(player, p)
-                        local icon = canSee and "◉" or "◎"
-                        print(string.format("[LOCATE] %s %s: X:%.0f Y:%.0f Z:%.0f", icon, p.Name, hrp.Position.X, hrp.Position.Y, hrp.Position.Z))
+                        print(string.format("[LOCATE] %s %s: X:%.0f Y:%.0f Z:%.0f", canSee and "◉" or "◎", p.Name, hrp.Position.X, hrp.Position.Y, hrp.Position.Z))
                     end
                 end
             end
         end
-        
-        statusLabel.Text = "◉ Located " .. count .. " enemies (check console)"
-        statusDot.BackgroundColor3 = Color3.fromRGB(255, 180, 50)
+        statusLabel.Text = "Located " .. count .. " enemies (console)"
     end)
-    currentY = currentY + 52
     
-    -- Admin Tools Section
-    createSection("ADMIN TOOLS", currentY)
-    currentY = currentY + 30
+    -- ===== FUNCTIONS TAB =====
+    local functionsPage = Instance.new("Frame")
+    functionsPage.Name = "FunctionsPage"
+    functionsPage.Size = UDim2.new(1, 0, 1, 0)
+    functionsPage.BackgroundTransparency = 1
+    functionsPage.Visible = false
+    functionsPage.Parent = contentArea
+    tabPages["Functions"] = functionsPage
     
-    createButton("Unlock", "Unlock All Items", "🔓", Color3.fromRGB(80, 150, 255), currentY, function()
-        local itemsFolder = ServerStorage:FindFirstChild("Items")
-        if itemsFolder then
-            for _, item in ipairs(itemsFolder:GetChildren()) do
-                local clone = item:Clone()
-                clone.Parent = player.Backpack
-            end
-        end
-        
-        local leaderstats = player:FindFirstChild("leaderstats")
-        if leaderstats then
-            for _, stat in ipairs(leaderstats:GetChildren()) do
-                if stat:IsA("IntValue") or stat:IsA("NumberValue") then
-                    stat.Value = 999999
-                end
-            end
-        end
-        
-        statusLabel.Text = "◉ Unlocked all items"
-        statusDot.BackgroundColor3 = Color3.fromRGB(80, 150, 255)
-    end)
-    currentY = currentY + 52
+    -- Character Section
+    local charSection = createSection(functionsPage, "Character", 0, 210, 120)
     
     local godModeEnabled = false
     local godModeConnection = nil
     
-    local godBtn, godLabel = createButton("God", "God Mode", "💎", Color3.fromRGB(255, 215, 0), currentY, function()
-        godModeEnabled = not godModeEnabled
+    createCheckbox(charSection, "God Mode", 8, 14, false, function(enabled)
+        godModeEnabled = enabled
         
-        if godModeEnabled then
+        if enabled then
             godModeConnection = RunService.Heartbeat:Connect(function()
                 local char = player.Character
                 if char then
@@ -1580,77 +1542,110 @@ local function createAdminGui(player)
                     end
                 end
             end)
-            godLabel.Text = "God Mode (Active)"
-            statusLabel.Text = "◉ God mode enabled"
-            statusDot.BackgroundColor3 = Color3.fromRGB(255, 215, 0)
+            statusLabel.Text = "God Mode enabled"
         else
             if godModeConnection then
                 godModeConnection:Disconnect()
                 godModeConnection = nil
             end
-            godLabel.Text = "God Mode"
-            statusLabel.Text = "◉ God mode disabled"
-            statusDot.BackgroundColor3 = Color3.fromRGB(0, 255, 100)
+            statusLabel.Text = "God Mode disabled"
         end
     end)
-    currentY = currentY + 52
     
-    local speedBoostEnabled = false
-    
-    local speedBtn, speedLabel = createButton("Speed", "Speed Boost", "🏃", Color3.fromRGB(100, 200, 255), currentY, function()
-        speedBoostEnabled = not speedBoostEnabled
-        
+    createCheckbox(charSection, "Speed Boost", 8, 32, false, function(enabled)
         local char = player.Character
         if char then
             local humanoid = char:FindFirstChild("Humanoid")
             if humanoid then
-                if speedBoostEnabled then
-                    humanoid.WalkSpeed = 100
-                    speedLabel.Text = "Speed Boost (Active)"
-                    statusLabel.Text = "◉ Speed boost enabled"
-                    statusDot.BackgroundColor3 = Color3.fromRGB(100, 200, 255)
-                else
-                    humanoid.WalkSpeed = 16
-                    speedLabel.Text = "Speed Boost"
-                    statusLabel.Text = "◉ Speed boost disabled"
-                    statusDot.BackgroundColor3 = Color3.fromRGB(0, 255, 100)
-                end
+                humanoid.WalkSpeed = enabled and 100 or 16
+                statusLabel.Text = enabled and "Speed Boost ON" or "Speed Boost OFF"
             end
         end
     end)
-    currentY = currentY + 52
     
-    -- RMB Tracking Functions
+    createCheckbox(charSection, "Infinite Jump", 8, 50, false, function(enabled)
+        -- Infinite jump logic
+        statusLabel.Text = enabled and "Inf Jump ON" or "Inf Jump OFF"
+    end)
+    
+    createCheckbox(charSection, "No Clip", 8, 68, false, function(enabled)
+        -- No clip logic
+        statusLabel.Text = enabled and "No Clip ON" or "No Clip OFF"
+    end)
+    
+    createSlider(charSection, "Walk Speed:", 8, 88, 16, 200, 16, function(val)
+        local char = player.Character
+        if char then
+            local humanoid = char:FindFirstChild("Humanoid")
+            if humanoid then
+                humanoid.WalkSpeed = val
+            end
+        end
+    end)
+    
+    -- Items Section
+    local itemsSection = createSection(functionsPage, "Items", 0, 210, 70)
+    itemsSection.Position = UDim2.new(0, 220, 0, 0)
+    
+    createButton(itemsSection, "Unlock All", 8, 14, 100, function()
+        local itemsFolder = ServerStorage:FindFirstChild("Items")
+        if itemsFolder then
+            for _, item in ipairs(itemsFolder:GetChildren()) do
+                local clone = item:Clone()
+                clone.Parent = player.Backpack
+            end
+        end
+        statusLabel.Text = "Items unlocked"
+    end)
+    
+    createButton(itemsSection, "Max Stats", 8, 40, 100, function()
+        local leaderstats = player:FindFirstChild("leaderstats")
+        if leaderstats then
+            for _, stat in ipairs(leaderstats:GetChildren()) do
+                if stat:IsA("IntValue") or stat:IsA("NumberValue") then
+                    stat.Value = 999999
+                end
+            end
+        end
+        statusLabel.Text = "Stats maxed"
+    end)
+    
+    -- Tab switching logic
+    for tabName, tabBtn in pairs(tabButtons) do
+        tabBtn.MouseButton1Click:Connect(function()
+            for name, btn in pairs(tabButtons) do
+                btn.BackgroundColor3 = name == tabName and Colors.TabActive or Colors.TabInactive
+                btn.TextColor3 = name == tabName and Colors.AccentBright or Colors.TextDim
+            end
+            
+            for name, page in pairs(tabPages) do
+                page.Visible = name == tabName
+            end
+            
+            currentTab = tabName
+        end)
+    end
+    
+    -- RMB Tracking
     local function startRMBTracking()
         stopRightMouseTracking(player)
         
         local nearestPlayer, distance = getNearestValidTarget(player)
         if not nearestPlayer then
-            statusLabel.Text = "⚠ No visible enemies nearby"
-            statusDot.BackgroundColor3 = Color3.fromRGB(255, 180, 0)
+            statusLabel.Text = "No visible enemies nearby"
             return
         end
         
-        trackingPanel.Visible = true
-        trackingPanel.Position = UDim2.new(0, 0, 0, 0)
-        trackingTarget.Text = "Target: " .. nearestPlayer.Name .. " (RMB)"
-        statusLabel.Text = "◉ RMB tracking " .. nearestPlayer.Name
-        statusDot.BackgroundColor3 = Color3.fromRGB(0, 180, 255)
-        
-        for _, child in ipairs(contentFrame:GetChildren()) do
-            if child ~= trackingPanel and child:IsA("GuiObject") then
-                child.Position = child.Position + UDim2.new(0, 0, 0, 110)
-            end
-        end
-        contentFrame.CanvasSize = UDim2.new(0, 0, 0, 960)
+        statusLabel.Text = "RMB tracking: " .. nearestPlayer.Name
+        targetNameLabel.Text = "Target: " .. nearestPlayer.Name .. " (RMB)"
         
         local camera = Workspace.CurrentCamera
         
         local connection = RunService.RenderStepped:Connect(function()
             local currentNearest, dist = getNearestValidTarget(player)
             if not currentNearest then 
-                trackingStatus.Text = "⚠ NO TARGET"
-                trackingStatus.TextColor3 = Color3.fromRGB(255, 180, 0)
+                targetVisLabel.Text = "⚠ NO TARGET"
+                targetVisLabel.TextColor3 = Colors.Warning
                 return 
             end
             
@@ -1665,27 +1660,26 @@ local function createAdminGui(player)
             
             if adminHRP and targetHRP and camera then
                 local targetPos = targetHRP.Position
-                local adminPos = adminHRP.Position
                 
                 local lookAtCFrame = CFrame.new(camera.CFrame.Position, targetPos)
                 camera.CFrame = camera.CFrame:Lerp(lookAtCFrame, 0.2)
                 
-                trackingTarget.Text = "Target: " .. currentNearest.Name .. " (RMB)"
-                trackingCoords.Text = string.format("Position: X: %.0f | Y: %.0f | Z: %.0f", targetPos.X, targetPos.Y, targetPos.Z)
-                trackingDist.Text = string.format("Distance: %.0fm", dist)
-                trackingStatus.Text = "◉ LOCKED"
-                trackingStatus.TextColor3 = Color3.fromRGB(0, 255, 100)
+                targetNameLabel.Text = "Target: " .. currentNearest.Name .. " (RMB)"
+                targetCoordsLabel.Text = string.format("X: %.0f | Y: %.0f | Z: %.0f", targetPos.X, targetPos.Y, targetPos.Z)
+                targetDistLabel.Text = string.format("Distance: %.0fm", dist)
+                targetVisLabel.Text = "◉ LOCKED"
+                targetVisLabel.TextColor3 = Colors.Success
                 
                 if targetHumanoid then
                     local healthPercent = targetHumanoid.Health / targetHumanoid.MaxHealth
-                    trackingHealthFill.Size = UDim2.new(healthPercent, 0, 1, 0)
+                    targetHealthFill.Size = UDim2.new(healthPercent, 0, 1, 0)
                     
                     if healthPercent > 0.6 then
-                        trackingHealthFill.BackgroundColor3 = Color3.fromRGB(0, 255, 100)
+                        targetHealthFill.BackgroundColor3 = Colors.Success
                     elseif healthPercent > 0.3 then
-                        trackingHealthFill.BackgroundColor3 = Color3.fromRGB(255, 200, 0)
+                        targetHealthFill.BackgroundColor3 = Colors.Warning
                     else
-                        trackingHealthFill.BackgroundColor3 = Color3.fromRGB(255, 60, 60)
+                        targetHealthFill.BackgroundColor3 = Colors.Danger
                     end
                 end
             end
@@ -1696,18 +1690,11 @@ local function createAdminGui(player)
         }
     end
     
-    local function stopRMBTracking()
+    local function stopRMBTrackingUI()
         stopRightMouseTracking(player)
         if not activeTracking[player.UserId] then
-            trackingPanel.Visible = false
-            for _, child in ipairs(contentFrame:GetChildren()) do
-                if child ~= trackingPanel and child:IsA("GuiObject") then
-                    child.Position = child.Position - UDim2.new(0, 0, 0, 110)
-                end
-            end
-            contentFrame.CanvasSize = UDim2.new(0, 0, 0, 850)
-            statusLabel.Text = "◉ System Ready • RMB to track"
-            statusDot.BackgroundColor3 = Color3.fromRGB(0, 255, 100)
+            targetNameLabel.Text = "Target: None"
+            statusLabel.Text = "Ready | RMB to track nearest"
         end
     end
     
@@ -1723,10 +1710,9 @@ local function createAdminGui(player)
             if trackingMode[player.UserId] == "hold" then
                 startRMBTracking()
             else
-                -- Toggle mode
                 if toggleTrackingActive[player.UserId] then
                     toggleTrackingActive[player.UserId] = false
-                    stopRMBTracking()
+                    stopRMBTrackingUI()
                 else
                     toggleTrackingActive[player.UserId] = true
                     startRMBTracking()
@@ -1738,22 +1724,14 @@ local function createAdminGui(player)
     UserInputService.InputEnded:Connect(function(input, gameProcessed)
         if input.UserInputType == Enum.UserInputType.MouseButton2 then
             if trackingMode[player.UserId] == "hold" then
-                stopRMBTracking()
+                stopRMBTrackingUI()
             end
         end
     end)
     
-    -- Close button
-    closeBtn.MouseButton1Click:Connect(function()
+    -- Settings button
+    settingsBtn.MouseButton1Click:Connect(function()
         mainFrame.Visible = false
-    end)
-    
-    closeBtn.MouseEnter:Connect(function()
-        TweenService:Create(closeBtn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(255, 60, 60)}):Play()
-    end)
-    
-    closeBtn.MouseLeave:Connect(function()
-        TweenService:Create(closeBtn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(40, 40, 45)}):Play()
     end)
 end
 
