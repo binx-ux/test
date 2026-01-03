@@ -396,7 +396,7 @@ local function createImprovedESP(target, admin)
     highlight.Enabled = settings.boxEnabled
     highlight.Parent = espFolder
     
-    -- ====== CLEANER TRACER ======
+    -- ====== IMPROVED TRACER SYSTEM ======
     local tracerPart = Instance.new("Part")
     tracerPart.Name = "TracerAnchor"
     tracerPart.Anchored = true
@@ -405,23 +405,48 @@ local function createImprovedESP(target, admin)
     tracerPart.Size = Vector3.new(0.1, 0.1, 0.1)
     tracerPart.Parent = espFolder
     
+    -- Main tracer beam
     local beam = Instance.new("Beam")
     beam.Name = "Tracer"
     beam.Color = ColorSequence.new({
-        ColorSequenceKeypoint.new(0, Colors.AccentBright),
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+        ColorSequenceKeypoint.new(0.2, Colors.AccentBright),
         ColorSequenceKeypoint.new(1, Colors.Accent)
     })
     beam.Transparency = NumberSequence.new({
-        NumberSequenceKeypoint.new(0, 0.2),
-        NumberSequenceKeypoint.new(0.5, 0.4),
-        NumberSequenceKeypoint.new(1, 0.6)
+        NumberSequenceKeypoint.new(0, 0.1),
+        NumberSequenceKeypoint.new(0.3, 0.3),
+        NumberSequenceKeypoint.new(0.7, 0.5),
+        NumberSequenceKeypoint.new(1, 0.7)
     })
-    beam.Width0 = 1.5
-    beam.Width1 = 0.5
+    beam.Width0 = 3
+    beam.Width1 = 1
     beam.FaceCamera = true
-    beam.Segments = 1
+    beam.Segments = 20
+    beam.CurveSize0 = 0
+    beam.CurveSize1 = 0
+    beam.LightEmission = 0.3
+    beam.LightInfluence = 0
     beam.Enabled = settings.tracerEnabled
     beam.Parent = espFolder
+    
+    -- Outer glow tracer
+    local beamGlow = Instance.new("Beam")
+    beamGlow.Name = "TracerGlow"
+    beamGlow.Color = ColorSequence.new(Colors.AccentBright)
+    beamGlow.Transparency = NumberSequence.new({
+        NumberSequenceKeypoint.new(0, 0.7),
+        NumberSequenceKeypoint.new(0.5, 0.85),
+        NumberSequenceKeypoint.new(1, 0.95)
+    })
+    beamGlow.Width0 = 6
+    beamGlow.Width1 = 2
+    beamGlow.FaceCamera = true
+    beamGlow.Segments = 20
+    beamGlow.LightEmission = 0.5
+    beamGlow.LightInfluence = 0
+    beamGlow.Enabled = settings.tracerEnabled
+    beamGlow.Parent = espFolder
     
     local attachment0 = Instance.new("Attachment")
     attachment0.Name = "TracerStart"
@@ -433,6 +458,8 @@ local function createImprovedESP(target, admin)
     
     beam.Attachment0 = attachment0
     beam.Attachment1 = attachment1
+    beamGlow.Attachment0 = attachment0
+    beamGlow.Attachment1 = attachment1
     
     -- ====== HEAD DOT INDICATOR ======
     local headDot = Instance.new("BillboardGui")
@@ -492,6 +519,7 @@ local function createImprovedESP(target, admin)
         distanceLabel = distanceLabel,
         visibilityLabel = visibilityLabel,
         beam = beam,
+        beamGlow = beamGlow,
         tracerPart = tracerPart,
         attachment0 = attachment0,
         attachment1 = attachment1,
@@ -585,27 +613,58 @@ local function updateImprovedESP(admin, target, espComponents)
         espComponents.dotFrame.BackgroundColor3 = espColor
     end
     
-    -- Update tracer
+    -- Update tracer with improved visuals
     if espComponents.beam and espComponents.tracerPart then
         local camera = Workspace.CurrentCamera
         if camera then
-            -- Position tracer from bottom of screen
-            local screenBottom = camera.CFrame.Position + camera.CFrame.LookVector * 2 + Vector3.new(0, -1, 0)
+            -- Position tracer from bottom center of screen
+            local screenBottom = camera.CFrame.Position + camera.CFrame.LookVector * 1 + Vector3.new(0, -1.5, 0)
             espComponents.tracerPart.Position = screenBottom
             espComponents.attachment0.WorldPosition = screenBottom
             espComponents.attachment1.WorldPosition = targetHRP.Position
             
-            -- Update tracer color gradient
+            -- Dynamic color based on distance and visibility
+            local tracerColor = espColor
+            local glowColor = canSee and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(150, 150, 150)
+            
+            -- Update main tracer color gradient
             espComponents.beam.Color = ColorSequence.new({
-                ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
-                ColorSequenceKeypoint.new(0.3, espColor),
-                ColorSequenceKeypoint.new(1, espColor)
+                ColorSequenceKeypoint.new(0, glowColor),
+                ColorSequenceKeypoint.new(0.15, tracerColor),
+                ColorSequenceKeypoint.new(1, Color3.new(tracerColor.R * 0.5, tracerColor.G * 0.5, tracerColor.B * 0.5))
             })
             
-            -- Adjust tracer width based on distance
-            local widthMultiplier = math.clamp(1 - (distance / 500), 0.3, 1)
-            espComponents.beam.Width0 = 2 * widthMultiplier
-            espComponents.beam.Width1 = 0.8 * widthMultiplier
+            -- Update glow tracer
+            if espComponents.beamGlow then
+                espComponents.beamGlow.Color = ColorSequence.new(tracerColor)
+            end
+            
+            -- Adjust tracer width based on distance (thicker when closer)
+            local widthMultiplier = math.clamp(1.5 - (distance / 300), 0.4, 1.5)
+            espComponents.beam.Width0 = 3 * widthMultiplier
+            espComponents.beam.Width1 = 1 * widthMultiplier
+            
+            if espComponents.beamGlow then
+                espComponents.beamGlow.Width0 = 6 * widthMultiplier
+                espComponents.beamGlow.Width1 = 2 * widthMultiplier
+            end
+            
+            -- Pulsing transparency effect when visible
+            if canSee then
+                local pulse = (math.sin(tick() * 3) + 1) / 2 * 0.15
+                espComponents.beam.Transparency = NumberSequence.new({
+                    NumberSequenceKeypoint.new(0, 0.05 + pulse),
+                    NumberSequenceKeypoint.new(0.3, 0.25 + pulse),
+                    NumberSequenceKeypoint.new(0.7, 0.45 + pulse),
+                    NumberSequenceKeypoint.new(1, 0.65 + pulse)
+                })
+            else
+                espComponents.beam.Transparency = NumberSequence.new({
+                    NumberSequenceKeypoint.new(0, 0.3),
+                    NumberSequenceKeypoint.new(0.5, 0.5),
+                    NumberSequenceKeypoint.new(1, 0.8)
+                })
+            end
         end
     end
     
@@ -1067,7 +1126,7 @@ local function createAdminGui(player)
         end
     end
     
-    local function createDropdown(parent, label, posX, posY, options, default, callback)
+    local function createDropdown(parent, label, posX, posY, options, default, callback, guiRef)
         local container = Instance.new("Frame")
         container.Size = UDim2.new(0, 120, 0, 36)
         container.Position = UDim2.new(0, posX, 0, posY)
@@ -1121,11 +1180,11 @@ local function createAdminGui(player)
         local optionsFrame = Instance.new("Frame")
         optionsFrame.Size = UDim2.new(1, 0, 0, #options * 20)
         optionsFrame.Position = UDim2.new(0, 0, 1, 2)
-        optionsFrame.BackgroundColor3 = Colors.DropdownBg
+        optionsFrame.BackgroundColor3 = Color3.fromRGB(45, 35, 65)
         optionsFrame.BorderSizePixel = 0
         optionsFrame.Visible = false
-        optionsFrame.ZIndex = 10
-        optionsFrame.Parent = dropBtn
+        optionsFrame.ZIndex = 100
+        optionsFrame.Parent = guiRef or screenGui -- Use passed reference or screenGui
         
         local optCorner = Instance.new("UICorner")
         optCorner.CornerRadius = UDim.new(0, 3)
@@ -1140,19 +1199,27 @@ local function createAdminGui(player)
             local optBtn = Instance.new("TextButton")
             optBtn.Size = UDim2.new(1, 0, 0, 20)
             optBtn.Position = UDim2.new(0, 0, 0, (i-1) * 20)
-            optBtn.BackgroundTransparency = 1
+            optBtn.BackgroundColor3 = Color3.fromRGB(45, 35, 65)
+            optBtn.BackgroundTransparency = 0
             optBtn.Text = opt
             optBtn.TextColor3 = Colors.Text
             optBtn.TextSize = 10
             optBtn.Font = Enum.Font.Gotham
-            optBtn.ZIndex = 11
+            optBtn.ZIndex = 101
+            optBtn.AutoButtonColor = false
             optBtn.Parent = optionsFrame
             
+            local optBtnCorner = Instance.new("UICorner")
+            optBtnCorner.CornerRadius = UDim.new(0, 2)
+            optBtnCorner.Parent = optBtn
+            
             optBtn.MouseEnter:Connect(function()
-                optBtn.TextColor3 = Colors.AccentBright
+                optBtn.BackgroundColor3 = Colors.Accent
+                optBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
             end)
             
             optBtn.MouseLeave:Connect(function()
+                optBtn.BackgroundColor3 = Color3.fromRGB(45, 35, 65)
                 optBtn.TextColor3 = Colors.Text
             end)
             
@@ -1168,6 +1235,13 @@ local function createAdminGui(player)
         
         dropBtn.MouseButton1Click:Connect(function()
             isOpen = not isOpen
+            if isOpen then
+                -- Position the dropdown relative to the button
+                local absPos = dropBtn.AbsolutePosition
+                local absSize = dropBtn.AbsoluteSize
+                optionsFrame.Position = UDim2.new(0, absPos.X, 0, absPos.Y + absSize.Y + 2)
+                optionsFrame.Size = UDim2.new(0, absSize.X, 0, #options * 20)
+            end
             optionsFrame.Visible = isOpen
             arrow.Text = isOpen and "▲" or "▼"
         end)
@@ -1392,7 +1466,7 @@ local function createAdminGui(player)
     
     local _, lockPartDropdown = createDropdown(valuesSection, "Lock Part", 8, 56, {"Head", "Torso", "Random"}, "Head", function(val)
         -- Store lock part preference
-    end)
+    end, screenGui)
     
     createSlider(valuesSection, "Sensitivity:", 8, 90, 1, 10, 6, function(val)
         -- Sensitivity setting
@@ -1675,17 +1749,56 @@ local function createAdminGui(player)
     -- FOV Section
     local fovSection = createSection(visualsPage, "Field Of View", 0, 220, 100)
     
-    createCheckbox(fovSection, "Enabled", 8, 16, false, nil)
-    createCheckbox(fovSection, "Visible", 8, 36, true, nil)
-    createSlider(fovSection, "FOV Amount:", 8, 56, 50, 120, 90, nil)
+    local fovEnabled = false
+    local customFOV = 70
+    local fovConnection = nil
+    
+    createCheckbox(fovSection, "Enabled", 8, 16, false, function(enabled)
+        fovEnabled = enabled
+        local camera = Workspace.CurrentCamera
+        if camera then
+            if enabled then
+                -- Start FOV control
+                if fovConnection then fovConnection:Disconnect() end
+                fovConnection = RunService.RenderStepped:Connect(function()
+                    if fovEnabled and camera then
+                        camera.FieldOfView = customFOV
+                    end
+                end)
+                camera.FieldOfView = customFOV
+                statusLabel.Text = "✓ FOV set to " .. customFOV
+            else
+                -- Reset to default
+                if fovConnection then 
+                    fovConnection:Disconnect() 
+                    fovConnection = nil
+                end
+                camera.FieldOfView = 70
+                statusLabel.Text = "✓ FOV reset to default"
+            end
+        end
+    end)
+    
+    createCheckbox(fovSection, "Visible Circle", 8, 36, true, nil)
+    
+    createSlider(fovSection, "FOV Amount:", 8, 56, 30, 120, 70, function(val)
+        customFOV = val
+        if fovEnabled then
+            local camera = Workspace.CurrentCamera
+            if camera then
+                camera.FieldOfView = val
+            end
+        end
+        statusLabel.Text = "FOV: " .. val
+    end)
     
     -- FOV Circle Appearance
-    local fovAppearSection = createSection(visualsPage, "FOV Appearance", 0, 220, 120)
+    local fovAppearSection = createSection(visualsPage, "FOV Circle", 0, 220, 100)
     fovAppearSection.Position = UDim2.new(0, 235, 0, 0)
     
     createCheckbox(fovAppearSection, "Filled", 8, 16, false, nil)
-    createSlider(fovAppearSection, "Transparency:", 8, 36, 0, 10, 5, nil)
-    createSlider(fovAppearSection, "Sides:", 8, 72, 3, 64, 60, nil)
+    createSlider(fovAppearSection, "Circle Trans:", 8, 36, 0, 10, 5, nil)
+    createSlider(fovAppearSection, "Circle Sides:", 8, 72, 16, 64, 32, nil)
     
     -- Third Person Section
     local thirdPersonSection = createSection(visualsPage, "Third Person", 110, 220, 70)
