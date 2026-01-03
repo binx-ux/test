@@ -726,7 +726,7 @@ local function createAdminGui(player)
     titleText.Size = UDim2.new(1, -40, 1, 0)
     titleText.Position = UDim2.new(0, 12, 0, 0)
     titleText.BackgroundTransparency = 1
-    titleText.Text = "⚡ Admin Panel V3 | Clean ESP"
+    titleText.Text = "⚡ Binxix's GUI | Clean ESP"
     titleText.TextColor3 = Colors.Text
     titleText.TextSize = 13
     titleText.Font = Enum.Font.GothamBold
@@ -759,7 +759,7 @@ local function createAdminGui(player)
     tabContainer.BackgroundTransparency = 1
     tabContainer.Parent = mainFrame
     
-    local tabs = {"Tracking", "ESP", "Visuals", "Teleport", "Functions"}
+    local tabs = {"Tracking", "ESP", "Visuals", "Functions"}
     local tabButtons = {}
     local tabWidth = 1 / #tabs
     
@@ -791,7 +791,7 @@ local function createAdminGui(player)
     statusLabel.Size = UDim2.new(1, -16, 0, 18)
     statusLabel.Position = UDim2.new(0, 8, 1, -22)
     statusLabel.BackgroundTransparency = 1
-    statusLabel.Text = "✓ Ready | RCtrl to toggle | RMB to track"
+    statusLabel.Text = "✓ Ready | RCtrl toggle | RMB track"
     statusLabel.TextColor3 = Colors.TextDim
     statusLabel.TextSize = 10
     statusLabel.Font = Enum.Font.Gotham
@@ -1452,61 +1452,6 @@ local function createAdminGui(player)
     createCheckbox(thirdPersonSection, "Enable", 8, 16, false, nil)
     createSlider(thirdPersonSection, "Distance:", 8, 38, 5, 30, 12, nil)
     
-    -- ===== TELEPORT TAB =====
-    local teleportPage = Instance.new("Frame")
-    teleportPage.Name = "TeleportPage"
-    teleportPage.Size = UDim2.new(1, 0, 1, 0)
-    teleportPage.BackgroundTransparency = 1
-    teleportPage.Visible = false
-    teleportPage.Parent = contentArea
-    tabPages["Teleport"] = teleportPage
-    
-    local tpSection = createSection(teleportPage, "Teleport", 0, 0, 230, 150)
-    
-    local _, tpInput = createInput(tpSection, "Player name...", 8, 16, 140)
-    
-    createButton(tpSection, "Teleport To", 8, 46, 100, function()
-        local targetName = tpInput.Text
-        if targetName == "" then return end
-        
-        local target = findPlayer(targetName)
-        if not target then return end
-        
-        local adminChar = player.Character
-        local targetChar = target.Character
-        
-        if adminChar and targetChar then
-            local adminHRP = adminChar:FindFirstChild("HumanoidRootPart")
-            local targetHRP = targetChar:FindFirstChild("HumanoidRootPart")
-            
-            if adminHRP and targetHRP then
-                adminHRP.CFrame = targetHRP.CFrame * CFrame.new(0, 0, 3)
-                statusLabel.Text = "✓ Teleported to " .. target.Name
-            end
-        end
-    end)
-    
-    createButton(tpSection, "Bring", 8, 78, 100, function()
-        local targetName = tpInput.Text
-        if targetName == "" then return end
-        
-        local target = findPlayer(targetName)
-        if not target then return end
-        
-        local adminChar = player.Character
-        local targetChar = target.Character
-        
-        if adminChar and targetChar then
-            local adminHRP = adminChar:FindFirstChild("HumanoidRootPart")
-            local targetHRP = targetChar:FindFirstChild("HumanoidRootPart")
-            
-            if adminHRP and targetHRP then
-                targetHRP.CFrame = adminHRP.CFrame * CFrame.new(0, 0, 3)
-                statusLabel.Text = "✓ Brought " .. target.Name
-            end
-        end
-    end)
-    
     -- ===== FUNCTIONS TAB =====
     local functionsPage = Instance.new("Frame")
     functionsPage.Name = "FunctionsPage"
@@ -1516,32 +1461,26 @@ local function createAdminGui(player)
     functionsPage.Parent = contentArea
     tabPages["Functions"] = functionsPage
     
-    local charSection = createSection(functionsPage, "Character", 0, 0, 230, 150)
+    local charSection = createSection(functionsPage, "Character", 0, 0, 230, 140)
     
-    local godModeConnection = nil
-    
-    createCheckbox(charSection, "God Mode", 8, 16, false, function(enabled)
-        if enabled then
-            godModeConnection = RunService.Heartbeat:Connect(function()
-                local char = player.Character
-                if char then
-                    local humanoid = char:FindFirstChild("Humanoid")
-                    if humanoid then humanoid.Health = humanoid.MaxHealth end
-                end
-            end)
-            statusLabel.Text = "✓ God Mode ON"
-        else
-            if godModeConnection then godModeConnection:Disconnect() end
-            statusLabel.Text = "✓ God Mode OFF"
-        end
-    end)
-    
-    createCheckbox(charSection, "Speed Boost", 8, 36, false, function(enabled)
+    createCheckbox(charSection, "Speed Boost", 8, 16, false, function(enabled)
         local char = player.Character
         if char then
             local humanoid = char:FindFirstChild("Humanoid")
             if humanoid then
                 humanoid.WalkSpeed = enabled and 100 or 16
+                statusLabel.Text = enabled and "✓ Speed Boost ON" or "✓ Speed Boost OFF"
+            end
+        end
+    end)
+    
+    createCheckbox(charSection, "High Jump", 8, 36, false, function(enabled)
+        local char = player.Character
+        if char then
+            local humanoid = char:FindFirstChild("Humanoid")
+            if humanoid then
+                humanoid.JumpPower = enabled and 150 or 50
+                statusLabel.Text = enabled and "✓ High Jump ON" or "✓ High Jump OFF"
             end
         end
     end)
@@ -1550,7 +1489,10 @@ local function createAdminGui(player)
         local char = player.Character
         if char then
             local humanoid = char:FindFirstChild("Humanoid")
-            if humanoid then humanoid.WalkSpeed = val end
+            if humanoid then 
+                humanoid.WalkSpeed = val 
+                statusLabel.Text = "Walk Speed: " .. val
+            end
         end
     end)
     
@@ -1558,7 +1500,20 @@ local function createAdminGui(player)
         local char = player.Character
         if char then
             local humanoid = char:FindFirstChild("Humanoid")
-            if humanoid then humanoid.JumpPower = val end
+            if humanoid then 
+                humanoid.JumpPower = val 
+                statusLabel.Text = "Jump Power: " .. val
+            end
+        end
+    end)
+    
+    -- Keep settings on respawn
+    player.CharacterAdded:Connect(function(char)
+        task.wait(0.5)
+        local humanoid = char:FindFirstChild("Humanoid")
+        if humanoid then
+            -- Reapply current slider values would need stored values
+            -- For now just reset to defaults
         end
     end)
     
@@ -1666,6 +1621,41 @@ local function createAdminGui(player)
                 stopRMBTrackingUI()
             end
         end
+    end)
+    
+    -- Loaded Notification (bottom right)
+    local loadedNotif = Instance.new("TextLabel")
+    loadedNotif.Name = "LoadedNotification"
+    loadedNotif.Size = UDim2.new(0, 200, 0, 30)
+    loadedNotif.Position = UDim2.new(1, -210, 1, -40)
+    loadedNotif.BackgroundColor3 = Colors.Background
+    loadedNotif.BackgroundTransparency = 0.3
+    loadedNotif.BorderSizePixel = 0
+    loadedNotif.Text = "✓ Binxix's GUI loaded"
+    loadedNotif.TextColor3 = Colors.AccentBright
+    loadedNotif.TextSize = 12
+    loadedNotif.Font = Enum.Font.GothamBold
+    loadedNotif.Parent = screenGui
+    
+    local notifCorner = Instance.new("UICorner")
+    notifCorner.CornerRadius = UDim.new(0, 6)
+    notifCorner.Parent = loadedNotif
+    
+    local notifStroke = Instance.new("UIStroke")
+    notifStroke.Color = Colors.Accent
+    notifStroke.Thickness = 1
+    notifStroke.Parent = loadedNotif
+    
+    -- Fade out notification after 3 seconds
+    task.spawn(function()
+        task.wait(3)
+        for i = 0, 1, 0.05 do
+            loadedNotif.BackgroundTransparency = 0.3 + (i * 0.7)
+            loadedNotif.TextTransparency = i
+            notifStroke.Transparency = i
+            task.wait(0.02)
+        end
+        loadedNotif:Destroy()
     end)
 end
 
