@@ -1,5 +1,5 @@
 -- ServerScriptService
--- AIRHUB Style Admin Panel
+-- AIRHUB Style Admin Panel - IMPROVED ESP VERSION
 
 -- Services
 local Players = game:GetService("Players")
@@ -59,6 +59,14 @@ local Colors = {
     Success = Color3.fromRGB(80, 200, 120),
     Warning = Color3.fromRGB(255, 180, 80),
     Danger = Color3.fromRGB(255, 80, 80),
+    
+    -- ESP Specific Colors
+    ESP_Close = Color3.fromRGB(255, 50, 50),      -- Red for close enemies
+    ESP_Medium = Color3.fromRGB(255, 165, 0),    -- Orange for medium
+    ESP_Far = Color3.fromRGB(255, 255, 0),       -- Yellow for far
+    ESP_VeryFar = Color3.fromRGB(50, 255, 50),   -- Green for very far
+    ESP_Visible = Color3.fromRGB(0, 255, 150),   -- Cyan-green for visible
+    ESP_Hidden = Color3.fromRGB(255, 100, 100),  -- Light red for hidden
 }
 
 local function isAdmin(player)
@@ -194,7 +202,37 @@ local function stopRightMouseTracking(admin)
     return false
 end
 
-local function createBoxESP(target, admin)
+-- ========================================
+-- IMPROVED ESP FUNCTIONS
+-- ========================================
+
+local function getESPColor(distance, canSee)
+    -- Color based on distance
+    local distColor
+    if distance < 30 then
+        distColor = Colors.ESP_Close
+    elseif distance < 75 then
+        distColor = Colors.ESP_Medium
+    elseif distance < 150 then
+        distColor = Colors.ESP_Far
+    else
+        distColor = Colors.ESP_VeryFar
+    end
+    
+    -- Modify based on visibility
+    if canSee then
+        return distColor
+    else
+        -- Darken color when not visible
+        return Color3.new(
+            distColor.R * 0.6,
+            distColor.G * 0.6,
+            distColor.B * 0.6
+        )
+    end
+end
+
+local function createImprovedESP(target, admin)
     if not target.Character then return nil end
     
     if not isValidTarget(admin, target) then
@@ -216,15 +254,18 @@ local function createBoxESP(target, admin)
         nameEnabled = true,
         healthEnabled = true,
         distanceEnabled = true,
-        skeletonEnabled = false
+        cornerBoxEnabled = true,
+        glowEnabled = true
     }
     
+    -- ====== MAIN INFO BILLBOARD ======
     local billboardGui = Instance.new("BillboardGui")
     billboardGui.Name = "InfoBoard"
     billboardGui.Adornee = target.Character:FindFirstChild("Head")
-    billboardGui.Size = UDim2.new(0, 200, 0, 80)
-    billboardGui.StudsOffset = Vector3.new(0, 2.5, 0)
+    billboardGui.Size = UDim2.new(0, 160, 0, 60)
+    billboardGui.StudsOffset = Vector3.new(0, 2.8, 0)
     billboardGui.AlwaysOnTop = true
+    billboardGui.MaxDistance = 500
     billboardGui.Parent = espFolder
     
     local infoFrame = Instance.new("Frame")
@@ -232,33 +273,58 @@ local function createBoxESP(target, admin)
     infoFrame.BackgroundTransparency = 1
     infoFrame.Parent = billboardGui
     
+    -- Background panel for better readability
+    local bgPanel = Instance.new("Frame")
+    bgPanel.Name = "BackgroundPanel"
+    bgPanel.Size = UDim2.new(1, 0, 0, 50)
+    bgPanel.Position = UDim2.new(0, 0, 0, 0)
+    bgPanel.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    bgPanel.BackgroundTransparency = 0.7
+    bgPanel.BorderSizePixel = 0
+    bgPanel.Parent = infoFrame
+    
+    local bgCorner = Instance.new("UICorner")
+    bgCorner.CornerRadius = UDim.new(0, 4)
+    bgCorner.Parent = bgPanel
+    
+    local bgStroke = Instance.new("UIStroke")
+    bgStroke.Name = "BorderStroke"
+    bgStroke.Color = Colors.AccentBright
+    bgStroke.Thickness = 1.5
+    bgStroke.Transparency = 0.3
+    bgStroke.Parent = bgPanel
+    
+    -- Player Name with icon
     local nameLabel = Instance.new("TextLabel")
     nameLabel.Name = "NameLabel"
-    nameLabel.Size = UDim2.new(1, 0, 0, 18)
-    nameLabel.Position = UDim2.new(0, 0, 0, 0)
+    nameLabel.Size = UDim2.new(1, -8, 0, 16)
+    nameLabel.Position = UDim2.new(0, 4, 0, 2)
     nameLabel.BackgroundTransparency = 1
-    nameLabel.Text = target.Name
-    nameLabel.TextColor3 = Colors.AccentBright
+    nameLabel.Text = "👤 " .. target.Name
+    nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
     nameLabel.TextStrokeTransparency = 0
     nameLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-    nameLabel.TextSize = 14
+    nameLabel.TextSize = 13
     nameLabel.Font = Enum.Font.GothamBold
+    nameLabel.TextXAlignment = Enum.TextXAlignment.Center
     nameLabel.Visible = settings.nameEnabled
-    nameLabel.Parent = infoFrame
+    nameLabel.Parent = bgPanel
     
+    -- Health Bar Background
     local healthBarBg = Instance.new("Frame")
     healthBarBg.Name = "HealthBarBg"
-    healthBarBg.Size = UDim2.new(0.8, 0, 0, 6)
-    healthBarBg.Position = UDim2.new(0.1, 0, 0, 20)
-    healthBarBg.BackgroundColor3 = Colors.SliderBg
+    healthBarBg.Size = UDim2.new(0.9, 0, 0, 8)
+    healthBarBg.Position = UDim2.new(0.05, 0, 0, 20)
+    healthBarBg.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
     healthBarBg.BorderSizePixel = 0
     healthBarBg.Visible = settings.healthEnabled
-    healthBarBg.Parent = infoFrame
+    healthBarBg.Parent = bgPanel
     
     local healthBarBgCorner = Instance.new("UICorner")
-    healthBarBgCorner.CornerRadius = UDim.new(0, 3)
+    healthBarBgCorner.CornerRadius = UDim.new(0, 4)
     healthBarBgCorner.Parent = healthBarBg
     
+    -- Health Bar Fill with gradient effect
     local healthBarFill = Instance.new("Frame")
     healthBarFill.Name = "HealthBarFill"
     healthBarFill.Size = UDim2.new(1, 0, 1, 0)
@@ -267,57 +333,70 @@ local function createBoxESP(target, admin)
     healthBarFill.Parent = healthBarBg
     
     local healthBarFillCorner = Instance.new("UICorner")
-    healthBarFillCorner.CornerRadius = UDim.new(0, 3)
+    healthBarFillCorner.CornerRadius = UDim.new(0, 4)
     healthBarFillCorner.Parent = healthBarFill
+    
+    -- Health percentage text
+    local healthText = Instance.new("TextLabel")
+    healthText.Name = "HealthText"
+    healthText.Size = UDim2.new(1, 0, 1, 0)
+    healthText.BackgroundTransparency = 1
+    healthText.Text = "100%"
+    healthText.TextColor3 = Color3.fromRGB(255, 255, 255)
+    healthText.TextStrokeTransparency = 0
+    healthText.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    healthText.TextSize = 8
+    healthText.Font = Enum.Font.GothamBold
+    healthText.Parent = healthBarFill
+    
+    -- Distance and Status Label
+    local statusFrame = Instance.new("Frame")
+    statusFrame.Size = UDim2.new(1, -8, 0, 16)
+    statusFrame.Position = UDim2.new(0, 4, 0, 30)
+    statusFrame.BackgroundTransparency = 1
+    statusFrame.Parent = bgPanel
     
     local distanceLabel = Instance.new("TextLabel")
     distanceLabel.Name = "DistanceLabel"
-    distanceLabel.Size = UDim2.new(1, 0, 0, 16)
-    distanceLabel.Position = UDim2.new(0, 0, 0, 28)
+    distanceLabel.Size = UDim2.new(0.5, 0, 1, 0)
     distanceLabel.BackgroundTransparency = 1
-    distanceLabel.Text = "0m"
+    distanceLabel.Text = "📍 0m"
     distanceLabel.TextColor3 = Colors.Warning
     distanceLabel.TextStrokeTransparency = 0
     distanceLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-    distanceLabel.TextSize = 12
-    distanceLabel.Font = Enum.Font.Gotham
+    distanceLabel.TextSize = 11
+    distanceLabel.Font = Enum.Font.GothamMedium
+    distanceLabel.TextXAlignment = Enum.TextXAlignment.Left
     distanceLabel.Visible = settings.distanceEnabled
-    distanceLabel.Parent = infoFrame
+    distanceLabel.Parent = statusFrame
     
     local visibilityLabel = Instance.new("TextLabel")
     visibilityLabel.Name = "VisibilityLabel"
-    visibilityLabel.Size = UDim2.new(1, 0, 0, 14)
-    visibilityLabel.Position = UDim2.new(0, 0, 0, 44)
+    visibilityLabel.Size = UDim2.new(0.5, 0, 1, 0)
+    visibilityLabel.Position = UDim2.new(0.5, 0, 0, 0)
     visibilityLabel.BackgroundTransparency = 1
-    visibilityLabel.Text = "VISIBLE"
+    visibilityLabel.Text = "👁 VISIBLE"
     visibilityLabel.TextColor3 = Colors.Success
     visibilityLabel.TextStrokeTransparency = 0
     visibilityLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-    visibilityLabel.TextSize = 10
+    visibilityLabel.TextSize = 11
     visibilityLabel.Font = Enum.Font.GothamBold
-    visibilityLabel.Parent = infoFrame
+    visibilityLabel.TextXAlignment = Enum.TextXAlignment.Right
+    visibilityLabel.Parent = statusFrame
     
+    -- ====== IMPROVED HIGHLIGHT ======
     local highlight = Instance.new("Highlight")
     highlight.Name = "BoxHighlight"
     highlight.Adornee = target.Character
     highlight.FillColor = Colors.Accent
     highlight.OutlineColor = Colors.AccentBright
-    highlight.FillTransparency = 0.7
+    highlight.FillTransparency = 0.85
     highlight.OutlineTransparency = 0
     highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
     highlight.Enabled = settings.boxEnabled
     highlight.Parent = espFolder
     
-    local selectionBox = Instance.new("SelectionBox")
-    selectionBox.Name = "SelectionBox"
-    selectionBox.Adornee = target.Character
-    selectionBox.Color3 = Colors.Accent
-    selectionBox.LineThickness = 0.05
-    selectionBox.SurfaceColor3 = Colors.Accent
-    selectionBox.SurfaceTransparency = 0.9
-    selectionBox.Visible = settings.boxEnabled
-    selectionBox.Parent = espFolder
-    
+    -- ====== CLEANER TRACER ======
     local tracerPart = Instance.new("Part")
     tracerPart.Name = "TracerAnchor"
     tracerPart.Anchored = true
@@ -328,11 +407,19 @@ local function createBoxESP(target, admin)
     
     local beam = Instance.new("Beam")
     beam.Name = "Tracer"
-    beam.Color = ColorSequence.new(Colors.Accent)
-    beam.Transparency = NumberSequence.new(0.3)
-    beam.Width0 = 0.1
-    beam.Width1 = 0.1
+    beam.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Colors.AccentBright),
+        ColorSequenceKeypoint.new(1, Colors.Accent)
+    })
+    beam.Transparency = NumberSequence.new({
+        NumberSequenceKeypoint.new(0, 0.2),
+        NumberSequenceKeypoint.new(0.5, 0.4),
+        NumberSequenceKeypoint.new(1, 0.6)
+    })
+    beam.Width0 = 1.5
+    beam.Width1 = 0.5
     beam.FaceCamera = true
+    beam.Segments = 1
     beam.Enabled = settings.tracerEnabled
     beam.Parent = espFolder
     
@@ -347,24 +434,74 @@ local function createBoxESP(target, admin)
     beam.Attachment0 = attachment0
     beam.Attachment1 = attachment1
     
+    -- ====== HEAD DOT INDICATOR ======
+    local headDot = Instance.new("BillboardGui")
+    headDot.Name = "HeadDot"
+    headDot.Adornee = target.Character:FindFirstChild("Head")
+    headDot.Size = UDim2.new(0, 12, 0, 12)
+    headDot.StudsOffset = Vector3.new(0, 0, 0)
+    headDot.AlwaysOnTop = true
+    headDot.Parent = espFolder
+    
+    local dotFrame = Instance.new("Frame")
+    dotFrame.Size = UDim2.new(1, 0, 1, 0)
+    dotFrame.BackgroundColor3 = Colors.Danger
+    dotFrame.BorderSizePixel = 0
+    dotFrame.Parent = headDot
+    
+    local dotCorner = Instance.new("UICorner")
+    dotCorner.CornerRadius = UDim.new(1, 0)
+    dotCorner.Parent = dotFrame
+    
+    local dotStroke = Instance.new("UIStroke")
+    dotStroke.Color = Color3.fromRGB(255, 255, 255)
+    dotStroke.Thickness = 2
+    dotStroke.Parent = dotFrame
+    
+    -- ====== WEAPON/TOOL INDICATOR ======
+    local weaponBoard = Instance.new("BillboardGui")
+    weaponBoard.Name = "WeaponBoard"
+    weaponBoard.Adornee = target.Character:FindFirstChild("HumanoidRootPart")
+    weaponBoard.Size = UDim2.new(0, 100, 0, 20)
+    weaponBoard.StudsOffset = Vector3.new(0, -3, 0)
+    weaponBoard.AlwaysOnTop = true
+    weaponBoard.Parent = espFolder
+    
+    local weaponLabel = Instance.new("TextLabel")
+    weaponLabel.Name = "WeaponLabel"
+    weaponLabel.Size = UDim2.new(1, 0, 1, 0)
+    weaponLabel.BackgroundTransparency = 1
+    weaponLabel.Text = "🔫 No Weapon"
+    weaponLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+    weaponLabel.TextStrokeTransparency = 0
+    weaponLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    weaponLabel.TextSize = 10
+    weaponLabel.Font = Enum.Font.Gotham
+    weaponLabel.Parent = weaponBoard
+    
     return {
         folder = espFolder,
         highlight = highlight,
-        selectionBox = selectionBox,
         billboard = billboardGui,
+        bgPanel = bgPanel,
+        bgStroke = bgStroke,
         nameLabel = nameLabel,
         healthBarBg = healthBarBg,
         healthBarFill = healthBarFill,
+        healthText = healthText,
         distanceLabel = distanceLabel,
         visibilityLabel = visibilityLabel,
         beam = beam,
         tracerPart = tracerPart,
         attachment0 = attachment0,
-        attachment1 = attachment1
+        attachment1 = attachment1,
+        headDot = headDot,
+        dotFrame = dotFrame,
+        weaponLabel = weaponLabel
     }
 end
 
-local function updateBoxESP(admin, target, espComponents)
+local function updateImprovedESP(admin, target, espComponents)
     if not admin.Character or not target.Character then return false end
     
     if not isValidTarget(admin, target) then
@@ -382,63 +519,105 @@ local function updateBoxESP(admin, target, espComponents)
     
     local distance = (adminHRP.Position - targetHRP.Position).Magnitude
     local canSee = hasLineOfSight(admin, target)
+    local espColor = getESPColor(distance, canSee)
     
+    -- Update distance label
     if espComponents.distanceLabel then
-        espComponents.distanceLabel.Text = string.format("%.0fm", distance)
-    end
-    
-    if targetHumanoid and espComponents.healthBarFill then
-        local healthPercent = targetHumanoid.Health / targetHumanoid.MaxHealth
-        espComponents.healthBarFill.Size = UDim2.new(healthPercent, 0, 1, 0)
-        
-        if healthPercent > 0.6 then
-            espComponents.healthBarFill.BackgroundColor3 = Colors.Success
-        elseif healthPercent > 0.3 then
-            espComponents.healthBarFill.BackgroundColor3 = Colors.Warning
+        if distance < 50 then
+            espComponents.distanceLabel.Text = string.format("📍 %.0fm ⚠️", distance)
+            espComponents.distanceLabel.TextColor3 = Colors.Danger
+        elseif distance < 100 then
+            espComponents.distanceLabel.Text = string.format("📍 %.0fm", distance)
+            espComponents.distanceLabel.TextColor3 = Colors.Warning
         else
-            espComponents.healthBarFill.BackgroundColor3 = Colors.Danger
+            espComponents.distanceLabel.Text = string.format("📍 %.0fm", distance)
+            espComponents.distanceLabel.TextColor3 = Colors.ESP_VeryFar
         end
     end
     
+    -- Update health
+    if targetHumanoid then
+        local healthPercent = targetHumanoid.Health / targetHumanoid.MaxHealth
+        
+        if espComponents.healthBarFill then
+            espComponents.healthBarFill.Size = UDim2.new(math.max(healthPercent, 0), 0, 1, 0)
+            
+            if healthPercent > 0.6 then
+                espComponents.healthBarFill.BackgroundColor3 = Colors.Success
+            elseif healthPercent > 0.3 then
+                espComponents.healthBarFill.BackgroundColor3 = Colors.Warning
+            else
+                espComponents.healthBarFill.BackgroundColor3 = Colors.Danger
+            end
+        end
+        
+        if espComponents.healthText then
+            espComponents.healthText.Text = string.format("%.0f%%", healthPercent * 100)
+        end
+    end
+    
+    -- Update visibility indicator
     if espComponents.visibilityLabel then
         if canSee then
-            espComponents.visibilityLabel.Text = "◉ VISIBLE"
+            espComponents.visibilityLabel.Text = "👁 VISIBLE"
             espComponents.visibilityLabel.TextColor3 = Colors.Success
         else
-            espComponents.visibilityLabel.Text = "◎ COVERED"
+            espComponents.visibilityLabel.Text = "🚫 HIDDEN"
             espComponents.visibilityLabel.TextColor3 = Colors.Danger
         end
     end
     
-    local espColor
-    if distance < 50 then
-        espColor = Colors.Danger
-    elseif distance < 100 then
-        espColor = Colors.Warning
-    elseif distance < 200 then
-        espColor = Color3.fromRGB(255, 255, 0)
-    else
-        espColor = Colors.Success
-    end
-    
+    -- Update highlight colors
     if espComponents.highlight then
         espComponents.highlight.FillColor = espColor
-        espComponents.highlight.OutlineColor = canSee and Colors.AccentBright or Colors.TextDim
-        espComponents.highlight.FillTransparency = canSee and 0.7 or 0.9
+        espComponents.highlight.OutlineColor = canSee and Color3.fromRGB(255, 255, 255) or espColor
+        espComponents.highlight.FillTransparency = canSee and 0.8 or 0.9
+        espComponents.highlight.OutlineTransparency = canSee and 0 or 0.3
     end
     
-    if espComponents.selectionBox then
-        espComponents.selectionBox.Color3 = espColor
-        espComponents.selectionBox.SurfaceColor3 = espColor
+    -- Update border stroke
+    if espComponents.bgStroke then
+        espComponents.bgStroke.Color = espColor
     end
     
+    -- Update head dot
+    if espComponents.dotFrame then
+        espComponents.dotFrame.BackgroundColor3 = espColor
+    end
+    
+    -- Update tracer
     if espComponents.beam and espComponents.tracerPart then
         local camera = Workspace.CurrentCamera
         if camera then
-            espComponents.tracerPart.Position = camera.CFrame.Position
-            espComponents.attachment0.WorldPosition = camera.CFrame.Position + Vector3.new(0, -2, 0)
+            -- Position tracer from bottom of screen
+            local screenBottom = camera.CFrame.Position + camera.CFrame.LookVector * 2 + Vector3.new(0, -1, 0)
+            espComponents.tracerPart.Position = screenBottom
+            espComponents.attachment0.WorldPosition = screenBottom
             espComponents.attachment1.WorldPosition = targetHRP.Position
-            espComponents.beam.Color = ColorSequence.new(espColor)
+            
+            -- Update tracer color gradient
+            espComponents.beam.Color = ColorSequence.new({
+                ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+                ColorSequenceKeypoint.new(0.3, espColor),
+                ColorSequenceKeypoint.new(1, espColor)
+            })
+            
+            -- Adjust tracer width based on distance
+            local widthMultiplier = math.clamp(1 - (distance / 500), 0.3, 1)
+            espComponents.beam.Width0 = 2 * widthMultiplier
+            espComponents.beam.Width1 = 0.8 * widthMultiplier
+        end
+    end
+    
+    -- Update weapon indicator
+    if espComponents.weaponLabel then
+        local tool = target.Character:FindFirstChildOfClass("Tool")
+        if tool then
+            espComponents.weaponLabel.Text = "🔫 " .. tool.Name
+            espComponents.weaponLabel.TextColor3 = Colors.Danger
+        else
+            espComponents.weaponLabel.Text = "✋ Unarmed"
+            espComponents.weaponLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
         end
     end
     
@@ -478,13 +657,13 @@ local function enableESP(admin)
     
     for _, target in ipairs(Players:GetPlayers()) do
         if isValidTarget(admin, target) then
-            local components = createBoxESP(target, admin)
+            local components = createImprovedESP(target, admin)
             if components then
                 local connection = RunService.Heartbeat:Connect(function()
                     if not espEnabled[admin.UserId] then
                         return
                     end
-                    local stillValid = updateBoxESP(admin, target, components)
+                    local stillValid = updateImprovedESP(admin, target, components)
                     if not stillValid then
                         if activeESP[admin.UserId] and activeESP[admin.UserId][target.UserId] then
                             activeESP[admin.UserId][target.UserId].connection:Disconnect()
@@ -512,13 +691,13 @@ local function enableESP(admin)
         task.wait(1)
         
         if espEnabled[admin.UserId] and isValidTarget(admin, target) then
-            local components = createBoxESP(target, admin)
+            local components = createImprovedESP(target, admin)
             if components then
                 local connection = RunService.Heartbeat:Connect(function()
                     if not espEnabled[admin.UserId] then
                         return
                     end
-                    updateBoxESP(admin, target, components)
+                    updateImprovedESP(admin, target, components)
                 end)
                 
                 if not activeESP[admin.UserId] then
@@ -548,13 +727,13 @@ local function enableESP(admin)
                         end
                     end
                     
-                    local components = createBoxESP(target, admin)
+                    local components = createImprovedESP(target, admin)
                     if components then
                         local connection = RunService.Heartbeat:Connect(function()
                             if not espEnabled[admin.UserId] then
                                 return
                             end
-                            updateBoxESP(admin, target, components)
+                            updateImprovedESP(admin, target, components)
                         end)
                         
                         if not activeESP[admin.UserId] then
@@ -583,13 +762,13 @@ local function enableESP(admin)
                         end
                     else
                         if (not activeESP[admin.UserId] or not activeESP[admin.UserId][target.UserId]) and target.Character then
-                            local components = createBoxESP(target, admin)
+                            local components = createImprovedESP(target, admin)
                             if components then
                                 local connection = RunService.Heartbeat:Connect(function()
                                     if not espEnabled[admin.UserId] then
                                         return
                                     end
-                                    updateBoxESP(admin, target, components)
+                                    updateImprovedESP(admin, target, components)
                                 end)
                                 
                                 if not activeESP[admin.UserId] then
@@ -610,13 +789,17 @@ local function enableESP(admin)
 end
 
 local function createAdminGui(player)
-    -- Initialize settings
+    -- Initialize settings with new options
     espSettings[player.UserId] = {
         boxEnabled = true,
         tracerEnabled = true,
         nameEnabled = true,
         healthEnabled = true,
-        distanceEnabled = true
+        distanceEnabled = true,
+        cornerBoxEnabled = true,
+        glowEnabled = true,
+        weaponEnabled = true,
+        headDotEnabled = true
     }
     trackingMode[player.UserId] = "hold"
     toggleTrackingActive[player.UserId] = false
@@ -631,10 +814,10 @@ local function createAdminGui(player)
     -- Main Frame - AIRHUB Style
     local mainFrame = Instance.new("Frame")
     mainFrame.Name = "MainFrame"
-    mainFrame.Size = UDim2.new(0, 450, 0, 320)
-    mainFrame.Position = UDim2.new(0.5, -225, 0.5, -160)
+    mainFrame.Size = UDim2.new(0, 480, 0, 350)
+    mainFrame.Position = UDim2.new(0.5, -240, 0.5, -175)
     mainFrame.BackgroundColor3 = Colors.Background
-    mainFrame.BackgroundTransparency = 0.1
+    mainFrame.BackgroundTransparency = 0.05
     mainFrame.BorderSizePixel = 0
     mainFrame.Visible = false
     mainFrame.Active = true
@@ -642,64 +825,95 @@ local function createAdminGui(player)
     mainFrame.Parent = screenGui
     
     local mainCorner = Instance.new("UICorner")
-    mainCorner.CornerRadius = UDim.new(0, 4)
+    mainCorner.CornerRadius = UDim.new(0, 6)
     mainCorner.Parent = mainFrame
     
     local mainStroke = Instance.new("UIStroke")
-    mainStroke.Color = Colors.Border
-    mainStroke.Thickness = 1
+    mainStroke.Color = Colors.Accent
+    mainStroke.Thickness = 1.5
     mainStroke.Parent = mainFrame
+    
+    -- Glow effect
+    local glowFrame = Instance.new("ImageLabel")
+    glowFrame.Name = "Glow"
+    glowFrame.Size = UDim2.new(1, 40, 1, 40)
+    glowFrame.Position = UDim2.new(0, -20, 0, -20)
+    glowFrame.BackgroundTransparency = 1
+    glowFrame.Image = "rbxassetid://5028857084"
+    glowFrame.ImageColor3 = Colors.Accent
+    glowFrame.ImageTransparency = 0.85
+    glowFrame.ScaleType = Enum.ScaleType.Slice
+    glowFrame.SliceCenter = Rect.new(24, 24, 276, 276)
+    glowFrame.ZIndex = 0
+    glowFrame.Parent = mainFrame
     
     -- Title Bar
     local titleBar = Instance.new("Frame")
     titleBar.Name = "TitleBar"
-    titleBar.Size = UDim2.new(1, 0, 0, 22)
+    titleBar.Size = UDim2.new(1, 0, 0, 28)
     titleBar.BackgroundColor3 = Colors.AccentDark
-    titleBar.BackgroundTransparency = 0.3
+    titleBar.BackgroundTransparency = 0.2
     titleBar.BorderSizePixel = 0
     titleBar.Parent = mainFrame
     
     local titleCorner = Instance.new("UICorner")
-    titleCorner.CornerRadius = UDim.new(0, 4)
+    titleCorner.CornerRadius = UDim.new(0, 6)
     titleCorner.Parent = titleBar
     
-    -- Fix bottom corners of title bar
     local titleFix = Instance.new("Frame")
-    titleFix.Size = UDim2.new(1, 0, 0, 4)
-    titleFix.Position = UDim2.new(0, 0, 1, -4)
+    titleFix.Size = UDim2.new(1, 0, 0, 6)
+    titleFix.Position = UDim2.new(0, 0, 1, -6)
     titleFix.BackgroundColor3 = Colors.AccentDark
-    titleFix.BackgroundTransparency = 0.3
+    titleFix.BackgroundTransparency = 0.2
     titleFix.BorderSizePixel = 0
     titleFix.Parent = titleBar
     
-    -- Title Text
+    -- Title Text with icon
     local titleText = Instance.new("TextLabel")
-    titleText.Size = UDim2.new(1, -50, 1, 0)
-    titleText.Position = UDim2.new(0, 8, 0, 0)
+    titleText.Size = UDim2.new(1, -60, 1, 0)
+    titleText.Position = UDim2.new(0, 10, 0, 0)
     titleText.BackgroundTransparency = 1
-    titleText.Text = "Admin V1.0 |"
+    titleText.Text = "⚡ Admin Panel V2.0 | Enhanced ESP"
     titleText.TextColor3 = Colors.Text
-    titleText.TextSize = 11
-    titleText.Font = Enum.Font.Code
+    titleText.TextSize = 12
+    titleText.Font = Enum.Font.GothamBold
     titleText.TextXAlignment = Enum.TextXAlignment.Left
     titleText.Parent = titleBar
     
-    -- Settings Icon
-    local settingsBtn = Instance.new("TextButton")
-    settingsBtn.Size = UDim2.new(0, 20, 0, 20)
-    settingsBtn.Position = UDim2.new(1, -25, 0, 1)
-    settingsBtn.BackgroundTransparency = 1
-    settingsBtn.Text = "⚙"
-    settingsBtn.TextColor3 = Colors.TextDim
-    settingsBtn.TextSize = 14
-    settingsBtn.Font = Enum.Font.Gotham
-    settingsBtn.Parent = titleBar
+    -- Close button
+    local closeBtn = Instance.new("TextButton")
+    closeBtn.Size = UDim2.new(0, 24, 0, 24)
+    closeBtn.Position = UDim2.new(1, -28, 0, 2)
+    closeBtn.BackgroundColor3 = Colors.Danger
+    closeBtn.BackgroundTransparency = 0.5
+    closeBtn.Text = "✕"
+    closeBtn.TextColor3 = Colors.Text
+    closeBtn.TextSize = 14
+    closeBtn.Font = Enum.Font.GothamBold
+    closeBtn.AutoButtonColor = false
+    closeBtn.Parent = titleBar
+    
+    local closeBtnCorner = Instance.new("UICorner")
+    closeBtnCorner.CornerRadius = UDim.new(0, 4)
+    closeBtnCorner.Parent = closeBtn
+    
+    closeBtn.MouseButton1Click:Connect(function()
+        mainFrame.Visible = false
+    end)
+    
+    closeBtn.MouseEnter:Connect(function()
+        TweenService:Create(closeBtn, TweenInfo.new(0.15), {BackgroundTransparency = 0}):Play()
+    end)
+    
+    closeBtn.MouseLeave:Connect(function()
+        TweenService:Create(closeBtn, TweenInfo.new(0.15), {BackgroundTransparency = 0.5}):Play()
+    end)
     
     -- Tab Container
     local tabContainer = Instance.new("Frame")
     tabContainer.Name = "TabContainer"
-    tabContainer.Size = UDim2.new(1, 0, 0, 20)
-    tabContainer.Position = UDim2.new(0, 0, 0, 22)
+    tabContainer.Size = UDim2.new(1, 0, 0, 24)
+    tabContainer.Position = UDim2.new(0, 0, 0, 28)
     tabContainer.BackgroundTransparency = 1
     tabContainer.BorderSizePixel = 0
     tabContainer.Parent = mainFrame
@@ -716,12 +930,12 @@ local function createAdminGui(player)
         tabBtn.Size = UDim2.new(tabWidth, -2, 1, 0)
         tabBtn.Position = UDim2.new((i-1) * tabWidth, 1, 0, 0)
         tabBtn.BackgroundColor3 = i == 1 and Colors.TabActive or Colors.TabInactive
-        tabBtn.BackgroundTransparency = 0.3
+        tabBtn.BackgroundTransparency = 0.2
         tabBtn.BorderSizePixel = 0
         tabBtn.Text = tabName
         tabBtn.TextColor3 = i == 1 and Colors.AccentBright or Colors.TextDim
-        tabBtn.TextSize = 10
-        tabBtn.Font = Enum.Font.Code
+        tabBtn.TextSize = 11
+        tabBtn.Font = Enum.Font.GothamMedium
         tabBtn.AutoButtonColor = false
         tabBtn.Parent = tabContainer
         
@@ -731,8 +945,8 @@ local function createAdminGui(player)
     -- Content Area
     local contentArea = Instance.new("Frame")
     contentArea.Name = "ContentArea"
-    contentArea.Size = UDim2.new(1, -16, 1, -56)
-    contentArea.Position = UDim2.new(0, 8, 0, 48)
+    contentArea.Size = UDim2.new(1, -16, 1, -70)
+    contentArea.Position = UDim2.new(0, 8, 0, 58)
     contentArea.BackgroundTransparency = 1
     contentArea.BorderSizePixel = 0
     contentArea.Parent = mainFrame
@@ -740,13 +954,13 @@ local function createAdminGui(player)
     -- Status Label at bottom
     local statusLabel = Instance.new("TextLabel")
     statusLabel.Name = "StatusLabel"
-    statusLabel.Size = UDim2.new(1, -16, 0, 14)
-    statusLabel.Position = UDim2.new(0, 8, 1, -18)
+    statusLabel.Size = UDim2.new(1, -16, 0, 16)
+    statusLabel.Position = UDim2.new(0, 8, 1, -20)
     statusLabel.BackgroundTransparency = 1
-    statusLabel.Text = "Ready | RMB to track nearest"
-    statusLabel.TextColor3 = Colors.TextDim
-    statusLabel.TextSize = 9
-    statusLabel.Font = Enum.Font.Code
+    statusLabel.Text = "✓ Ready | Press RCtrl to toggle | RMB to track nearest"
+    statusLabel.TextColor3 = Colors.Success
+    statusLabel.TextSize = 10
+    statusLabel.Font = Enum.Font.GothamMedium
     statusLabel.TextXAlignment = Enum.TextXAlignment.Left
     statusLabel.Parent = mainFrame
     
@@ -757,12 +971,12 @@ local function createAdminGui(player)
         section.Size = UDim2.new(0, width, 0, height)
         section.Position = UDim2.new(0, 0, 0, posY)
         section.BackgroundColor3 = Colors.BackgroundTransparent
-        section.BackgroundTransparency = 0.5
+        section.BackgroundTransparency = 0.4
         section.BorderSizePixel = 0
         section.Parent = parent
         
         local sectionCorner = Instance.new("UICorner")
-        sectionCorner.CornerRadius = UDim.new(0, 3)
+        sectionCorner.CornerRadius = UDim.new(0, 4)
         sectionCorner.Parent = section
         
         local sectionStroke = Instance.new("UIStroke")
@@ -771,35 +985,39 @@ local function createAdminGui(player)
         sectionStroke.Parent = section
         
         local sectionTitle = Instance.new("TextLabel")
-        sectionTitle.Size = UDim2.new(0, #title * 7, 0, 12)
-        sectionTitle.Position = UDim2.new(0, 6, 0, -6)
+        sectionTitle.Size = UDim2.new(0, #title * 7 + 10, 0, 14)
+        sectionTitle.Position = UDim2.new(0, 8, 0, -7)
         sectionTitle.BackgroundColor3 = Colors.Background
         sectionTitle.BorderSizePixel = 0
-        sectionTitle.Text = title
-        sectionTitle.TextColor3 = Colors.TextDim
-        sectionTitle.TextSize = 9
-        sectionTitle.Font = Enum.Font.Code
+        sectionTitle.Text = " " .. title .. " "
+        sectionTitle.TextColor3 = Colors.AccentBright
+        sectionTitle.TextSize = 10
+        sectionTitle.Font = Enum.Font.GothamBold
         sectionTitle.Parent = section
+        
+        local titleCorner = Instance.new("UICorner")
+        titleCorner.CornerRadius = UDim.new(0, 2)
+        titleCorner.Parent = sectionTitle
         
         return section
     end
     
     local function createCheckbox(parent, text, posX, posY, default, callback)
         local container = Instance.new("Frame")
-        container.Size = UDim2.new(0, 100, 0, 16)
+        container.Size = UDim2.new(0, 110, 0, 18)
         container.Position = UDim2.new(0, posX, 0, posY)
         container.BackgroundTransparency = 1
         container.Parent = parent
         
         local checkbox = Instance.new("Frame")
-        checkbox.Size = UDim2.new(0, 12, 0, 12)
+        checkbox.Size = UDim2.new(0, 14, 0, 14)
         checkbox.Position = UDim2.new(0, 0, 0, 2)
         checkbox.BackgroundColor3 = default and Colors.CheckboxOn or Colors.CheckboxOff
         checkbox.BorderSizePixel = 0
         checkbox.Parent = container
         
         local checkCorner = Instance.new("UICorner")
-        checkCorner.CornerRadius = UDim.new(0, 2)
+        checkCorner.CornerRadius = UDim.new(0, 3)
         checkCorner.Parent = checkbox
         
         local checkStroke = Instance.new("UIStroke")
@@ -812,18 +1030,18 @@ local function createAdminGui(player)
         checkMark.BackgroundTransparency = 1
         checkMark.Text = default and "✓" or ""
         checkMark.TextColor3 = Colors.Text
-        checkMark.TextSize = 10
+        checkMark.TextSize = 11
         checkMark.Font = Enum.Font.GothamBold
         checkMark.Parent = checkbox
         
         local label = Instance.new("TextLabel")
-        label.Size = UDim2.new(0, 80, 0, 16)
-        label.Position = UDim2.new(0, 16, 0, 0)
+        label.Size = UDim2.new(0, 90, 0, 18)
+        label.Position = UDim2.new(0, 18, 0, 0)
         label.BackgroundTransparency = 1
         label.Text = text
         label.TextColor3 = Colors.Text
-        label.TextSize = 9
-        label.Font = Enum.Font.Code
+        label.TextSize = 10
+        label.Font = Enum.Font.Gotham
         label.TextXAlignment = Enum.TextXAlignment.Left
         label.Parent = container
         
@@ -837,7 +1055,7 @@ local function createAdminGui(player)
         
         btn.MouseButton1Click:Connect(function()
             isEnabled = not isEnabled
-            checkbox.BackgroundColor3 = isEnabled and Colors.CheckboxOn or Colors.CheckboxOff
+            TweenService:Create(checkbox, TweenInfo.new(0.15), {BackgroundColor3 = isEnabled and Colors.CheckboxOn or Colors.CheckboxOff}):Play()
             checkMark.Text = isEnabled and "✓" or ""
             if callback then callback(isEnabled) end
         end)
@@ -851,35 +1069,35 @@ local function createAdminGui(player)
     
     local function createDropdown(parent, label, posX, posY, options, default, callback)
         local container = Instance.new("Frame")
-        container.Size = UDim2.new(0, 120, 0, 32)
+        container.Size = UDim2.new(0, 120, 0, 36)
         container.Position = UDim2.new(0, posX, 0, posY)
         container.BackgroundTransparency = 1
         container.Parent = parent
         
         local labelText = Instance.new("TextLabel")
-        labelText.Size = UDim2.new(1, 0, 0, 12)
+        labelText.Size = UDim2.new(1, 0, 0, 14)
         labelText.BackgroundTransparency = 1
         labelText.Text = label
         labelText.TextColor3 = Colors.TextDim
-        labelText.TextSize = 9
-        labelText.Font = Enum.Font.Code
+        labelText.TextSize = 10
+        labelText.Font = Enum.Font.Gotham
         labelText.TextXAlignment = Enum.TextXAlignment.Left
         labelText.Parent = container
         
         local dropBtn = Instance.new("TextButton")
-        dropBtn.Size = UDim2.new(1, 0, 0, 18)
-        dropBtn.Position = UDim2.new(0, 0, 0, 14)
+        dropBtn.Size = UDim2.new(1, 0, 0, 20)
+        dropBtn.Position = UDim2.new(0, 0, 0, 16)
         dropBtn.BackgroundColor3 = Colors.DropdownBg
         dropBtn.BorderSizePixel = 0
         dropBtn.Text = default
         dropBtn.TextColor3 = Colors.Text
-        dropBtn.TextSize = 9
-        dropBtn.Font = Enum.Font.Code
+        dropBtn.TextSize = 10
+        dropBtn.Font = Enum.Font.Gotham
         dropBtn.AutoButtonColor = false
         dropBtn.Parent = container
         
         local dropCorner = Instance.new("UICorner")
-        dropCorner.CornerRadius = UDim.new(0, 2)
+        dropCorner.CornerRadius = UDim.new(0, 3)
         dropCorner.Parent = dropBtn
         
         local dropStroke = Instance.new("UIStroke")
@@ -888,20 +1106,20 @@ local function createAdminGui(player)
         dropStroke.Parent = dropBtn
         
         local arrow = Instance.new("TextLabel")
-        arrow.Size = UDim2.new(0, 12, 1, 0)
-        arrow.Position = UDim2.new(1, -14, 0, 0)
+        arrow.Size = UDim2.new(0, 14, 1, 0)
+        arrow.Position = UDim2.new(1, -16, 0, 0)
         arrow.BackgroundTransparency = 1
         arrow.Text = "▼"
         arrow.TextColor3 = Colors.Accent
-        arrow.TextSize = 8
-        arrow.Font = Enum.Font.Code
+        arrow.TextSize = 9
+        arrow.Font = Enum.Font.GothamBold
         arrow.Parent = dropBtn
         
         local currentSelection = default
         local isOpen = false
         
         local optionsFrame = Instance.new("Frame")
-        optionsFrame.Size = UDim2.new(1, 0, 0, #options * 18)
+        optionsFrame.Size = UDim2.new(1, 0, 0, #options * 20)
         optionsFrame.Position = UDim2.new(0, 0, 1, 2)
         optionsFrame.BackgroundColor3 = Colors.DropdownBg
         optionsFrame.BorderSizePixel = 0
@@ -910,23 +1128,23 @@ local function createAdminGui(player)
         optionsFrame.Parent = dropBtn
         
         local optCorner = Instance.new("UICorner")
-        optCorner.CornerRadius = UDim.new(0, 2)
+        optCorner.CornerRadius = UDim.new(0, 3)
         optCorner.Parent = optionsFrame
         
         local optStroke = Instance.new("UIStroke")
-        optStroke.Color = Colors.Border
+        optStroke.Color = Colors.Accent
         optStroke.Thickness = 1
         optStroke.Parent = optionsFrame
         
         for i, opt in ipairs(options) do
             local optBtn = Instance.new("TextButton")
-            optBtn.Size = UDim2.new(1, 0, 0, 18)
-            optBtn.Position = UDim2.new(0, 0, 0, (i-1) * 18)
+            optBtn.Size = UDim2.new(1, 0, 0, 20)
+            optBtn.Position = UDim2.new(0, 0, 0, (i-1) * 20)
             optBtn.BackgroundTransparency = 1
             optBtn.Text = opt
             optBtn.TextColor3 = Colors.Text
-            optBtn.TextSize = 9
-            optBtn.Font = Enum.Font.Code
+            optBtn.TextSize = 10
+            optBtn.Font = Enum.Font.Gotham
             optBtn.ZIndex = 11
             optBtn.Parent = optionsFrame
             
@@ -959,41 +1177,41 @@ local function createAdminGui(player)
     
     local function createSlider(parent, label, posX, posY, min, max, default, callback)
         local container = Instance.new("Frame")
-        container.Size = UDim2.new(0, 130, 0, 32)
+        container.Size = UDim2.new(0, 140, 0, 36)
         container.Position = UDim2.new(0, posX, 0, posY)
         container.BackgroundTransparency = 1
         container.Parent = parent
         
         local labelText = Instance.new("TextLabel")
-        labelText.Size = UDim2.new(0.7, 0, 0, 12)
+        labelText.Size = UDim2.new(0.7, 0, 0, 14)
         labelText.BackgroundTransparency = 1
         labelText.Text = label
         labelText.TextColor3 = Colors.TextDim
-        labelText.TextSize = 9
-        labelText.Font = Enum.Font.Code
+        labelText.TextSize = 10
+        labelText.Font = Enum.Font.Gotham
         labelText.TextXAlignment = Enum.TextXAlignment.Left
         labelText.Parent = container
         
         local valueLabel = Instance.new("TextLabel")
-        valueLabel.Size = UDim2.new(0.3, 0, 0, 12)
+        valueLabel.Size = UDim2.new(0.3, 0, 0, 14)
         valueLabel.Position = UDim2.new(0.7, 0, 0, 0)
         valueLabel.BackgroundTransparency = 1
         valueLabel.Text = tostring(default)
-        valueLabel.TextColor3 = Colors.Accent
-        valueLabel.TextSize = 9
-        valueLabel.Font = Enum.Font.Code
+        valueLabel.TextColor3 = Colors.AccentBright
+        valueLabel.TextSize = 10
+        valueLabel.Font = Enum.Font.GothamBold
         valueLabel.TextXAlignment = Enum.TextXAlignment.Right
         valueLabel.Parent = container
         
         local sliderBg = Instance.new("Frame")
-        sliderBg.Size = UDim2.new(1, 0, 0, 6)
-        sliderBg.Position = UDim2.new(0, 0, 0, 18)
+        sliderBg.Size = UDim2.new(1, 0, 0, 8)
+        sliderBg.Position = UDim2.new(0, 0, 0, 20)
         sliderBg.BackgroundColor3 = Colors.SliderBg
         sliderBg.BorderSizePixel = 0
         sliderBg.Parent = container
         
         local sliderCorner = Instance.new("UICorner")
-        sliderCorner.CornerRadius = UDim.new(0, 3)
+        sliderCorner.CornerRadius = UDim.new(0, 4)
         sliderCorner.Parent = sliderBg
         
         local sliderFill = Instance.new("Frame")
@@ -1003,15 +1221,33 @@ local function createAdminGui(player)
         sliderFill.Parent = sliderBg
         
         local fillCorner = Instance.new("UICorner")
-        fillCorner.CornerRadius = UDim.new(0, 3)
+        fillCorner.CornerRadius = UDim.new(0, 4)
         fillCorner.Parent = sliderFill
+        
+        -- Slider knob
+        local knob = Instance.new("Frame")
+        knob.Size = UDim2.new(0, 14, 0, 14)
+        knob.Position = UDim2.new((default - min) / (max - min), -7, 0.5, -7)
+        knob.BackgroundColor3 = Colors.AccentBright
+        knob.BorderSizePixel = 0
+        knob.ZIndex = 2
+        knob.Parent = sliderBg
+        
+        local knobCorner = Instance.new("UICorner")
+        knobCorner.CornerRadius = UDim.new(1, 0)
+        knobCorner.Parent = knob
+        
+        local knobStroke = Instance.new("UIStroke")
+        knobStroke.Color = Color3.fromRGB(255, 255, 255)
+        knobStroke.Thickness = 2
+        knobStroke.Parent = knob
         
         local currentValue = default
         local dragging = false
         
         local sliderBtn = Instance.new("TextButton")
-        sliderBtn.Size = UDim2.new(1, 0, 1, 10)
-        sliderBtn.Position = UDim2.new(0, 0, 0, -5)
+        sliderBtn.Size = UDim2.new(1, 0, 1, 14)
+        sliderBtn.Position = UDim2.new(0, 0, 0, -7)
         sliderBtn.BackgroundTransparency = 1
         sliderBtn.Text = ""
         sliderBtn.Parent = sliderBg
@@ -1033,6 +1269,7 @@ local function createAdminGui(player)
                 relativeX = math.clamp(relativeX, 0, 1)
                 currentValue = math.floor(min + relativeX * (max - min))
                 sliderFill.Size = UDim2.new(relativeX, 0, 1, 0)
+                knob.Position = UDim2.new(relativeX, -7, 0.5, -7)
                 valueLabel.Text = tostring(currentValue)
                 if callback then callback(currentValue) end
             end
@@ -1043,20 +1280,20 @@ local function createAdminGui(player)
     
     local function createButton(parent, text, posX, posY, width, callback)
         local btn = Instance.new("TextButton")
-        btn.Size = UDim2.new(0, width, 0, 20)
+        btn.Size = UDim2.new(0, width, 0, 22)
         btn.Position = UDim2.new(0, posX, 0, posY)
         btn.BackgroundColor3 = Colors.AccentDark
-        btn.BackgroundTransparency = 0.5
+        btn.BackgroundTransparency = 0.3
         btn.BorderSizePixel = 0
         btn.Text = text
         btn.TextColor3 = Colors.Text
-        btn.TextSize = 9
-        btn.Font = Enum.Font.Code
+        btn.TextSize = 10
+        btn.Font = Enum.Font.GothamMedium
         btn.AutoButtonColor = false
         btn.Parent = parent
         
         local btnCorner = Instance.new("UICorner")
-        btnCorner.CornerRadius = UDim.new(0, 2)
+        btnCorner.CornerRadius = UDim.new(0, 3)
         btnCorner.Parent = btn
         
         local btnStroke = Instance.new("UIStroke")
@@ -1065,11 +1302,11 @@ local function createAdminGui(player)
         btnStroke.Parent = btn
         
         btn.MouseEnter:Connect(function()
-            TweenService:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = Colors.Accent}):Play()
+            TweenService:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = Colors.Accent, BackgroundTransparency = 0}):Play()
         end)
         
         btn.MouseLeave:Connect(function()
-            TweenService:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = Colors.AccentDark}):Play()
+            TweenService:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = Colors.AccentDark, BackgroundTransparency = 0.3}):Play()
         end)
         
         btn.MouseButton1Click:Connect(callback)
@@ -1079,14 +1316,14 @@ local function createAdminGui(player)
     
     local function createInput(parent, placeholder, posX, posY, width)
         local inputFrame = Instance.new("Frame")
-        inputFrame.Size = UDim2.new(0, width, 0, 18)
+        inputFrame.Size = UDim2.new(0, width, 0, 20)
         inputFrame.Position = UDim2.new(0, posX, 0, posY)
         inputFrame.BackgroundColor3 = Colors.DropdownBg
         inputFrame.BorderSizePixel = 0
         inputFrame.Parent = parent
         
         local inputCorner = Instance.new("UICorner")
-        inputCorner.CornerRadius = UDim.new(0, 2)
+        inputCorner.CornerRadius = UDim.new(0, 3)
         inputCorner.Parent = inputFrame
         
         local inputStroke = Instance.new("UIStroke")
@@ -1095,15 +1332,15 @@ local function createAdminGui(player)
         inputStroke.Parent = inputFrame
         
         local textBox = Instance.new("TextBox")
-        textBox.Size = UDim2.new(1, -8, 1, 0)
-        textBox.Position = UDim2.new(0, 4, 0, 0)
+        textBox.Size = UDim2.new(1, -10, 1, 0)
+        textBox.Position = UDim2.new(0, 5, 0, 0)
         textBox.BackgroundTransparency = 1
         textBox.Text = ""
         textBox.PlaceholderText = placeholder
         textBox.TextColor3 = Colors.Text
         textBox.PlaceholderColor3 = Colors.TextDim
-        textBox.TextSize = 9
-        textBox.Font = Enum.Font.Code
+        textBox.TextSize = 10
+        textBox.Font = Enum.Font.Gotham
         textBox.TextXAlignment = Enum.TextXAlignment.Left
         textBox.ClearTextOnFocus = false
         textBox.Parent = inputFrame
@@ -1132,104 +1369,100 @@ local function createAdminGui(player)
     tabPages["Tracking"] = trackingPage
     
     -- Values Section (left)
-    local valuesSection = createSection(trackingPage, "Values", 0, 210, 100)
+    local valuesSection = createSection(trackingPage, "Values", 0, 220, 110)
     
-    createCheckbox(valuesSection, "Enabled", 8, 14, false, function(enabled)
+    createCheckbox(valuesSection, "Enabled", 8, 16, false, function(enabled)
         if enabled then
             local targetName = playerInput and playerInput.Text or ""
             if targetName ~= "" then
                 local target = findPlayer(targetName)
                 if target and isValidTarget(player, target) then
-                    statusLabel.Text = "Tracking: " .. target.Name
+                    statusLabel.Text = "🎯 Tracking: " .. target.Name
                 end
             end
         else
             stopTracking(player)
-            statusLabel.Text = "Tracking disabled"
+            statusLabel.Text = "✓ Tracking disabled"
         end
     end)
     
-    createCheckbox(valuesSection, "Toggle", 8, 32, false, function(enabled)
+    createCheckbox(valuesSection, "Toggle Mode", 8, 36, false, function(enabled)
         trackingMode[player.UserId] = enabled and "toggle" or "hold"
     end)
     
-    local _, lockPartDropdown = createDropdown(valuesSection, "Lock Part", 8, 50, {"Head", "Torso", "Random"}, "Head", function(val)
+    local _, lockPartDropdown = createDropdown(valuesSection, "Lock Part", 8, 56, {"Head", "Torso", "Random"}, "Head", function(val)
         -- Store lock part preference
     end)
     
-    -- Hotkey Section
-    local hotkeySection = createSection(trackingPage, "Hotkey", 105, 210, 55)
-    
-    local _, hotkeyInput = createInput(hotkeySection, "MouseButton2", 8, 14, 120)
-    createSlider(hotkeySection, "Sensitivity:", 8, 32, 0, 10, 6, function(val)
+    createSlider(valuesSection, "Sensitivity:", 8, 90, 1, 10, 6, function(val)
         -- Sensitivity setting
     end)
     
     -- Checks Section
-    local checksSection = createSection(trackingPage, "Checks", 165, 210, 65)
+    local checksSection = createSection(trackingPage, "Checks", 120, 220, 80)
     
-    createCheckbox(checksSection, "Team Check", 8, 14, true, nil)
-    createCheckbox(checksSection, "Wall Check", 8, 32, true, nil)
-    createCheckbox(checksSection, "Alive Check", 8, 50, true, nil)
+    createCheckbox(checksSection, "Team Check", 8, 16, true, nil)
+    createCheckbox(checksSection, "Wall Check", 8, 36, true, nil)
+    createCheckbox(checksSection, "Alive Check", 8, 56, true, nil)
     
     -- Target Info Section (right)
-    local targetSection = createSection(trackingPage, "Target Info", 0, 210, 150)
-    targetSection.Position = UDim2.new(0, 220, 0, 0)
+    local targetSection = createSection(trackingPage, "Target Info", 0, 220, 160)
+    targetSection.Position = UDim2.new(0, 235, 0, 0)
     
     local targetNameLabel = Instance.new("TextLabel")
-    targetNameLabel.Size = UDim2.new(1, -16, 0, 16)
-    targetNameLabel.Position = UDim2.new(0, 8, 0, 14)
+    targetNameLabel.Size = UDim2.new(1, -16, 0, 18)
+    targetNameLabel.Position = UDim2.new(0, 8, 0, 16)
     targetNameLabel.BackgroundTransparency = 1
-    targetNameLabel.Text = "Target: None"
+    targetNameLabel.Text = "👤 Target: None"
     targetNameLabel.TextColor3 = Colors.AccentBright
-    targetNameLabel.TextSize = 10
-    targetNameLabel.Font = Enum.Font.Code
+    targetNameLabel.TextSize = 11
+    targetNameLabel.Font = Enum.Font.GothamBold
     targetNameLabel.TextXAlignment = Enum.TextXAlignment.Left
     targetNameLabel.Parent = targetSection
     
     local targetCoordsLabel = Instance.new("TextLabel")
     targetCoordsLabel.Size = UDim2.new(1, -16, 0, 14)
-    targetCoordsLabel.Position = UDim2.new(0, 8, 0, 32)
+    targetCoordsLabel.Position = UDim2.new(0, 8, 0, 36)
     targetCoordsLabel.BackgroundTransparency = 1
-    targetCoordsLabel.Text = "X: 0 | Y: 0 | Z: 0"
+    targetCoordsLabel.Text = "📍 X: 0 | Y: 0 | Z: 0"
     targetCoordsLabel.TextColor3 = Colors.Warning
-    targetCoordsLabel.TextSize = 9
-    targetCoordsLabel.Font = Enum.Font.Code
+    targetCoordsLabel.TextSize = 10
+    targetCoordsLabel.Font = Enum.Font.Gotham
     targetCoordsLabel.TextXAlignment = Enum.TextXAlignment.Left
     targetCoordsLabel.Parent = targetSection
     
     local targetDistLabel = Instance.new("TextLabel")
     targetDistLabel.Size = UDim2.new(0.5, -8, 0, 14)
-    targetDistLabel.Position = UDim2.new(0, 8, 0, 48)
+    targetDistLabel.Position = UDim2.new(0, 8, 0, 52)
     targetDistLabel.BackgroundTransparency = 1
-    targetDistLabel.Text = "Distance: 0m"
+    targetDistLabel.Text = "📏 Distance: 0m"
     targetDistLabel.TextColor3 = Colors.Text
-    targetDistLabel.TextSize = 9
-    targetDistLabel.Font = Enum.Font.Code
+    targetDistLabel.TextSize = 10
+    targetDistLabel.Font = Enum.Font.Gotham
     targetDistLabel.TextXAlignment = Enum.TextXAlignment.Left
     targetDistLabel.Parent = targetSection
     
     local targetVisLabel = Instance.new("TextLabel")
     targetVisLabel.Size = UDim2.new(0.5, -8, 0, 14)
-    targetVisLabel.Position = UDim2.new(0.5, 0, 0, 48)
+    targetVisLabel.Position = UDim2.new(0.5, 0, 0, 52)
     targetVisLabel.BackgroundTransparency = 1
-    targetVisLabel.Text = "◉ VISIBLE"
+    targetVisLabel.Text = "👁 VISIBLE"
     targetVisLabel.TextColor3 = Colors.Success
-    targetVisLabel.TextSize = 9
-    targetVisLabel.Font = Enum.Font.Code
+    targetVisLabel.TextSize = 10
+    targetVisLabel.Font = Enum.Font.GothamBold
     targetVisLabel.TextXAlignment = Enum.TextXAlignment.Left
     targetVisLabel.Parent = targetSection
     
     -- Health bar in target section
     local targetHealthBg = Instance.new("Frame")
-    targetHealthBg.Size = UDim2.new(1, -16, 0, 8)
-    targetHealthBg.Position = UDim2.new(0, 8, 0, 68)
+    targetHealthBg.Size = UDim2.new(1, -16, 0, 10)
+    targetHealthBg.Position = UDim2.new(0, 8, 0, 72)
     targetHealthBg.BackgroundColor3 = Colors.SliderBg
     targetHealthBg.BorderSizePixel = 0
     targetHealthBg.Parent = targetSection
     
     local targetHealthCorner = Instance.new("UICorner")
-    targetHealthCorner.CornerRadius = UDim.new(0, 4)
+    targetHealthCorner.CornerRadius = UDim.new(0, 5)
     targetHealthCorner.Parent = targetHealthBg
     
     local targetHealthFill = Instance.new("Frame")
@@ -1239,16 +1472,16 @@ local function createAdminGui(player)
     targetHealthFill.Parent = targetHealthBg
     
     local targetHealthFillCorner = Instance.new("UICorner")
-    targetHealthFillCorner.CornerRadius = UDim.new(0, 4)
+    targetHealthFillCorner.CornerRadius = UDim.new(0, 5)
     targetHealthFillCorner.Parent = targetHealthFill
     
     -- Player input
-    local _, playerInput = createInput(targetSection, "Player name...", 8, 90, 120)
+    local _, playerInput = createInput(targetSection, "Enter player name...", 8, 95, 130)
     
-    createButton(targetSection, "Track", 8, 115, 60, function()
+    createButton(targetSection, "🎯 Track", 8, 122, 65, function()
         local targetName = playerInput.Text
         if targetName == "" then
-            statusLabel.Text = "Enter a player name"
+            statusLabel.Text = "⚠ Enter a player name"
             return
         end
         
@@ -1256,17 +1489,17 @@ local function createAdminGui(player)
         
         local target = findPlayer(targetName)
         if not target then
-            statusLabel.Text = "Player not found"
+            statusLabel.Text = "⚠ Player not found"
             return
         end
         
         if not isValidTarget(player, target) then
-            statusLabel.Text = "Invalid target"
+            statusLabel.Text = "⚠ Invalid target"
             return
         end
         
-        statusLabel.Text = "Tracking: " .. target.Name
-        targetNameLabel.Text = "Target: " .. target.Name
+        statusLabel.Text = "🎯 Tracking: " .. target.Name
+        targetNameLabel.Text = "👤 Target: " .. target.Name
         
         local camera = Workspace.CurrentCamera
         
@@ -1289,15 +1522,15 @@ local function createAdminGui(player)
                 if canSee then
                     local lookAtCFrame = CFrame.new(camera.CFrame.Position, targetPos)
                     camera.CFrame = camera.CFrame:Lerp(lookAtCFrame, 0.1)
-                    targetVisLabel.Text = "◉ VISIBLE"
+                    targetVisLabel.Text = "👁 VISIBLE"
                     targetVisLabel.TextColor3 = Colors.Success
                 else
-                    targetVisLabel.Text = "◎ COVERED"
+                    targetVisLabel.Text = "🚫 HIDDEN"
                     targetVisLabel.TextColor3 = Colors.Danger
                 end
                 
-                targetCoordsLabel.Text = string.format("X: %.0f | Y: %.0f | Z: %.0f", targetPos.X, targetPos.Y, targetPos.Z)
-                targetDistLabel.Text = string.format("Distance: %.0fm", distance)
+                targetCoordsLabel.Text = string.format("📍 X: %.0f | Y: %.0f | Z: %.0f", targetPos.X, targetPos.Y, targetPos.Z)
+                targetDistLabel.Text = string.format("📏 Distance: %.0fm", distance)
                 
                 if targetHumanoid then
                     local healthPercent = targetHumanoid.Health / targetHumanoid.MaxHealth
@@ -1320,10 +1553,10 @@ local function createAdminGui(player)
         }
     end)
     
-    createButton(targetSection, "Stop", 75, 115, 55, function()
+    createButton(targetSection, "⬛ Stop", 80, 122, 60, function()
         if stopTracking(player) then
-            targetNameLabel.Text = "Target: None"
-            statusLabel.Text = "Tracking stopped"
+            targetNameLabel.Text = "👤 Target: None"
+            statusLabel.Text = "✓ Tracking stopped"
         end
     end)
     
@@ -1337,20 +1570,20 @@ local function createAdminGui(player)
     tabPages["ESP"] = espPage
     
     -- ESP Settings Section
-    local espSettingsSection = createSection(espPage, "ESP Settings", 0, 210, 140)
+    local espSettingsSection = createSection(espPage, "ESP Settings", 0, 220, 180)
     
     local espEnabledCheck
-    espEnabledCheck = createCheckbox(espSettingsSection, "Enabled", 8, 14, false, function(enabled)
+    espEnabledCheck = createCheckbox(espSettingsSection, "⚡ Enabled", 8, 16, false, function(enabled)
         if enabled then
             enableESP(player)
-            statusLabel.Text = "ESP Enabled"
+            statusLabel.Text = "✓ ESP Enabled"
         else
             clearAllESP(player)
-            statusLabel.Text = "ESP Disabled"
+            statusLabel.Text = "✓ ESP Disabled"
         end
     end)
     
-    createCheckbox(espSettingsSection, "Box Highlight", 8, 32, true, function(enabled)
+    createCheckbox(espSettingsSection, "Box Highlight", 8, 36, true, function(enabled)
         espSettings[player.UserId].boxEnabled = enabled
         if espEnabled[player.UserId] then
             clearAllESP(player)
@@ -1358,7 +1591,7 @@ local function createAdminGui(player)
         end
     end)
     
-    createCheckbox(espSettingsSection, "Tracers", 8, 50, true, function(enabled)
+    createCheckbox(espSettingsSection, "Tracers", 8, 56, true, function(enabled)
         espSettings[player.UserId].tracerEnabled = enabled
         if espEnabled[player.UserId] then
             clearAllESP(player)
@@ -1366,7 +1599,7 @@ local function createAdminGui(player)
         end
     end)
     
-    createCheckbox(espSettingsSection, "Names", 8, 68, true, function(enabled)
+    createCheckbox(espSettingsSection, "Names", 8, 76, true, function(enabled)
         espSettings[player.UserId].nameEnabled = enabled
         if espEnabled[player.UserId] then
             clearAllESP(player)
@@ -1374,7 +1607,7 @@ local function createAdminGui(player)
         end
     end)
     
-    createCheckbox(espSettingsSection, "Health Bars", 8, 86, true, function(enabled)
+    createCheckbox(espSettingsSection, "Health Bars", 8, 96, true, function(enabled)
         espSettings[player.UserId].healthEnabled = enabled
         if espEnabled[player.UserId] then
             clearAllESP(player)
@@ -1382,7 +1615,7 @@ local function createAdminGui(player)
         end
     end)
     
-    createCheckbox(espSettingsSection, "Distance", 8, 104, true, function(enabled)
+    createCheckbox(espSettingsSection, "Distance", 8, 116, true, function(enabled)
         espSettings[player.UserId].distanceEnabled = enabled
         if espEnabled[player.UserId] then
             clearAllESP(player)
@@ -1390,12 +1623,45 @@ local function createAdminGui(player)
         end
     end)
     
-    -- ESP Appearance Section
-    local espAppearSection = createSection(espPage, "Appearance", 0, 210, 100)
-    espAppearSection.Position = UDim2.new(0, 220, 0, 0)
+    createCheckbox(espSettingsSection, "Head Dot", 8, 136, true, function(enabled)
+        espSettings[player.UserId].headDotEnabled = enabled
+        if espEnabled[player.UserId] then
+            clearAllESP(player)
+            enableESP(player)
+        end
+    end)
     
-    createSlider(espAppearSection, "Transparency:", 8, 14, 0, 10, 5, nil)
-    createSlider(espAppearSection, "Thickness:", 8, 50, 1, 5, 1, nil)
+    createCheckbox(espSettingsSection, "Weapon Info", 8, 156, true, function(enabled)
+        espSettings[player.UserId].weaponEnabled = enabled
+        if espEnabled[player.UserId] then
+            clearAllESP(player)
+            enableESP(player)
+        end
+    end)
+    
+    -- ESP Appearance Section
+    local espAppearSection = createSection(espPage, "Appearance", 0, 220, 120)
+    espAppearSection.Position = UDim2.new(0, 235, 0, 0)
+    
+    createSlider(espAppearSection, "Fill Transparency:", 8, 16, 0, 10, 8, nil)
+    createSlider(espAppearSection, "Outline Opacity:", 8, 56, 0, 10, 10, nil)
+    createSlider(espAppearSection, "Tracer Width:", 8, 96, 1, 5, 2, nil)
+    
+    -- ESP Color Section
+    local espColorSection = createSection(espPage, "Distance Colors", 130, 220, 70)
+    espColorSection.Position = UDim2.new(0, 235, 0, 0)
+    
+    local colorInfo = Instance.new("TextLabel")
+    colorInfo.Size = UDim2.new(1, -16, 0, 50)
+    colorInfo.Position = UDim2.new(0, 8, 0, 16)
+    colorInfo.BackgroundTransparency = 1
+    colorInfo.Text = "🔴 < 30m  |  🟠 < 75m\n🟡 < 150m  |  🟢 > 150m"
+    colorInfo.TextColor3 = Colors.Text
+    colorInfo.TextSize = 10
+    colorInfo.Font = Enum.Font.Gotham
+    colorInfo.TextXAlignment = Enum.TextXAlignment.Left
+    colorInfo.TextYAlignment = Enum.TextYAlignment.Top
+    colorInfo.Parent = espColorSection
     
     -- ===== VISUALS TAB =====
     local visualsPage = Instance.new("Frame")
@@ -1407,26 +1673,25 @@ local function createAdminGui(player)
     tabPages["Visuals"] = visualsPage
     
     -- FOV Section
-    local fovSection = createSection(visualsPage, "Field Of View", 0, 210, 80)
+    local fovSection = createSection(visualsPage, "Field Of View", 0, 220, 100)
     
-    createCheckbox(fovSection, "Enabled", 8, 14, false, nil)
-    createCheckbox(fovSection, "Visible", 8, 32, true, nil)
-    createSlider(fovSection, "Amount:", 8, 50, 50, 120, 90, nil)
+    createCheckbox(fovSection, "Enabled", 8, 16, false, nil)
+    createCheckbox(fovSection, "Visible", 8, 36, true, nil)
+    createSlider(fovSection, "FOV Amount:", 8, 56, 50, 120, 90, nil)
     
     -- FOV Circle Appearance
-    local fovAppearSection = createSection(visualsPage, "FOV Circle Appearance", 0, 210, 100)
-    fovAppearSection.Position = UDim2.new(0, 220, 0, 0)
+    local fovAppearSection = createSection(visualsPage, "FOV Appearance", 0, 220, 120)
+    fovAppearSection.Position = UDim2.new(0, 235, 0, 0)
     
-    createCheckbox(fovAppearSection, "Filled", 8, 14, false, nil)
-    createSlider(fovAppearSection, "Transparency:", 8, 32, 0, 10, 5, nil)
-    createSlider(fovAppearSection, "Sides:", 8, 58, 3, 64, 60, nil)
-    createSlider(fovAppearSection, "Thickness:", 8, 84, 1, 5, 1, nil)
+    createCheckbox(fovAppearSection, "Filled", 8, 16, false, nil)
+    createSlider(fovAppearSection, "Transparency:", 8, 36, 0, 10, 5, nil)
+    createSlider(fovAppearSection, "Sides:", 8, 72, 3, 64, 60, nil)
     
     -- Third Person Section
-    local thirdPersonSection = createSection(visualsPage, "Third Person", 90, 210, 55)
+    local thirdPersonSection = createSection(visualsPage, "Third Person", 110, 220, 70)
     
-    createCheckbox(thirdPersonSection, "Enable Third Person", 8, 14, false, nil)
-    createSlider(thirdPersonSection, "Sensitivity:", 8, 32, 0, 10, 3, nil)
+    createCheckbox(thirdPersonSection, "Enable", 8, 16, false, nil)
+    createSlider(thirdPersonSection, "Sensitivity:", 8, 36, 0, 10, 3, nil)
     
     -- ===== TELEPORT TAB =====
     local teleportPage = Instance.new("Frame")
@@ -1438,20 +1703,20 @@ local function createAdminGui(player)
     tabPages["Teleport"] = teleportPage
     
     -- Teleport Section
-    local tpSection = createSection(teleportPage, "Teleport Controls", 0, 210, 140)
+    local tpSection = createSection(teleportPage, "Teleport Controls", 0, 220, 160)
     
-    local _, tpInput = createInput(tpSection, "Player name...", 8, 14, 120)
+    local _, tpInput = createInput(tpSection, "Enter player name...", 8, 16, 140)
     
-    createButton(tpSection, "Teleport To", 8, 40, 90, function()
+    createButton(tpSection, "🚀 Teleport To", 8, 45, 100, function()
         local targetName = tpInput.Text
         if targetName == "" then
-            statusLabel.Text = "Enter a player name"
+            statusLabel.Text = "⚠ Enter a player name"
             return
         end
         
         local target = findPlayer(targetName)
         if not target then
-            statusLabel.Text = "Player not found"
+            statusLabel.Text = "⚠ Player not found"
             return
         end
         
@@ -1464,21 +1729,21 @@ local function createAdminGui(player)
             
             if adminHRP and targetHRP then
                 adminHRP.CFrame = targetHRP.CFrame * CFrame.new(0, 0, 3)
-                statusLabel.Text = "Teleported to " .. target.Name
+                statusLabel.Text = "✓ Teleported to " .. target.Name
             end
         end
     end)
     
-    createButton(tpSection, "Bring Player", 8, 68, 90, function()
+    createButton(tpSection, "📥 Bring Player", 8, 75, 100, function()
         local targetName = tpInput.Text
         if targetName == "" then
-            statusLabel.Text = "Enter a player name"
+            statusLabel.Text = "⚠ Enter a player name"
             return
         end
         
         local target = findPlayer(targetName)
         if not target then
-            statusLabel.Text = "Player not found"
+            statusLabel.Text = "⚠ Player not found"
             return
         end
         
@@ -1491,12 +1756,12 @@ local function createAdminGui(player)
             
             if adminHRP and targetHRP then
                 targetHRP.CFrame = adminHRP.CFrame * CFrame.new(0, 0, 3)
-                statusLabel.Text = "Brought " .. target.Name
+                statusLabel.Text = "✓ Brought " .. target.Name
             end
         end
     end)
     
-    createButton(tpSection, "Locate All", 8, 96, 90, function()
+    createButton(tpSection, "📍 Locate All", 8, 105, 100, function()
         local count = 0
         for _, p in ipairs(Players:GetPlayers()) do
             if isValidTarget(player, p) then
@@ -1506,12 +1771,12 @@ local function createAdminGui(player)
                     if hrp then
                         count = count + 1
                         local canSee = hasLineOfSight(player, p)
-                        print(string.format("[LOCATE] %s %s: X:%.0f Y:%.0f Z:%.0f", canSee and "◉" or "◎", p.Name, hrp.Position.X, hrp.Position.Y, hrp.Position.Z))
+                        print(string.format("[LOCATE] %s %s: X:%.0f Y:%.0f Z:%.0f", canSee and "👁" or "🚫", p.Name, hrp.Position.X, hrp.Position.Y, hrp.Position.Z))
                     end
                 end
             end
         end
-        statusLabel.Text = "Located " .. count .. " enemies (console)"
+        statusLabel.Text = "✓ Located " .. count .. " enemies (check console)"
     end)
     
     -- ===== FUNCTIONS TAB =====
@@ -1524,12 +1789,12 @@ local function createAdminGui(player)
     tabPages["Functions"] = functionsPage
     
     -- Character Section
-    local charSection = createSection(functionsPage, "Character", 0, 210, 120)
+    local charSection = createSection(functionsPage, "Character", 0, 220, 150)
     
     local godModeEnabled = false
     local godModeConnection = nil
     
-    createCheckbox(charSection, "God Mode", 8, 14, false, function(enabled)
+    createCheckbox(charSection, "💛 God Mode", 8, 16, false, function(enabled)
         godModeEnabled = enabled
         
         if enabled then
@@ -1542,38 +1807,36 @@ local function createAdminGui(player)
                     end
                 end
             end)
-            statusLabel.Text = "God Mode enabled"
+            statusLabel.Text = "✓ God Mode enabled"
         else
             if godModeConnection then
                 godModeConnection:Disconnect()
                 godModeConnection = nil
             end
-            statusLabel.Text = "God Mode disabled"
+            statusLabel.Text = "✓ God Mode disabled"
         end
     end)
     
-    createCheckbox(charSection, "Speed Boost", 8, 32, false, function(enabled)
+    createCheckbox(charSection, "⚡ Speed Boost", 8, 36, false, function(enabled)
         local char = player.Character
         if char then
             local humanoid = char:FindFirstChild("Humanoid")
             if humanoid then
                 humanoid.WalkSpeed = enabled and 100 or 16
-                statusLabel.Text = enabled and "Speed Boost ON" or "Speed Boost OFF"
+                statusLabel.Text = enabled and "✓ Speed Boost ON" or "✓ Speed Boost OFF"
             end
         end
     end)
     
-    createCheckbox(charSection, "Infinite Jump", 8, 50, false, function(enabled)
-        -- Infinite jump logic
-        statusLabel.Text = enabled and "Inf Jump ON" or "Inf Jump OFF"
+    createCheckbox(charSection, "🦘 Infinite Jump", 8, 56, false, function(enabled)
+        statusLabel.Text = enabled and "✓ Inf Jump ON" or "✓ Inf Jump OFF"
     end)
     
-    createCheckbox(charSection, "No Clip", 8, 68, false, function(enabled)
-        -- No clip logic
-        statusLabel.Text = enabled and "No Clip ON" or "No Clip OFF"
+    createCheckbox(charSection, "👻 No Clip", 8, 76, false, function(enabled)
+        statusLabel.Text = enabled and "✓ No Clip ON" or "✓ No Clip OFF"
     end)
     
-    createSlider(charSection, "Walk Speed:", 8, 88, 16, 200, 16, function(val)
+    createSlider(charSection, "Walk Speed:", 8, 100, 16, 200, 16, function(val)
         local char = player.Character
         if char then
             local humanoid = char:FindFirstChild("Humanoid")
@@ -1584,10 +1847,10 @@ local function createAdminGui(player)
     end)
     
     -- Items Section
-    local itemsSection = createSection(functionsPage, "Items", 0, 210, 70)
-    itemsSection.Position = UDim2.new(0, 220, 0, 0)
+    local itemsSection = createSection(functionsPage, "Items & Stats", 0, 220, 90)
+    itemsSection.Position = UDim2.new(0, 235, 0, 0)
     
-    createButton(itemsSection, "Unlock All", 8, 14, 100, function()
+    createButton(itemsSection, "🔓 Unlock All", 8, 16, 110, function()
         local itemsFolder = ServerStorage:FindFirstChild("Items")
         if itemsFolder then
             for _, item in ipairs(itemsFolder:GetChildren()) do
@@ -1595,10 +1858,10 @@ local function createAdminGui(player)
                 clone.Parent = player.Backpack
             end
         end
-        statusLabel.Text = "Items unlocked"
+        statusLabel.Text = "✓ Items unlocked"
     end)
     
-    createButton(itemsSection, "Max Stats", 8, 40, 100, function()
+    createButton(itemsSection, "📊 Max Stats", 8, 46, 110, function()
         local leaderstats = player:FindFirstChild("leaderstats")
         if leaderstats then
             for _, stat in ipairs(leaderstats:GetChildren()) do
@@ -1607,15 +1870,17 @@ local function createAdminGui(player)
                 end
             end
         end
-        statusLabel.Text = "Stats maxed"
+        statusLabel.Text = "✓ Stats maxed"
     end)
     
     -- Tab switching logic
     for tabName, tabBtn in pairs(tabButtons) do
         tabBtn.MouseButton1Click:Connect(function()
             for name, btn in pairs(tabButtons) do
-                btn.BackgroundColor3 = name == tabName and Colors.TabActive or Colors.TabInactive
-                btn.TextColor3 = name == tabName and Colors.AccentBright or Colors.TextDim
+                TweenService:Create(btn, TweenInfo.new(0.15), {
+                    BackgroundColor3 = name == tabName and Colors.TabActive or Colors.TabInactive,
+                    TextColor3 = name == tabName and Colors.AccentBright or Colors.TextDim
+                }):Play()
             end
             
             for name, page in pairs(tabPages) do
@@ -1632,12 +1897,12 @@ local function createAdminGui(player)
         
         local nearestPlayer, distance = getNearestValidTarget(player)
         if not nearestPlayer then
-            statusLabel.Text = "No visible enemies nearby"
+            statusLabel.Text = "⚠ No visible enemies nearby"
             return
         end
         
-        statusLabel.Text = "RMB tracking: " .. nearestPlayer.Name
-        targetNameLabel.Text = "Target: " .. nearestPlayer.Name .. " (RMB)"
+        statusLabel.Text = "🎯 RMB tracking: " .. nearestPlayer.Name
+        targetNameLabel.Text = "👤 Target: " .. nearestPlayer.Name .. " (RMB)"
         
         local camera = Workspace.CurrentCamera
         
@@ -1664,10 +1929,10 @@ local function createAdminGui(player)
                 local lookAtCFrame = CFrame.new(camera.CFrame.Position, targetPos)
                 camera.CFrame = camera.CFrame:Lerp(lookAtCFrame, 0.2)
                 
-                targetNameLabel.Text = "Target: " .. currentNearest.Name .. " (RMB)"
-                targetCoordsLabel.Text = string.format("X: %.0f | Y: %.0f | Z: %.0f", targetPos.X, targetPos.Y, targetPos.Z)
-                targetDistLabel.Text = string.format("Distance: %.0fm", dist)
-                targetVisLabel.Text = "◉ LOCKED"
+                targetNameLabel.Text = "👤 Target: " .. currentNearest.Name .. " (RMB)"
+                targetCoordsLabel.Text = string.format("📍 X: %.0f | Y: %.0f | Z: %.0f", targetPos.X, targetPos.Y, targetPos.Z)
+                targetDistLabel.Text = string.format("📏 Distance: %.0fm", dist)
+                targetVisLabel.Text = "🔒 LOCKED"
                 targetVisLabel.TextColor3 = Colors.Success
                 
                 if targetHumanoid then
@@ -1693,8 +1958,8 @@ local function createAdminGui(player)
     local function stopRMBTrackingUI()
         stopRightMouseTracking(player)
         if not activeTracking[player.UserId] then
-            targetNameLabel.Text = "Target: None"
-            statusLabel.Text = "Ready | RMB to track nearest"
+            targetNameLabel.Text = "👤 Target: None"
+            statusLabel.Text = "✓ Ready | RCtrl to toggle | RMB to track"
         end
     end
     
@@ -1727,11 +1992,6 @@ local function createAdminGui(player)
                 stopRMBTrackingUI()
             end
         end
-    end)
-    
-    -- Settings button
-    settingsBtn.MouseButton1Click:Connect(function()
-        mainFrame.Visible = false
     end)
 end
 
