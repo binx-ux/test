@@ -1,31 +1,14 @@
 -- ServerScriptService
--- AIRHUB Style Admin Panel - IMPROVED ESP VERSION
+-- Clean Cheat-Style Admin Panel V3
 
 -- Services
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
-local Lighting = game:GetService("Lighting")
 local Workspace = game:GetService("Workspace")
 local TweenService = game:GetService("TweenService")
-local Debris = game:GetService("Debris")
-local SoundService = game:GetService("SoundService")
 local UserInputService = game:GetService("UserInputService")
-local HttpService = game:GetService("HttpService")
-local MarketplaceService = game:GetService("MarketplaceService")
-local TeleportService = game:GetService("TeleportService")
-local BadgeService = game:GetService("BadgeService")
-local DataStoreService = game:GetService("DataStoreService")
-local PhysicsService = game:GetService("PhysicsService")
-local PathfindingService = game:GetService("PathfindingService")
-local Chat = game:GetService("Chat")
-local Teams = game:GetService("Teams")
-local StarterGui = game:GetService("StarterGui")
-local StarterPack = game:GetService("StarterPack")
-local StarterPlayer = game:GetService("StarterPlayer")
-local ContextActionService = game:GetService("ContextActionService")
-local CoreGui = game:GetService("CoreGui")
 
 local adminIds = {
     3905919471, -- Your admin
@@ -38,101 +21,106 @@ local rightMouseTracking = {}
 local espSettings = {}
 local trackingMode = {}
 local toggleTrackingActive = {}
+local camTrackingSettings = {}
 
--- AIRHUB Color Scheme
+-- Clean Color Scheme
 local Colors = {
-    Background = Color3.fromRGB(25, 15, 35),
-    BackgroundTransparent = Color3.fromRGB(30, 20, 45),
+    Background = Color3.fromRGB(20, 20, 25),
+    BackgroundLight = Color3.fromRGB(30, 30, 38),
     Accent = Color3.fromRGB(130, 80, 200),
     AccentBright = Color3.fromRGB(160, 100, 255),
-    AccentDark = Color3.fromRGB(80, 50, 140),
-    Border = Color3.fromRGB(60, 40, 90),
-    Text = Color3.fromRGB(220, 210, 240),
-    TextDim = Color3.fromRGB(140, 130, 160),
-    TabActive = Color3.fromRGB(50, 30, 80),
-    TabInactive = Color3.fromRGB(35, 25, 55),
-    CheckboxOn = Color3.fromRGB(130, 80, 200),
-    CheckboxOff = Color3.fromRGB(50, 40, 70),
-    SliderFill = Color3.fromRGB(130, 80, 200),
-    SliderBg = Color3.fromRGB(40, 30, 60),
-    DropdownBg = Color3.fromRGB(35, 25, 55),
-    Success = Color3.fromRGB(80, 200, 120),
-    Warning = Color3.fromRGB(255, 180, 80),
-    Danger = Color3.fromRGB(255, 80, 80),
+    Border = Color3.fromRGB(50, 50, 60),
+    Text = Color3.fromRGB(220, 220, 230),
+    TextDim = Color3.fromRGB(120, 120, 130),
     
-    -- ESP Specific Colors
-    ESP_Close = Color3.fromRGB(255, 50, 50),      -- Red for close enemies
-    ESP_Medium = Color3.fromRGB(255, 165, 0),    -- Orange for medium
-    ESP_Far = Color3.fromRGB(255, 255, 0),       -- Yellow for far
-    ESP_VeryFar = Color3.fromRGB(50, 255, 50),   -- Green for very far
-    ESP_Visible = Color3.fromRGB(0, 255, 150),   -- Cyan-green for visible
-    ESP_Hidden = Color3.fromRGB(255, 100, 100),  -- Light red for hidden
+    -- ESP Colors
+    ESP_Close = Color3.fromRGB(255, 60, 60),
+    ESP_Medium = Color3.fromRGB(255, 180, 50),
+    ESP_Far = Color3.fromRGB(255, 255, 80),
+    ESP_VeryFar = Color3.fromRGB(80, 255, 80),
+    ESP_Visible = Color3.fromRGB(0, 255, 200),
+    ESP_Hidden = Color3.fromRGB(255, 80, 80),
+    
+    Health_High = Color3.fromRGB(80, 255, 80),
+    Health_Mid = Color3.fromRGB(255, 200, 50),
+    Health_Low = Color3.fromRGB(255, 60, 60),
+}
+
+-- Skeleton bone connections
+local SKELETON_CONNECTIONS = {
+    -- Head to Torso
+    {"Head", "UpperTorso"},
+    {"UpperTorso", "LowerTorso"},
+    
+    -- Left Arm
+    {"UpperTorso", "LeftUpperArm"},
+    {"LeftUpperArm", "LeftLowerArm"},
+    {"LeftLowerArm", "LeftHand"},
+    
+    -- Right Arm
+    {"UpperTorso", "RightUpperArm"},
+    {"RightUpperArm", "RightLowerArm"},
+    {"RightLowerArm", "RightHand"},
+    
+    -- Left Leg
+    {"LowerTorso", "LeftUpperLeg"},
+    {"LeftUpperLeg", "LeftLowerLeg"},
+    {"LeftLowerLeg", "LeftFoot"},
+    
+    -- Right Leg
+    {"LowerTorso", "RightUpperLeg"},
+    {"RightUpperLeg", "RightLowerLeg"},
+    {"RightLowerLeg", "RightFoot"},
+}
+
+-- R6 Skeleton
+local SKELETON_R6 = {
+    {"Head", "Torso"},
+    {"Torso", "Left Arm"},
+    {"Torso", "Right Arm"},
+    {"Torso", "Left Leg"},
+    {"Torso", "Right Leg"},
 }
 
 local function isAdmin(player)
     for _, id in ipairs(adminIds) do
-        if player.UserId == id then
-            return true
-        end
+        if player.UserId == id then return true end
     end
     return false
 end
 
 local function isSameTeam(player1, player2)
-    if not player1.Team or not player2.Team then
-        return false
-    end
+    if not player1.Team or not player2.Team then return false end
     return player1.Team == player2.Team
 end
 
 local function isValidTarget(admin, target)
-    if target == admin then
-        return false
-    end
-    
-    if isAdmin(target) then
-        return false
-    end
-    
-    if isSameTeam(admin, target) then
-        return false
-    end
-    
+    if target == admin then return false end
+    if isAdmin(target) then return false end
+    if isSameTeam(admin, target) then return false end
     return true
 end
 
 local function hasLineOfSight(admin, target)
     local adminChar = admin.Character
     local targetChar = target.Character
-    
-    if not adminChar or not targetChar then
-        return false
-    end
+    if not adminChar or not targetChar then return false end
     
     local adminHead = adminChar:FindFirstChild("Head")
     local targetHRP = targetChar:FindFirstChild("HumanoidRootPart")
-    
-    if not adminHead or not targetHRP then
-        return false
-    end
+    if not adminHead or not targetHRP then return false end
     
     local origin = adminHead.Position
     local destination = targetHRP.Position
     local direction = (destination - origin)
-    local distance = direction.Magnitude
     
     local raycastParams = RaycastParams.new()
     raycastParams.FilterType = Enum.RaycastFilterType.Exclude
     raycastParams.FilterDescendantsInstances = {adminChar, targetChar}
     raycastParams.IgnoreWater = true
     
-    local raycastResult = Workspace:Raycast(origin, direction.Unit * distance, raycastParams)
-    
-    if raycastResult then
-        return false
-    end
-    
-    return true
+    local raycastResult = Workspace:Raycast(origin, direction, raycastParams)
+    return raycastResult == nil
 end
 
 local function findPlayer(name)
@@ -162,7 +150,6 @@ local function getNearestValidTarget(admin)
                 local hrp = char:FindFirstChild("HumanoidRootPart")
                 if hrp then
                     local distance = (adminHRP.Position - hrp.Position).Magnitude
-                    
                     if distance < nearestDistance and hasLineOfSight(admin, player) then
                         nearestDistance = distance
                         nearestPlayer = player
@@ -192,491 +179,380 @@ local function stopRightMouseTracking(admin)
             rightMouseTracking[admin.UserId].connection:Disconnect()
         end
         rightMouseTracking[admin.UserId] = nil
-        
-        local camera = Workspace.CurrentCamera
-        if camera then
-            camera.CameraType = Enum.CameraType.Custom
-        end
         return true
     end
     return false
 end
 
--- ========================================
--- IMPROVED ESP FUNCTIONS
--- ========================================
-
 local function getESPColor(distance, canSee)
-    -- Color based on distance
-    local distColor
     if distance < 30 then
-        distColor = Colors.ESP_Close
+        return Colors.ESP_Close
     elseif distance < 75 then
-        distColor = Colors.ESP_Medium
+        return Colors.ESP_Medium
     elseif distance < 150 then
-        distColor = Colors.ESP_Far
+        return Colors.ESP_Far
     else
-        distColor = Colors.ESP_VeryFar
-    end
-    
-    -- Modify based on visibility
-    if canSee then
-        return distColor
-    else
-        -- Darken color when not visible
-        return Color3.new(
-            distColor.R * 0.6,
-            distColor.G * 0.6,
-            distColor.B * 0.6
-        )
+        return Colors.ESP_VeryFar
     end
 end
 
-local function createImprovedESP(target, admin)
-    if not target.Character then return nil end
-    
-    if not isValidTarget(admin, target) then
-        return nil
+local function getHealthColor(percent)
+    if percent > 0.6 then
+        return Colors.Health_High
+    elseif percent > 0.3 then
+        return Colors.Health_Mid
+    else
+        return Colors.Health_Low
     end
+end
+
+-- ========================================
+-- CLEAN CHEAT-STYLE ESP
+-- ========================================
+
+local function createCleanESP(target, admin, screenGui)
+    if not target.Character then return nil end
+    if not isValidTarget(admin, target) then return nil end
     
     local existingFolder = target.Character:FindFirstChild("AdminESP_" .. admin.UserId)
-    if existingFolder then
-        existingFolder:Destroy()
-    end
+    if existingFolder then existingFolder:Destroy() end
     
     local espFolder = Instance.new("Folder")
     espFolder.Name = "AdminESP_" .. admin.UserId
     espFolder.Parent = target.Character
     
-    local settings = espSettings[admin.UserId] or {
-        boxEnabled = true,
-        tracerEnabled = true,
-        nameEnabled = true,
-        healthEnabled = true,
-        distanceEnabled = true,
-        cornerBoxEnabled = true,
-        glowEnabled = true
-    }
+    local settings = espSettings[admin.UserId] or {}
     
-    -- ====== MAIN INFO BILLBOARD ======
+    -- ====== DRAWING FRAME (for 2D elements) ======
+    local drawingFrame = Instance.new("Frame")
+    drawingFrame.Name = "ESPDrawing_" .. target.UserId
+    drawingFrame.Size = UDim2.new(1, 0, 1, 0)
+    drawingFrame.BackgroundTransparency = 1
+    drawingFrame.Parent = screenGui
+    
+    -- ====== MINIMAL INFO BILLBOARD ======
     local billboardGui = Instance.new("BillboardGui")
     billboardGui.Name = "InfoBoard"
     billboardGui.Adornee = target.Character:FindFirstChild("Head")
-    billboardGui.Size = UDim2.new(0, 160, 0, 60)
-    billboardGui.StudsOffset = Vector3.new(0, 2.8, 0)
+    billboardGui.Size = UDim2.new(0, 120, 0, 40)
+    billboardGui.StudsOffset = Vector3.new(0, 2.2, 0)
     billboardGui.AlwaysOnTop = true
-    billboardGui.MaxDistance = 500
+    billboardGui.MaxDistance = 800
     billboardGui.Parent = espFolder
     
-    local infoFrame = Instance.new("Frame")
-    infoFrame.Size = UDim2.new(1, 0, 1, 0)
-    infoFrame.BackgroundTransparency = 1
-    infoFrame.Parent = billboardGui
-    
-    -- Background panel for better readability
-    local bgPanel = Instance.new("Frame")
-    bgPanel.Name = "BackgroundPanel"
-    bgPanel.Size = UDim2.new(1, 0, 0, 50)
-    bgPanel.Position = UDim2.new(0, 0, 0, 0)
-    bgPanel.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-    bgPanel.BackgroundTransparency = 0.7
-    bgPanel.BorderSizePixel = 0
-    bgPanel.Parent = infoFrame
-    
-    local bgCorner = Instance.new("UICorner")
-    bgCorner.CornerRadius = UDim.new(0, 4)
-    bgCorner.Parent = bgPanel
-    
-    local bgStroke = Instance.new("UIStroke")
-    bgStroke.Name = "BorderStroke"
-    bgStroke.Color = Colors.AccentBright
-    bgStroke.Thickness = 1.5
-    bgStroke.Transparency = 0.3
-    bgStroke.Parent = bgPanel
-    
-    -- Player Name with icon
+    -- Name Label (clean, no background)
     local nameLabel = Instance.new("TextLabel")
     nameLabel.Name = "NameLabel"
-    nameLabel.Size = UDim2.new(1, -8, 0, 16)
-    nameLabel.Position = UDim2.new(0, 4, 0, 2)
+    nameLabel.Size = UDim2.new(1, 0, 0, 14)
+    nameLabel.Position = UDim2.new(0, 0, 0, 0)
     nameLabel.BackgroundTransparency = 1
-    nameLabel.Text = "👤 " .. target.Name
+    nameLabel.Text = target.Name
     nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    nameLabel.TextStrokeTransparency = 0
+    nameLabel.TextStrokeTransparency = 0.3
     nameLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-    nameLabel.TextSize = 13
+    nameLabel.TextSize = 12
     nameLabel.Font = Enum.Font.GothamBold
-    nameLabel.TextXAlignment = Enum.TextXAlignment.Center
-    nameLabel.Visible = settings.nameEnabled
-    nameLabel.Parent = bgPanel
+    nameLabel.Visible = settings.nameEnabled ~= false
+    nameLabel.Parent = billboardGui
     
-    -- Health Bar Background
+    -- Distance Label
+    local distanceLabel = Instance.new("TextLabel")
+    distanceLabel.Name = "DistanceLabel"
+    distanceLabel.Size = UDim2.new(1, 0, 0, 12)
+    distanceLabel.Position = UDim2.new(0, 0, 0, 14)
+    distanceLabel.BackgroundTransparency = 1
+    distanceLabel.Text = "[0m]"
+    distanceLabel.TextColor3 = Colors.ESP_Far
+    distanceLabel.TextStrokeTransparency = 0.3
+    distanceLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    distanceLabel.TextSize = 10
+    distanceLabel.Font = Enum.Font.Gotham
+    distanceLabel.Visible = settings.distanceEnabled ~= false
+    distanceLabel.Parent = billboardGui
+    
+    -- Health Bar (thin, side bar style)
     local healthBarBg = Instance.new("Frame")
     healthBarBg.Name = "HealthBarBg"
-    healthBarBg.Size = UDim2.new(0.9, 0, 0, 8)
-    healthBarBg.Position = UDim2.new(0.05, 0, 0, 20)
+    healthBarBg.Size = UDim2.new(0, 3, 0, 24)
+    healthBarBg.Position = UDim2.new(0, -8, 0, 4)
     healthBarBg.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    healthBarBg.BackgroundTransparency = 0.3
     healthBarBg.BorderSizePixel = 0
-    healthBarBg.Visible = settings.healthEnabled
-    healthBarBg.Parent = bgPanel
+    healthBarBg.Visible = settings.healthEnabled ~= false
+    healthBarBg.Parent = billboardGui
     
-    local healthBarBgCorner = Instance.new("UICorner")
-    healthBarBgCorner.CornerRadius = UDim.new(0, 4)
-    healthBarBgCorner.Parent = healthBarBg
-    
-    -- Health Bar Fill with gradient effect
     local healthBarFill = Instance.new("Frame")
     healthBarFill.Name = "HealthBarFill"
     healthBarFill.Size = UDim2.new(1, 0, 1, 0)
-    healthBarFill.BackgroundColor3 = Colors.Success
+    healthBarFill.Position = UDim2.new(0, 0, 0, 0)
+    healthBarFill.AnchorPoint = Vector2.new(0, 1)
+    healthBarFill.BackgroundColor3 = Colors.Health_High
     healthBarFill.BorderSizePixel = 0
     healthBarFill.Parent = healthBarBg
     
-    local healthBarFillCorner = Instance.new("UICorner")
-    healthBarFillCorner.CornerRadius = UDim.new(0, 4)
-    healthBarFillCorner.Parent = healthBarFill
+    -- ====== SKELETON ESP ======
+    local skeletonParts = {}
+    local isR15 = target.Character:FindFirstChild("UpperTorso") ~= nil
+    local bones = isR15 and SKELETON_CONNECTIONS or SKELETON_R6
     
-    -- Health percentage text
-    local healthText = Instance.new("TextLabel")
-    healthText.Name = "HealthText"
-    healthText.Size = UDim2.new(1, 0, 1, 0)
-    healthText.BackgroundTransparency = 1
-    healthText.Text = "100%"
-    healthText.TextColor3 = Color3.fromRGB(255, 255, 255)
-    healthText.TextStrokeTransparency = 0
-    healthText.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-    healthText.TextSize = 8
-    healthText.Font = Enum.Font.GothamBold
-    healthText.Parent = healthBarFill
+    if settings.skeletonEnabled then
+        for i, connection in ipairs(bones) do
+            local line = Instance.new("Frame")
+            line.Name = "Bone_" .. i
+            line.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+            line.BorderSizePixel = 0
+            line.AnchorPoint = Vector2.new(0.5, 0)
+            line.Visible = false
+            line.Parent = drawingFrame
+            
+            table.insert(skeletonParts, {
+                line = line,
+                part1 = connection[1],
+                part2 = connection[2]
+            })
+        end
+    end
     
-    -- Distance and Status Label
-    local statusFrame = Instance.new("Frame")
-    statusFrame.Size = UDim2.new(1, -8, 0, 16)
-    statusFrame.Position = UDim2.new(0, 4, 0, 30)
-    statusFrame.BackgroundTransparency = 1
-    statusFrame.Parent = bgPanel
+    -- ====== CORNER BOX ======
+    local cornerLines = {}
+    if settings.boxEnabled ~= false then
+        for i = 1, 8 do
+            local line = Instance.new("Frame")
+            line.Name = "Corner_" .. i
+            line.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+            line.BorderSizePixel = 0
+            line.Visible = false
+            line.Parent = drawingFrame
+            table.insert(cornerLines, line)
+        end
+    end
     
-    local distanceLabel = Instance.new("TextLabel")
-    distanceLabel.Name = "DistanceLabel"
-    distanceLabel.Size = UDim2.new(0.5, 0, 1, 0)
-    distanceLabel.BackgroundTransparency = 1
-    distanceLabel.Text = "📍 0m"
-    distanceLabel.TextColor3 = Colors.Warning
-    distanceLabel.TextStrokeTransparency = 0
-    distanceLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-    distanceLabel.TextSize = 11
-    distanceLabel.Font = Enum.Font.GothamMedium
-    distanceLabel.TextXAlignment = Enum.TextXAlignment.Left
-    distanceLabel.Visible = settings.distanceEnabled
-    distanceLabel.Parent = statusFrame
+    -- ====== THIN TRACER LINE ======
+    local tracerLine = Instance.new("Frame")
+    tracerLine.Name = "Tracer"
+    tracerLine.BackgroundColor3 = Colors.ESP_Far
+    tracerLine.BorderSizePixel = 0
+    tracerLine.AnchorPoint = Vector2.new(0.5, 0)
+    tracerLine.Visible = settings.tracerEnabled ~= false
+    tracerLine.Parent = drawingFrame
     
-    local visibilityLabel = Instance.new("TextLabel")
-    visibilityLabel.Name = "VisibilityLabel"
-    visibilityLabel.Size = UDim2.new(0.5, 0, 1, 0)
-    visibilityLabel.Position = UDim2.new(0.5, 0, 0, 0)
-    visibilityLabel.BackgroundTransparency = 1
-    visibilityLabel.Text = "👁 VISIBLE"
-    visibilityLabel.TextColor3 = Colors.Success
-    visibilityLabel.TextStrokeTransparency = 0
-    visibilityLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-    visibilityLabel.TextSize = 11
-    visibilityLabel.Font = Enum.Font.GothamBold
-    visibilityLabel.TextXAlignment = Enum.TextXAlignment.Right
-    visibilityLabel.Parent = statusFrame
-    
-    -- ====== IMPROVED HIGHLIGHT ======
-    local highlight = Instance.new("Highlight")
-    highlight.Name = "BoxHighlight"
-    highlight.Adornee = target.Character
-    highlight.FillColor = Colors.Accent
-    highlight.OutlineColor = Colors.AccentBright
-    highlight.FillTransparency = 0.85
-    highlight.OutlineTransparency = 0
-    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-    highlight.Enabled = settings.boxEnabled
-    highlight.Parent = espFolder
-    
-    -- ====== IMPROVED TRACER SYSTEM ======
-    local tracerPart = Instance.new("Part")
-    tracerPart.Name = "TracerAnchor"
-    tracerPart.Anchored = true
-    tracerPart.CanCollide = false
-    tracerPart.Transparency = 1
-    tracerPart.Size = Vector3.new(0.1, 0.1, 0.1)
-    tracerPart.Parent = espFolder
-    
-    -- Main tracer beam
-    local beam = Instance.new("Beam")
-    beam.Name = "Tracer"
-    beam.Color = ColorSequence.new({
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
-        ColorSequenceKeypoint.new(0.2, Colors.AccentBright),
-        ColorSequenceKeypoint.new(1, Colors.Accent)
-    })
-    beam.Transparency = NumberSequence.new({
-        NumberSequenceKeypoint.new(0, 0.1),
-        NumberSequenceKeypoint.new(0.3, 0.3),
-        NumberSequenceKeypoint.new(0.7, 0.5),
-        NumberSequenceKeypoint.new(1, 0.7)
-    })
-    beam.Width0 = 3
-    beam.Width1 = 1
-    beam.FaceCamera = true
-    beam.Segments = 20
-    beam.CurveSize0 = 0
-    beam.CurveSize1 = 0
-    beam.LightEmission = 0.3
-    beam.LightInfluence = 0
-    beam.Enabled = settings.tracerEnabled
-    beam.Parent = espFolder
-    
-    -- Outer glow tracer
-    local beamGlow = Instance.new("Beam")
-    beamGlow.Name = "TracerGlow"
-    beamGlow.Color = ColorSequence.new(Colors.AccentBright)
-    beamGlow.Transparency = NumberSequence.new({
-        NumberSequenceKeypoint.new(0, 0.7),
-        NumberSequenceKeypoint.new(0.5, 0.85),
-        NumberSequenceKeypoint.new(1, 0.95)
-    })
-    beamGlow.Width0 = 6
-    beamGlow.Width1 = 2
-    beamGlow.FaceCamera = true
-    beamGlow.Segments = 20
-    beamGlow.LightEmission = 0.5
-    beamGlow.LightInfluence = 0
-    beamGlow.Enabled = settings.tracerEnabled
-    beamGlow.Parent = espFolder
-    
-    local attachment0 = Instance.new("Attachment")
-    attachment0.Name = "TracerStart"
-    attachment0.Parent = tracerPart
-    
-    local attachment1 = Instance.new("Attachment")
-    attachment1.Name = "TracerEnd"
-    attachment1.Parent = tracerPart
-    
-    beam.Attachment0 = attachment0
-    beam.Attachment1 = attachment1
-    beamGlow.Attachment0 = attachment0
-    beamGlow.Attachment1 = attachment1
-    
-    -- ====== HEAD DOT INDICATOR ======
-    local headDot = Instance.new("BillboardGui")
+    -- ====== HEAD DOT ======
+    local headDot = Instance.new("Frame")
     headDot.Name = "HeadDot"
-    headDot.Adornee = target.Character:FindFirstChild("Head")
-    headDot.Size = UDim2.new(0, 12, 0, 12)
-    headDot.StudsOffset = Vector3.new(0, 0, 0)
-    headDot.AlwaysOnTop = true
-    headDot.Parent = espFolder
+    headDot.Size = UDim2.new(0, 6, 0, 6)
+    headDot.BackgroundColor3 = Colors.ESP_Close
+    headDot.BorderSizePixel = 0
+    headDot.Visible = settings.headDotEnabled ~= false
+    headDot.Parent = drawingFrame
     
-    local dotFrame = Instance.new("Frame")
-    dotFrame.Size = UDim2.new(1, 0, 1, 0)
-    dotFrame.BackgroundColor3 = Colors.Danger
-    dotFrame.BorderSizePixel = 0
-    dotFrame.Parent = headDot
+    local headDotCorner = Instance.new("UICorner")
+    headDotCorner.CornerRadius = UDim.new(1, 0)
+    headDotCorner.Parent = headDot
     
-    local dotCorner = Instance.new("UICorner")
-    dotCorner.CornerRadius = UDim.new(1, 0)
-    dotCorner.Parent = dotFrame
-    
-    local dotStroke = Instance.new("UIStroke")
-    dotStroke.Color = Color3.fromRGB(255, 255, 255)
-    dotStroke.Thickness = 2
-    dotStroke.Parent = dotFrame
-    
-    -- ====== WEAPON/TOOL INDICATOR ======
-    local weaponBoard = Instance.new("BillboardGui")
-    weaponBoard.Name = "WeaponBoard"
-    weaponBoard.Adornee = target.Character:FindFirstChild("HumanoidRootPart")
-    weaponBoard.Size = UDim2.new(0, 100, 0, 20)
-    weaponBoard.StudsOffset = Vector3.new(0, -3, 0)
-    weaponBoard.AlwaysOnTop = true
-    weaponBoard.Parent = espFolder
-    
-    local weaponLabel = Instance.new("TextLabel")
-    weaponLabel.Name = "WeaponLabel"
-    weaponLabel.Size = UDim2.new(1, 0, 1, 0)
-    weaponLabel.BackgroundTransparency = 1
-    weaponLabel.Text = "🔫 No Weapon"
-    weaponLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-    weaponLabel.TextStrokeTransparency = 0
-    weaponLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-    weaponLabel.TextSize = 10
-    weaponLabel.Font = Enum.Font.Gotham
-    weaponLabel.Parent = weaponBoard
+    local headDotStroke = Instance.new("UIStroke")
+    headDotStroke.Color = Color3.fromRGB(0, 0, 0)
+    headDotStroke.Thickness = 1
+    headDotStroke.Parent = headDot
     
     return {
         folder = espFolder,
-        highlight = highlight,
+        drawingFrame = drawingFrame,
         billboard = billboardGui,
-        bgPanel = bgPanel,
-        bgStroke = bgStroke,
         nameLabel = nameLabel,
+        distanceLabel = distanceLabel,
         healthBarBg = healthBarBg,
         healthBarFill = healthBarFill,
-        healthText = healthText,
-        distanceLabel = distanceLabel,
-        visibilityLabel = visibilityLabel,
-        beam = beam,
-        beamGlow = beamGlow,
-        tracerPart = tracerPart,
-        attachment0 = attachment0,
-        attachment1 = attachment1,
+        skeletonParts = skeletonParts,
+        cornerLines = cornerLines,
+        tracerLine = tracerLine,
         headDot = headDot,
-        dotFrame = dotFrame,
-        weaponLabel = weaponLabel
+        isR15 = isR15,
+        bones = bones
     }
 end
 
-local function updateImprovedESP(admin, target, espComponents)
-    if not admin.Character or not target.Character then return false end
+local function worldToScreen(position)
+    local camera = Workspace.CurrentCamera
+    if not camera then return nil, false end
     
+    local screenPos, onScreen = camera:WorldToViewportPoint(position)
+    return Vector2.new(screenPos.X, screenPos.Y), onScreen and screenPos.Z > 0
+end
+
+local function drawLine(frame, p1, p2, thickness, color)
+    local distance = (p2 - p1).Magnitude
+    local center = (p1 + p2) / 2
+    local angle = math.atan2(p2.Y - p1.Y, p2.X - p1.X)
+    
+    frame.Size = UDim2.new(0, distance, 0, thickness)
+    frame.Position = UDim2.new(0, center.X, 0, center.Y)
+    frame.Rotation = math.deg(angle)
+    frame.BackgroundColor3 = color
+    frame.Visible = true
+end
+
+local function updateCleanESP(admin, target, espComponents)
+    if not admin.Character or not target.Character then return false end
     if not isValidTarget(admin, target) then
-        if espComponents.folder then
-            espComponents.folder:Destroy()
-        end
+        if espComponents.folder then espComponents.folder:Destroy() end
+        if espComponents.drawingFrame then espComponents.drawingFrame:Destroy() end
         return false
     end
     
     local adminHRP = admin.Character:FindFirstChild("HumanoidRootPart")
     local targetHRP = target.Character:FindFirstChild("HumanoidRootPart")
+    local targetHead = target.Character:FindFirstChild("Head")
     local targetHumanoid = target.Character:FindFirstChild("Humanoid")
     
     if not adminHRP or not targetHRP then return true end
+    
+    local camera = Workspace.CurrentCamera
+    if not camera then return true end
     
     local distance = (adminHRP.Position - targetHRP.Position).Magnitude
     local canSee = hasLineOfSight(admin, target)
     local espColor = getESPColor(distance, canSee)
     
+    local settings = espSettings[admin.UserId] or {}
+    local tracerThickness = settings.tracerThickness or 1
+    local boxThickness = settings.boxThickness or 1
+    
     -- Update distance label
     if espComponents.distanceLabel then
-        if distance < 50 then
-            espComponents.distanceLabel.Text = string.format("📍 %.0fm ⚠️", distance)
-            espComponents.distanceLabel.TextColor3 = Colors.Danger
-        elseif distance < 100 then
-            espComponents.distanceLabel.Text = string.format("📍 %.0fm", distance)
-            espComponents.distanceLabel.TextColor3 = Colors.Warning
-        else
-            espComponents.distanceLabel.Text = string.format("📍 %.0fm", distance)
-            espComponents.distanceLabel.TextColor3 = Colors.ESP_VeryFar
-        end
+        espComponents.distanceLabel.Text = string.format("[%dm]", math.floor(distance))
+        espComponents.distanceLabel.TextColor3 = espColor
+    end
+    
+    -- Update name color based on visibility
+    if espComponents.nameLabel then
+        espComponents.nameLabel.TextColor3 = canSee and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(180, 180, 180)
     end
     
     -- Update health
-    if targetHumanoid then
-        local healthPercent = targetHumanoid.Health / targetHumanoid.MaxHealth
+    if targetHumanoid and espComponents.healthBarFill then
+        local healthPercent = math.clamp(targetHumanoid.Health / targetHumanoid.MaxHealth, 0, 1)
+        espComponents.healthBarFill.Size = UDim2.new(1, 0, healthPercent, 0)
+        espComponents.healthBarFill.Position = UDim2.new(0, 0, 1, 0)
+        espComponents.healthBarFill.BackgroundColor3 = getHealthColor(healthPercent)
+    end
+    
+    -- ====== CORNER BOX ======
+    if #espComponents.cornerLines > 0 and settings.boxEnabled ~= false then
+        local hrpPos, onScreen = worldToScreen(targetHRP.Position)
+        local headPos = targetHead and worldToScreen(targetHead.Position + Vector3.new(0, 0.5, 0))
+        local footPos = worldToScreen(targetHRP.Position - Vector3.new(0, 3, 0))
         
-        if espComponents.healthBarFill then
-            espComponents.healthBarFill.Size = UDim2.new(math.max(healthPercent, 0), 0, 1, 0)
+        if onScreen and hrpPos and headPos and footPos then
+            local height = math.abs(footPos.Y - headPos.Y)
+            local width = height * 0.6
             
-            if healthPercent > 0.6 then
-                espComponents.healthBarFill.BackgroundColor3 = Colors.Success
-            elseif healthPercent > 0.3 then
-                espComponents.healthBarFill.BackgroundColor3 = Colors.Warning
-            else
-                espComponents.healthBarFill.BackgroundColor3 = Colors.Danger
+            local topLeft = Vector2.new(hrpPos.X - width/2, headPos.Y)
+            local topRight = Vector2.new(hrpPos.X + width/2, headPos.Y)
+            local bottomLeft = Vector2.new(hrpPos.X - width/2, footPos.Y)
+            local bottomRight = Vector2.new(hrpPos.X + width/2, footPos.Y)
+            
+            local cornerSize = math.min(width, height) * 0.25
+            
+            -- Top Left Corner
+            espComponents.cornerLines[1].Size = UDim2.new(0, cornerSize, 0, boxThickness)
+            espComponents.cornerLines[1].Position = UDim2.new(0, topLeft.X, 0, topLeft.Y)
+            espComponents.cornerLines[1].BackgroundColor3 = espColor
+            espComponents.cornerLines[1].Visible = true
+            
+            espComponents.cornerLines[2].Size = UDim2.new(0, boxThickness, 0, cornerSize)
+            espComponents.cornerLines[2].Position = UDim2.new(0, topLeft.X, 0, topLeft.Y)
+            espComponents.cornerLines[2].BackgroundColor3 = espColor
+            espComponents.cornerLines[2].Visible = true
+            
+            -- Top Right Corner
+            espComponents.cornerLines[3].Size = UDim2.new(0, cornerSize, 0, boxThickness)
+            espComponents.cornerLines[3].Position = UDim2.new(0, topRight.X - cornerSize, 0, topRight.Y)
+            espComponents.cornerLines[3].BackgroundColor3 = espColor
+            espComponents.cornerLines[3].Visible = true
+            
+            espComponents.cornerLines[4].Size = UDim2.new(0, boxThickness, 0, cornerSize)
+            espComponents.cornerLines[4].Position = UDim2.new(0, topRight.X - boxThickness, 0, topRight.Y)
+            espComponents.cornerLines[4].BackgroundColor3 = espColor
+            espComponents.cornerLines[4].Visible = true
+            
+            -- Bottom Left Corner
+            espComponents.cornerLines[5].Size = UDim2.new(0, cornerSize, 0, boxThickness)
+            espComponents.cornerLines[5].Position = UDim2.new(0, bottomLeft.X, 0, bottomLeft.Y - boxThickness)
+            espComponents.cornerLines[5].BackgroundColor3 = espColor
+            espComponents.cornerLines[5].Visible = true
+            
+            espComponents.cornerLines[6].Size = UDim2.new(0, boxThickness, 0, cornerSize)
+            espComponents.cornerLines[6].Position = UDim2.new(0, bottomLeft.X, 0, bottomLeft.Y - cornerSize)
+            espComponents.cornerLines[6].BackgroundColor3 = espColor
+            espComponents.cornerLines[6].Visible = true
+            
+            -- Bottom Right Corner
+            espComponents.cornerLines[7].Size = UDim2.new(0, cornerSize, 0, boxThickness)
+            espComponents.cornerLines[7].Position = UDim2.new(0, bottomRight.X - cornerSize, 0, bottomRight.Y - boxThickness)
+            espComponents.cornerLines[7].BackgroundColor3 = espColor
+            espComponents.cornerLines[7].Visible = true
+            
+            espComponents.cornerLines[8].Size = UDim2.new(0, boxThickness, 0, cornerSize)
+            espComponents.cornerLines[8].Position = UDim2.new(0, bottomRight.X - boxThickness, 0, bottomRight.Y - cornerSize)
+            espComponents.cornerLines[8].BackgroundColor3 = espColor
+            espComponents.cornerLines[8].Visible = true
+        else
+            for _, line in ipairs(espComponents.cornerLines) do
+                line.Visible = false
             end
+        end
+    end
+    
+    -- ====== SKELETON ======
+    if #espComponents.skeletonParts > 0 and settings.skeletonEnabled then
+        for _, bone in ipairs(espComponents.skeletonParts) do
+            local part1 = target.Character:FindFirstChild(bone.part1)
+            local part2 = target.Character:FindFirstChild(bone.part2)
+            
+            if part1 and part2 then
+                local pos1, onScreen1 = worldToScreen(part1.Position)
+                local pos2, onScreen2 = worldToScreen(part2.Position)
+                
+                if onScreen1 and onScreen2 then
+                    drawLine(bone.line, pos1, pos2, settings.skeletonThickness or 1, espColor)
+                else
+                    bone.line.Visible = false
+                end
+            else
+                bone.line.Visible = false
+            end
+        end
+    end
+    
+    -- ====== THIN TRACER ======
+    if espComponents.tracerLine and settings.tracerEnabled ~= false then
+        local targetPos, onScreen = worldToScreen(targetHRP.Position)
+        local screenSize = camera.ViewportSize
+        local startPos = Vector2.new(screenSize.X / 2, screenSize.Y) -- Bottom center
+        
+        if settings.tracerOrigin == "Top" then
+            startPos = Vector2.new(screenSize.X / 2, 0)
+        elseif settings.tracerOrigin == "Mouse" then
+            local mouse = admin:GetMouse()
+            startPos = Vector2.new(mouse.X, mouse.Y)
         end
         
-        if espComponents.healthText then
-            espComponents.healthText.Text = string.format("%.0f%%", healthPercent * 100)
-        end
-    end
-    
-    -- Update visibility indicator
-    if espComponents.visibilityLabel then
-        if canSee then
-            espComponents.visibilityLabel.Text = "👁 VISIBLE"
-            espComponents.visibilityLabel.TextColor3 = Colors.Success
+        if onScreen and targetPos then
+            drawLine(espComponents.tracerLine, startPos, targetPos, tracerThickness, espColor)
         else
-            espComponents.visibilityLabel.Text = "🚫 HIDDEN"
-            espComponents.visibilityLabel.TextColor3 = Colors.Danger
+            espComponents.tracerLine.Visible = false
         end
     end
     
-    -- Update highlight colors
-    if espComponents.highlight then
-        espComponents.highlight.FillColor = espColor
-        espComponents.highlight.OutlineColor = canSee and Color3.fromRGB(255, 255, 255) or espColor
-        espComponents.highlight.FillTransparency = canSee and 0.8 or 0.9
-        espComponents.highlight.OutlineTransparency = canSee and 0 or 0.3
-    end
-    
-    -- Update border stroke
-    if espComponents.bgStroke then
-        espComponents.bgStroke.Color = espColor
-    end
-    
-    -- Update head dot
-    if espComponents.dotFrame then
-        espComponents.dotFrame.BackgroundColor3 = espColor
-    end
-    
-    -- Update tracer with improved visuals
-    if espComponents.beam and espComponents.tracerPart then
-        local camera = Workspace.CurrentCamera
-        if camera then
-            -- Position tracer from bottom center of screen
-            local screenBottom = camera.CFrame.Position + camera.CFrame.LookVector * 1 + Vector3.new(0, -1.5, 0)
-            espComponents.tracerPart.Position = screenBottom
-            espComponents.attachment0.WorldPosition = screenBottom
-            espComponents.attachment1.WorldPosition = targetHRP.Position
-            
-            -- Dynamic color based on distance and visibility
-            local tracerColor = espColor
-            local glowColor = canSee and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(150, 150, 150)
-            
-            -- Update main tracer color gradient
-            espComponents.beam.Color = ColorSequence.new({
-                ColorSequenceKeypoint.new(0, glowColor),
-                ColorSequenceKeypoint.new(0.15, tracerColor),
-                ColorSequenceKeypoint.new(1, Color3.new(tracerColor.R * 0.5, tracerColor.G * 0.5, tracerColor.B * 0.5))
-            })
-            
-            -- Update glow tracer
-            if espComponents.beamGlow then
-                espComponents.beamGlow.Color = ColorSequence.new(tracerColor)
-            end
-            
-            -- Adjust tracer width based on distance (thicker when closer)
-            local widthMultiplier = math.clamp(1.5 - (distance / 300), 0.4, 1.5)
-            espComponents.beam.Width0 = 3 * widthMultiplier
-            espComponents.beam.Width1 = 1 * widthMultiplier
-            
-            if espComponents.beamGlow then
-                espComponents.beamGlow.Width0 = 6 * widthMultiplier
-                espComponents.beamGlow.Width1 = 2 * widthMultiplier
-            end
-            
-            -- Pulsing transparency effect when visible
-            if canSee then
-                local pulse = (math.sin(tick() * 3) + 1) / 2 * 0.15
-                espComponents.beam.Transparency = NumberSequence.new({
-                    NumberSequenceKeypoint.new(0, 0.05 + pulse),
-                    NumberSequenceKeypoint.new(0.3, 0.25 + pulse),
-                    NumberSequenceKeypoint.new(0.7, 0.45 + pulse),
-                    NumberSequenceKeypoint.new(1, 0.65 + pulse)
-                })
-            else
-                espComponents.beam.Transparency = NumberSequence.new({
-                    NumberSequenceKeypoint.new(0, 0.3),
-                    NumberSequenceKeypoint.new(0.5, 0.5),
-                    NumberSequenceKeypoint.new(1, 0.8)
-                })
-            end
-        end
-    end
-    
-    -- Update weapon indicator
-    if espComponents.weaponLabel then
-        local tool = target.Character:FindFirstChildOfClass("Tool")
-        if tool then
-            espComponents.weaponLabel.Text = "🔫 " .. tool.Name
-            espComponents.weaponLabel.TextColor3 = Colors.Danger
+    -- ====== HEAD DOT ======
+    if espComponents.headDot and targetHead and settings.headDotEnabled ~= false then
+        local headScreenPos, onScreen = worldToScreen(targetHead.Position)
+        if onScreen and headScreenPos then
+            espComponents.headDot.Position = UDim2.new(0, headScreenPos.X - 3, 0, headScreenPos.Y - 3)
+            espComponents.headDot.BackgroundColor3 = canSee and Colors.ESP_Visible or Colors.ESP_Hidden
+            espComponents.headDot.Visible = true
         else
-            espComponents.weaponLabel.Text = "✋ Unarmed"
-            espComponents.weaponLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+            espComponents.headDot.Visible = false
         end
     end
     
@@ -686,11 +562,10 @@ end
 local function clearAllESP(admin)
     if activeESP[admin.UserId] then
         for _, data in pairs(activeESP[admin.UserId]) do
-            if data.connection then
-                data.connection:Disconnect()
-            end
-            if data.components and data.components.folder then
-                data.components.folder:Destroy()
+            if data.connection then data.connection:Disconnect() end
+            if data.components then
+                if data.components.folder then data.components.folder:Destroy() end
+                if data.components.drawingFrame then data.components.drawingFrame:Destroy() end
             end
         end
         activeESP[admin.UserId] = nil
@@ -699,30 +574,26 @@ local function clearAllESP(admin)
     for _, player in ipairs(Players:GetPlayers()) do
         if player.Character then
             local folder = player.Character:FindFirstChild("AdminESP_" .. admin.UserId)
-            if folder then
-                folder:Destroy()
-            end
+            if folder then folder:Destroy() end
         end
     end
     
     espEnabled[admin.UserId] = false
 end
 
-local function enableESP(admin)
+local function enableESP(admin, screenGui)
     clearAllESP(admin)
     
     activeESP[admin.UserId] = {}
     espEnabled[admin.UserId] = true
     
-    for _, target in ipairs(Players:GetPlayers()) do
-        if isValidTarget(admin, target) then
-            local components = createImprovedESP(target, admin)
+    local function setupESPForTarget(target)
+        if isValidTarget(admin, target) and target.Character then
+            local components = createCleanESP(target, admin, screenGui)
             if components then
-                local connection = RunService.Heartbeat:Connect(function()
-                    if not espEnabled[admin.UserId] then
-                        return
-                    end
-                    local stillValid = updateImprovedESP(admin, target, components)
+                local connection = RunService.RenderStepped:Connect(function()
+                    if not espEnabled[admin.UserId] then return end
+                    local stillValid = updateCleanESP(admin, target, components)
                     if not stillValid then
                         if activeESP[admin.UserId] and activeESP[admin.UserId][target.UserId] then
                             activeESP[admin.UserId][target.UserId].connection:Disconnect()
@@ -739,127 +610,68 @@ local function enableESP(admin)
         end
     end
     
-    local playerAddedConn
-    playerAddedConn = Players.PlayerAdded:Connect(function(target)
-        if not espEnabled[admin.UserId] then
-            playerAddedConn:Disconnect()
-            return
-        end
-        
+    for _, target in ipairs(Players:GetPlayers()) do
+        setupESPForTarget(target)
+    end
+    
+    Players.PlayerAdded:Connect(function(target)
+        if not espEnabled[admin.UserId] then return end
         target.CharacterAdded:Wait()
         task.wait(1)
-        
-        if espEnabled[admin.UserId] and isValidTarget(admin, target) then
-            local components = createImprovedESP(target, admin)
-            if components then
-                local connection = RunService.Heartbeat:Connect(function()
-                    if not espEnabled[admin.UserId] then
-                        return
-                    end
-                    updateImprovedESP(admin, target, components)
-                end)
-                
-                if not activeESP[admin.UserId] then
-                    activeESP[admin.UserId] = {}
-                end
-                
-                activeESP[admin.UserId][target.UserId] = {
-                    components = components,
-                    connection = connection
-                }
-            end
-        end
+        setupESPForTarget(target)
     end)
     
     for _, target in ipairs(Players:GetPlayers()) do
         if target ~= admin then
             target.CharacterAdded:Connect(function()
-                if espEnabled[admin.UserId] and isValidTarget(admin, target) then
+                if espEnabled[admin.UserId] then
                     task.wait(1)
-                    
                     if activeESP[admin.UserId] and activeESP[admin.UserId][target.UserId] then
                         if activeESP[admin.UserId][target.UserId].connection then
                             activeESP[admin.UserId][target.UserId].connection:Disconnect()
                         end
-                        if activeESP[admin.UserId][target.UserId].components and activeESP[admin.UserId][target.UserId].components.folder then
-                            activeESP[admin.UserId][target.UserId].components.folder:Destroy()
-                        end
-                    end
-                    
-                    local components = createImprovedESP(target, admin)
-                    if components then
-                        local connection = RunService.Heartbeat:Connect(function()
-                            if not espEnabled[admin.UserId] then
-                                return
-                            end
-                            updateImprovedESP(admin, target, components)
-                        end)
-                        
-                        if not activeESP[admin.UserId] then
-                            activeESP[admin.UserId] = {}
-                        end
-                        
-                        activeESP[admin.UserId][target.UserId] = {
-                            components = components,
-                            connection = connection
-                        }
-                    end
-                end
-            end)
-            
-            target:GetPropertyChangedSignal("Team"):Connect(function()
-                if espEnabled[admin.UserId] then
-                    if not isValidTarget(admin, target) then
-                        if activeESP[admin.UserId] and activeESP[admin.UserId][target.UserId] then
-                            if activeESP[admin.UserId][target.UserId].connection then
-                                activeESP[admin.UserId][target.UserId].connection:Disconnect()
-                            end
-                            if activeESP[admin.UserId][target.UserId].components and activeESP[admin.UserId][target.UserId].components.folder then
+                        if activeESP[admin.UserId][target.UserId].components then
+                            if activeESP[admin.UserId][target.UserId].components.folder then
                                 activeESP[admin.UserId][target.UserId].components.folder:Destroy()
                             end
-                            activeESP[admin.UserId][target.UserId] = nil
-                        end
-                    else
-                        if (not activeESP[admin.UserId] or not activeESP[admin.UserId][target.UserId]) and target.Character then
-                            local components = createImprovedESP(target, admin)
-                            if components then
-                                local connection = RunService.Heartbeat:Connect(function()
-                                    if not espEnabled[admin.UserId] then
-                                        return
-                                    end
-                                    updateImprovedESP(admin, target, components)
-                                end)
-                                
-                                if not activeESP[admin.UserId] then
-                                    activeESP[admin.UserId] = {}
-                                end
-                                
-                                activeESP[admin.UserId][target.UserId] = {
-                                    components = components,
-                                    connection = connection
-                                }
+                            if activeESP[admin.UserId][target.UserId].components.drawingFrame then
+                                activeESP[admin.UserId][target.UserId].components.drawingFrame:Destroy()
                             end
                         end
                     end
+                    setupESPForTarget(target)
                 end
             end)
         end
     end
 end
 
+-- ========================================
+-- GUI CREATION
+-- ========================================
+
 local function createAdminGui(player)
-    -- Initialize settings with new options
+    -- Initialize settings
     espSettings[player.UserId] = {
         boxEnabled = true,
         tracerEnabled = true,
         nameEnabled = true,
         healthEnabled = true,
         distanceEnabled = true,
-        cornerBoxEnabled = true,
-        glowEnabled = true,
-        weaponEnabled = true,
-        headDotEnabled = true
+        skeletonEnabled = true,
+        headDotEnabled = true,
+        tracerThickness = 1,
+        boxThickness = 1,
+        skeletonThickness = 1,
+        tracerOrigin = "Bottom"
     }
+    
+    camTrackingSettings[player.UserId] = {
+        smoothness = 0.1,
+        lockPart = "Head",
+        prediction = false
+    }
+    
     trackingMode[player.UserId] = "hold"
     toggleTrackingActive[player.UserId] = false
     
@@ -868,15 +680,15 @@ local function createAdminGui(player)
     screenGui.Name = "AdminPanel"
     screenGui.ResetOnSpawn = false
     screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    screenGui.IgnoreGuiInset = true
     screenGui.Parent = player:WaitForChild("PlayerGui")
     
-    -- Main Frame - AIRHUB Style
+    -- Main Frame
     local mainFrame = Instance.new("Frame")
     mainFrame.Name = "MainFrame"
-    mainFrame.Size = UDim2.new(0, 480, 0, 350)
-    mainFrame.Position = UDim2.new(0.5, -240, 0.5, -175)
+    mainFrame.Size = UDim2.new(0, 500, 0, 380)
+    mainFrame.Position = UDim2.new(0.5, -250, 0.5, -190)
     mainFrame.BackgroundColor3 = Colors.Background
-    mainFrame.BackgroundTransparency = 0.05
     mainFrame.BorderSizePixel = 0
     mainFrame.Visible = false
     mainFrame.Active = true
@@ -889,29 +701,13 @@ local function createAdminGui(player)
     
     local mainStroke = Instance.new("UIStroke")
     mainStroke.Color = Colors.Accent
-    mainStroke.Thickness = 1.5
+    mainStroke.Thickness = 1
     mainStroke.Parent = mainFrame
-    
-    -- Glow effect
-    local glowFrame = Instance.new("ImageLabel")
-    glowFrame.Name = "Glow"
-    glowFrame.Size = UDim2.new(1, 40, 1, 40)
-    glowFrame.Position = UDim2.new(0, -20, 0, -20)
-    glowFrame.BackgroundTransparency = 1
-    glowFrame.Image = "rbxassetid://5028857084"
-    glowFrame.ImageColor3 = Colors.Accent
-    glowFrame.ImageTransparency = 0.85
-    glowFrame.ScaleType = Enum.ScaleType.Slice
-    glowFrame.SliceCenter = Rect.new(24, 24, 276, 276)
-    glowFrame.ZIndex = 0
-    glowFrame.Parent = mainFrame
     
     -- Title Bar
     local titleBar = Instance.new("Frame")
-    titleBar.Name = "TitleBar"
-    titleBar.Size = UDim2.new(1, 0, 0, 28)
-    titleBar.BackgroundColor3 = Colors.AccentDark
-    titleBar.BackgroundTransparency = 0.2
+    titleBar.Size = UDim2.new(1, 0, 0, 30)
+    titleBar.BackgroundColor3 = Colors.BackgroundLight
     titleBar.BorderSizePixel = 0
     titleBar.Parent = mainFrame
     
@@ -922,34 +718,30 @@ local function createAdminGui(player)
     local titleFix = Instance.new("Frame")
     titleFix.Size = UDim2.new(1, 0, 0, 6)
     titleFix.Position = UDim2.new(0, 0, 1, -6)
-    titleFix.BackgroundColor3 = Colors.AccentDark
-    titleFix.BackgroundTransparency = 0.2
+    titleFix.BackgroundColor3 = Colors.BackgroundLight
     titleFix.BorderSizePixel = 0
     titleFix.Parent = titleBar
     
-    -- Title Text with icon
     local titleText = Instance.new("TextLabel")
-    titleText.Size = UDim2.new(1, -60, 1, 0)
-    titleText.Position = UDim2.new(0, 10, 0, 0)
+    titleText.Size = UDim2.new(1, -40, 1, 0)
+    titleText.Position = UDim2.new(0, 12, 0, 0)
     titleText.BackgroundTransparency = 1
-    titleText.Text = "⚡ Admin Panel V2.0 | Enhanced ESP"
+    titleText.Text = "⚡ Admin Panel V3 | Clean ESP"
     titleText.TextColor3 = Colors.Text
-    titleText.TextSize = 12
+    titleText.TextSize = 13
     titleText.Font = Enum.Font.GothamBold
     titleText.TextXAlignment = Enum.TextXAlignment.Left
     titleText.Parent = titleBar
     
-    -- Close button
     local closeBtn = Instance.new("TextButton")
-    closeBtn.Size = UDim2.new(0, 24, 0, 24)
-    closeBtn.Position = UDim2.new(1, -28, 0, 2)
-    closeBtn.BackgroundColor3 = Colors.Danger
+    closeBtn.Size = UDim2.new(0, 26, 0, 26)
+    closeBtn.Position = UDim2.new(1, -30, 0, 2)
+    closeBtn.BackgroundColor3 = Color3.fromRGB(255, 60, 60)
     closeBtn.BackgroundTransparency = 0.5
-    closeBtn.Text = "✕"
+    closeBtn.Text = "×"
     closeBtn.TextColor3 = Colors.Text
-    closeBtn.TextSize = 14
+    closeBtn.TextSize = 18
     closeBtn.Font = Enum.Font.GothamBold
-    closeBtn.AutoButtonColor = false
     closeBtn.Parent = titleBar
     
     local closeBtnCorner = Instance.new("UICorner")
@@ -960,27 +752,15 @@ local function createAdminGui(player)
         mainFrame.Visible = false
     end)
     
-    closeBtn.MouseEnter:Connect(function()
-        TweenService:Create(closeBtn, TweenInfo.new(0.15), {BackgroundTransparency = 0}):Play()
-    end)
-    
-    closeBtn.MouseLeave:Connect(function()
-        TweenService:Create(closeBtn, TweenInfo.new(0.15), {BackgroundTransparency = 0.5}):Play()
-    end)
-    
     -- Tab Container
     local tabContainer = Instance.new("Frame")
-    tabContainer.Name = "TabContainer"
-    tabContainer.Size = UDim2.new(1, 0, 0, 24)
-    tabContainer.Position = UDim2.new(0, 0, 0, 28)
+    tabContainer.Size = UDim2.new(1, 0, 0, 26)
+    tabContainer.Position = UDim2.new(0, 0, 0, 30)
     tabContainer.BackgroundTransparency = 1
-    tabContainer.BorderSizePixel = 0
     tabContainer.Parent = mainFrame
     
-    -- Tab buttons
     local tabs = {"Tracking", "ESP", "Visuals", "Teleport", "Functions"}
     local tabButtons = {}
-    local currentTab = "Tracking"
     local tabWidth = 1 / #tabs
     
     for i, tabName in ipairs(tabs) do
@@ -988,82 +768,76 @@ local function createAdminGui(player)
         tabBtn.Name = tabName .. "Tab"
         tabBtn.Size = UDim2.new(tabWidth, -2, 1, 0)
         tabBtn.Position = UDim2.new((i-1) * tabWidth, 1, 0, 0)
-        tabBtn.BackgroundColor3 = i == 1 and Colors.TabActive or Colors.TabInactive
-        tabBtn.BackgroundTransparency = 0.2
+        tabBtn.BackgroundColor3 = i == 1 and Colors.Accent or Colors.BackgroundLight
+        tabBtn.BackgroundTransparency = i == 1 and 0.5 or 0.7
         tabBtn.BorderSizePixel = 0
         tabBtn.Text = tabName
-        tabBtn.TextColor3 = i == 1 and Colors.AccentBright or Colors.TextDim
+        tabBtn.TextColor3 = i == 1 and Colors.Text or Colors.TextDim
         tabBtn.TextSize = 11
         tabBtn.Font = Enum.Font.GothamMedium
-        tabBtn.AutoButtonColor = false
         tabBtn.Parent = tabContainer
-        
         tabButtons[tabName] = tabBtn
     end
     
     -- Content Area
     local contentArea = Instance.new("Frame")
-    contentArea.Name = "ContentArea"
-    contentArea.Size = UDim2.new(1, -16, 1, -70)
-    contentArea.Position = UDim2.new(0, 8, 0, 58)
+    contentArea.Size = UDim2.new(1, -16, 1, -80)
+    contentArea.Position = UDim2.new(0, 8, 0, 62)
     contentArea.BackgroundTransparency = 1
-    contentArea.BorderSizePixel = 0
     contentArea.Parent = mainFrame
     
-    -- Status Label at bottom
+    -- Status Label
     local statusLabel = Instance.new("TextLabel")
-    statusLabel.Name = "StatusLabel"
-    statusLabel.Size = UDim2.new(1, -16, 0, 16)
-    statusLabel.Position = UDim2.new(0, 8, 1, -20)
+    statusLabel.Size = UDim2.new(1, -16, 0, 18)
+    statusLabel.Position = UDim2.new(0, 8, 1, -22)
     statusLabel.BackgroundTransparency = 1
-    statusLabel.Text = "✓ Ready | Press RCtrl to toggle | RMB to track nearest"
-    statusLabel.TextColor3 = Colors.Success
+    statusLabel.Text = "✓ Ready | RCtrl to toggle | RMB to track"
+    statusLabel.TextColor3 = Colors.TextDim
     statusLabel.TextSize = 10
-    statusLabel.Font = Enum.Font.GothamMedium
+    statusLabel.Font = Enum.Font.Gotham
     statusLabel.TextXAlignment = Enum.TextXAlignment.Left
     statusLabel.Parent = mainFrame
     
-    -- Helper Functions for AIRHUB style components
-    local function createSection(parent, title, posY, width, height)
+    -- Helper Functions
+    local function createSection(parent, title, posX, posY, width, height)
         local section = Instance.new("Frame")
-        section.Name = title .. "Section"
         section.Size = UDim2.new(0, width, 0, height)
-        section.Position = UDim2.new(0, 0, 0, posY)
-        section.BackgroundColor3 = Colors.BackgroundTransparent
-        section.BackgroundTransparency = 0.4
+        section.Position = UDim2.new(0, posX, 0, posY)
+        section.BackgroundColor3 = Colors.BackgroundLight
+        section.BackgroundTransparency = 0.5
         section.BorderSizePixel = 0
         section.Parent = parent
         
-        local sectionCorner = Instance.new("UICorner")
-        sectionCorner.CornerRadius = UDim.new(0, 4)
-        sectionCorner.Parent = section
+        local corner = Instance.new("UICorner")
+        corner.CornerRadius = UDim.new(0, 4)
+        corner.Parent = section
         
-        local sectionStroke = Instance.new("UIStroke")
-        sectionStroke.Color = Colors.Border
-        sectionStroke.Thickness = 1
-        sectionStroke.Parent = section
+        local stroke = Instance.new("UIStroke")
+        stroke.Color = Colors.Border
+        stroke.Thickness = 1
+        stroke.Parent = section
         
-        local sectionTitle = Instance.new("TextLabel")
-        sectionTitle.Size = UDim2.new(0, #title * 7 + 10, 0, 14)
-        sectionTitle.Position = UDim2.new(0, 8, 0, -7)
-        sectionTitle.BackgroundColor3 = Colors.Background
-        sectionTitle.BorderSizePixel = 0
-        sectionTitle.Text = " " .. title .. " "
-        sectionTitle.TextColor3 = Colors.AccentBright
-        sectionTitle.TextSize = 10
-        sectionTitle.Font = Enum.Font.GothamBold
-        sectionTitle.Parent = section
+        local titleLabel = Instance.new("TextLabel")
+        titleLabel.Size = UDim2.new(0, #title * 7 + 12, 0, 14)
+        titleLabel.Position = UDim2.new(0, 8, 0, -7)
+        titleLabel.BackgroundColor3 = Colors.Background
+        titleLabel.BorderSizePixel = 0
+        titleLabel.Text = " " .. title .. " "
+        titleLabel.TextColor3 = Colors.AccentBright
+        titleLabel.TextSize = 10
+        titleLabel.Font = Enum.Font.GothamBold
+        titleLabel.Parent = section
         
         local titleCorner = Instance.new("UICorner")
-        titleCorner.CornerRadius = UDim.new(0, 2)
-        titleCorner.Parent = sectionTitle
+        titleCorner.CornerRadius = UDim.new(0, 3)
+        titleCorner.Parent = titleLabel
         
         return section
     end
     
     local function createCheckbox(parent, text, posX, posY, default, callback)
         local container = Instance.new("Frame")
-        container.Size = UDim2.new(0, 110, 0, 18)
+        container.Size = UDim2.new(0, 120, 0, 18)
         container.Position = UDim2.new(0, posX, 0, posY)
         container.BackgroundTransparency = 1
         container.Parent = parent
@@ -1071,18 +845,13 @@ local function createAdminGui(player)
         local checkbox = Instance.new("Frame")
         checkbox.Size = UDim2.new(0, 14, 0, 14)
         checkbox.Position = UDim2.new(0, 0, 0, 2)
-        checkbox.BackgroundColor3 = default and Colors.CheckboxOn or Colors.CheckboxOff
+        checkbox.BackgroundColor3 = default and Colors.Accent or Colors.BackgroundLight
         checkbox.BorderSizePixel = 0
         checkbox.Parent = container
         
         local checkCorner = Instance.new("UICorner")
         checkCorner.CornerRadius = UDim.new(0, 3)
         checkCorner.Parent = checkbox
-        
-        local checkStroke = Instance.new("UIStroke")
-        checkStroke.Color = Colors.Accent
-        checkStroke.Thickness = 1
-        checkStroke.Parent = checkbox
         
         local checkMark = Instance.new("TextLabel")
         checkMark.Size = UDim2.new(1, 0, 1, 0)
@@ -1094,7 +863,7 @@ local function createAdminGui(player)
         checkMark.Parent = checkbox
         
         local label = Instance.new("TextLabel")
-        label.Size = UDim2.new(0, 90, 0, 18)
+        label.Size = UDim2.new(0, 100, 0, 18)
         label.Position = UDim2.new(0, 18, 0, 0)
         label.BackgroundTransparency = 1
         label.Text = text
@@ -1114,150 +883,27 @@ local function createAdminGui(player)
         
         btn.MouseButton1Click:Connect(function()
             isEnabled = not isEnabled
-            TweenService:Create(checkbox, TweenInfo.new(0.15), {BackgroundColor3 = isEnabled and Colors.CheckboxOn or Colors.CheckboxOff}):Play()
+            checkbox.BackgroundColor3 = isEnabled and Colors.Accent or Colors.BackgroundLight
             checkMark.Text = isEnabled and "✓" or ""
             if callback then callback(isEnabled) end
         end)
         
         return container, function() return isEnabled end, function(val)
             isEnabled = val
-            checkbox.BackgroundColor3 = isEnabled and Colors.CheckboxOn or Colors.CheckboxOff
+            checkbox.BackgroundColor3 = isEnabled and Colors.Accent or Colors.BackgroundLight
             checkMark.Text = isEnabled and "✓" or ""
         end
     end
     
-    local function createDropdown(parent, label, posX, posY, options, default, callback, guiRef)
-        local container = Instance.new("Frame")
-        container.Size = UDim2.new(0, 120, 0, 36)
-        container.Position = UDim2.new(0, posX, 0, posY)
-        container.BackgroundTransparency = 1
-        container.Parent = parent
-        
-        local labelText = Instance.new("TextLabel")
-        labelText.Size = UDim2.new(1, 0, 0, 14)
-        labelText.BackgroundTransparency = 1
-        labelText.Text = label
-        labelText.TextColor3 = Colors.TextDim
-        labelText.TextSize = 10
-        labelText.Font = Enum.Font.Gotham
-        labelText.TextXAlignment = Enum.TextXAlignment.Left
-        labelText.Parent = container
-        
-        local dropBtn = Instance.new("TextButton")
-        dropBtn.Size = UDim2.new(1, 0, 0, 20)
-        dropBtn.Position = UDim2.new(0, 0, 0, 16)
-        dropBtn.BackgroundColor3 = Colors.DropdownBg
-        dropBtn.BorderSizePixel = 0
-        dropBtn.Text = default
-        dropBtn.TextColor3 = Colors.Text
-        dropBtn.TextSize = 10
-        dropBtn.Font = Enum.Font.Gotham
-        dropBtn.AutoButtonColor = false
-        dropBtn.Parent = container
-        
-        local dropCorner = Instance.new("UICorner")
-        dropCorner.CornerRadius = UDim.new(0, 3)
-        dropCorner.Parent = dropBtn
-        
-        local dropStroke = Instance.new("UIStroke")
-        dropStroke.Color = Colors.Border
-        dropStroke.Thickness = 1
-        dropStroke.Parent = dropBtn
-        
-        local arrow = Instance.new("TextLabel")
-        arrow.Size = UDim2.new(0, 14, 1, 0)
-        arrow.Position = UDim2.new(1, -16, 0, 0)
-        arrow.BackgroundTransparency = 1
-        arrow.Text = "▼"
-        arrow.TextColor3 = Colors.Accent
-        arrow.TextSize = 9
-        arrow.Font = Enum.Font.GothamBold
-        arrow.Parent = dropBtn
-        
-        local currentSelection = default
-        local isOpen = false
-        
-        local optionsFrame = Instance.new("Frame")
-        optionsFrame.Size = UDim2.new(1, 0, 0, #options * 20)
-        optionsFrame.Position = UDim2.new(0, 0, 1, 2)
-        optionsFrame.BackgroundColor3 = Color3.fromRGB(45, 35, 65)
-        optionsFrame.BorderSizePixel = 0
-        optionsFrame.Visible = false
-        optionsFrame.ZIndex = 100
-        optionsFrame.Parent = guiRef or screenGui -- Use passed reference or screenGui
-        
-        local optCorner = Instance.new("UICorner")
-        optCorner.CornerRadius = UDim.new(0, 3)
-        optCorner.Parent = optionsFrame
-        
-        local optStroke = Instance.new("UIStroke")
-        optStroke.Color = Colors.Accent
-        optStroke.Thickness = 1
-        optStroke.Parent = optionsFrame
-        
-        for i, opt in ipairs(options) do
-            local optBtn = Instance.new("TextButton")
-            optBtn.Size = UDim2.new(1, 0, 0, 20)
-            optBtn.Position = UDim2.new(0, 0, 0, (i-1) * 20)
-            optBtn.BackgroundColor3 = Color3.fromRGB(45, 35, 65)
-            optBtn.BackgroundTransparency = 0
-            optBtn.Text = opt
-            optBtn.TextColor3 = Colors.Text
-            optBtn.TextSize = 10
-            optBtn.Font = Enum.Font.Gotham
-            optBtn.ZIndex = 101
-            optBtn.AutoButtonColor = false
-            optBtn.Parent = optionsFrame
-            
-            local optBtnCorner = Instance.new("UICorner")
-            optBtnCorner.CornerRadius = UDim.new(0, 2)
-            optBtnCorner.Parent = optBtn
-            
-            optBtn.MouseEnter:Connect(function()
-                optBtn.BackgroundColor3 = Colors.Accent
-                optBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-            end)
-            
-            optBtn.MouseLeave:Connect(function()
-                optBtn.BackgroundColor3 = Color3.fromRGB(45, 35, 65)
-                optBtn.TextColor3 = Colors.Text
-            end)
-            
-            optBtn.MouseButton1Click:Connect(function()
-                currentSelection = opt
-                dropBtn.Text = opt
-                isOpen = false
-                optionsFrame.Visible = false
-                arrow.Text = "▼"
-                if callback then callback(opt) end
-            end)
-        end
-        
-        dropBtn.MouseButton1Click:Connect(function()
-            isOpen = not isOpen
-            if isOpen then
-                -- Position the dropdown relative to the button
-                local absPos = dropBtn.AbsolutePosition
-                local absSize = dropBtn.AbsoluteSize
-                optionsFrame.Position = UDim2.new(0, absPos.X, 0, absPos.Y + absSize.Y + 2)
-                optionsFrame.Size = UDim2.new(0, absSize.X, 0, #options * 20)
-            end
-            optionsFrame.Visible = isOpen
-            arrow.Text = isOpen and "▲" or "▼"
-        end)
-        
-        return container, function() return currentSelection end
-    end
-    
     local function createSlider(parent, label, posX, posY, min, max, default, callback)
         local container = Instance.new("Frame")
-        container.Size = UDim2.new(0, 140, 0, 36)
+        container.Size = UDim2.new(0, 150, 0, 34)
         container.Position = UDim2.new(0, posX, 0, posY)
         container.BackgroundTransparency = 1
         container.Parent = parent
         
         local labelText = Instance.new("TextLabel")
-        labelText.Size = UDim2.new(0.7, 0, 0, 14)
+        labelText.Size = UDim2.new(0.75, 0, 0, 14)
         labelText.BackgroundTransparency = 1
         labelText.Text = label
         labelText.TextColor3 = Colors.TextDim
@@ -1267,8 +913,8 @@ local function createAdminGui(player)
         labelText.Parent = container
         
         local valueLabel = Instance.new("TextLabel")
-        valueLabel.Size = UDim2.new(0.3, 0, 0, 14)
-        valueLabel.Position = UDim2.new(0.7, 0, 0, 0)
+        valueLabel.Size = UDim2.new(0.25, 0, 0, 14)
+        valueLabel.Position = UDim2.new(0.75, 0, 0, 0)
         valueLabel.BackgroundTransparency = 1
         valueLabel.Text = tostring(default)
         valueLabel.TextColor3 = Colors.AccentBright
@@ -1278,50 +924,32 @@ local function createAdminGui(player)
         valueLabel.Parent = container
         
         local sliderBg = Instance.new("Frame")
-        sliderBg.Size = UDim2.new(1, 0, 0, 8)
+        sliderBg.Size = UDim2.new(1, 0, 0, 6)
         sliderBg.Position = UDim2.new(0, 0, 0, 20)
-        sliderBg.BackgroundColor3 = Colors.SliderBg
+        sliderBg.BackgroundColor3 = Colors.BackgroundLight
         sliderBg.BorderSizePixel = 0
         sliderBg.Parent = container
         
         local sliderCorner = Instance.new("UICorner")
-        sliderCorner.CornerRadius = UDim.new(0, 4)
+        sliderCorner.CornerRadius = UDim.new(0, 3)
         sliderCorner.Parent = sliderBg
         
         local sliderFill = Instance.new("Frame")
         sliderFill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
-        sliderFill.BackgroundColor3 = Colors.SliderFill
+        sliderFill.BackgroundColor3 = Colors.Accent
         sliderFill.BorderSizePixel = 0
         sliderFill.Parent = sliderBg
         
         local fillCorner = Instance.new("UICorner")
-        fillCorner.CornerRadius = UDim.new(0, 4)
+        fillCorner.CornerRadius = UDim.new(0, 3)
         fillCorner.Parent = sliderFill
-        
-        -- Slider knob
-        local knob = Instance.new("Frame")
-        knob.Size = UDim2.new(0, 14, 0, 14)
-        knob.Position = UDim2.new((default - min) / (max - min), -7, 0.5, -7)
-        knob.BackgroundColor3 = Colors.AccentBright
-        knob.BorderSizePixel = 0
-        knob.ZIndex = 2
-        knob.Parent = sliderBg
-        
-        local knobCorner = Instance.new("UICorner")
-        knobCorner.CornerRadius = UDim.new(1, 0)
-        knobCorner.Parent = knob
-        
-        local knobStroke = Instance.new("UIStroke")
-        knobStroke.Color = Color3.fromRGB(255, 255, 255)
-        knobStroke.Thickness = 2
-        knobStroke.Parent = knob
         
         local currentValue = default
         local dragging = false
         
         local sliderBtn = Instance.new("TextButton")
-        sliderBtn.Size = UDim2.new(1, 0, 1, 14)
-        sliderBtn.Position = UDim2.new(0, 0, 0, -7)
+        sliderBtn.Size = UDim2.new(1, 0, 1, 12)
+        sliderBtn.Position = UDim2.new(0, 0, 0, -6)
         sliderBtn.BackgroundTransparency = 1
         sliderBtn.Text = ""
         sliderBtn.Parent = sliderBg
@@ -1341,9 +969,12 @@ local function createAdminGui(player)
                 local mouse = player:GetMouse()
                 local relativeX = (mouse.X - sliderBg.AbsolutePosition.X) / sliderBg.AbsoluteSize.X
                 relativeX = math.clamp(relativeX, 0, 1)
-                currentValue = math.floor(min + relativeX * (max - min))
+                currentValue = math.floor(min + relativeX * (max - min) + 0.5)
+                if max <= 1 then
+                    currentValue = min + relativeX * (max - min)
+                    currentValue = math.floor(currentValue * 100) / 100
+                end
                 sliderFill.Size = UDim2.new(relativeX, 0, 1, 0)
-                knob.Position = UDim2.new(relativeX, -7, 0.5, -7)
                 valueLabel.Text = tostring(currentValue)
                 if callback then callback(currentValue) end
             end
@@ -1352,18 +983,132 @@ local function createAdminGui(player)
         return container, function() return currentValue end
     end
     
+    local function createDropdown(parent, label, posX, posY, options, default, callback)
+        local container = Instance.new("Frame")
+        container.Size = UDim2.new(0, 130, 0, 38)
+        container.Position = UDim2.new(0, posX, 0, posY)
+        container.BackgroundTransparency = 1
+        container.ZIndex = 5
+        container.Parent = parent
+        
+        local labelText = Instance.new("TextLabel")
+        labelText.Size = UDim2.new(1, 0, 0, 14)
+        labelText.BackgroundTransparency = 1
+        labelText.Text = label
+        labelText.TextColor3 = Colors.TextDim
+        labelText.TextSize = 10
+        labelText.Font = Enum.Font.Gotham
+        labelText.TextXAlignment = Enum.TextXAlignment.Left
+        labelText.ZIndex = 5
+        labelText.Parent = container
+        
+        local dropBtn = Instance.new("TextButton")
+        dropBtn.Size = UDim2.new(1, 0, 0, 22)
+        dropBtn.Position = UDim2.new(0, 0, 0, 16)
+        dropBtn.BackgroundColor3 = Colors.BackgroundLight
+        dropBtn.BorderSizePixel = 0
+        dropBtn.Text = "  " .. default
+        dropBtn.TextColor3 = Colors.Text
+        dropBtn.TextSize = 10
+        dropBtn.Font = Enum.Font.Gotham
+        dropBtn.TextXAlignment = Enum.TextXAlignment.Left
+        dropBtn.ZIndex = 5
+        dropBtn.Parent = container
+        
+        local dropCorner = Instance.new("UICorner")
+        dropCorner.CornerRadius = UDim.new(0, 3)
+        dropCorner.Parent = dropBtn
+        
+        local dropStroke = Instance.new("UIStroke")
+        dropStroke.Color = Colors.Border
+        dropStroke.Thickness = 1
+        dropStroke.Parent = dropBtn
+        
+        local arrow = Instance.new("TextLabel")
+        arrow.Size = UDim2.new(0, 16, 1, 0)
+        arrow.Position = UDim2.new(1, -18, 0, 0)
+        arrow.BackgroundTransparency = 1
+        arrow.Text = "▼"
+        arrow.TextColor3 = Colors.Accent
+        arrow.TextSize = 10
+        arrow.Font = Enum.Font.GothamBold
+        arrow.ZIndex = 5
+        arrow.Parent = dropBtn
+        
+        local currentSelection = default
+        local isOpen = false
+        
+        local optionsFrame = Instance.new("Frame")
+        optionsFrame.Size = UDim2.new(1, 0, 0, #options * 22)
+        optionsFrame.Position = UDim2.new(0, 0, 1, 2)
+        optionsFrame.BackgroundColor3 = Colors.Background
+        optionsFrame.BorderSizePixel = 0
+        optionsFrame.Visible = false
+        optionsFrame.ZIndex = 50
+        optionsFrame.Parent = dropBtn
+        
+        local optCorner = Instance.new("UICorner")
+        optCorner.CornerRadius = UDim.new(0, 3)
+        optCorner.Parent = optionsFrame
+        
+        local optStroke = Instance.new("UIStroke")
+        optStroke.Color = Colors.Accent
+        optStroke.Thickness = 1
+        optStroke.Parent = optionsFrame
+        
+        for i, opt in ipairs(options) do
+            local optBtn = Instance.new("TextButton")
+            optBtn.Size = UDim2.new(1, 0, 0, 22)
+            optBtn.Position = UDim2.new(0, 0, 0, (i-1) * 22)
+            optBtn.BackgroundColor3 = Colors.BackgroundLight
+            optBtn.BackgroundTransparency = 0.5
+            optBtn.Text = "  " .. opt
+            optBtn.TextColor3 = Colors.Text
+            optBtn.TextSize = 10
+            optBtn.Font = Enum.Font.Gotham
+            optBtn.TextXAlignment = Enum.TextXAlignment.Left
+            optBtn.ZIndex = 51
+            optBtn.Parent = optionsFrame
+            
+            optBtn.MouseEnter:Connect(function()
+                optBtn.BackgroundTransparency = 0
+                optBtn.BackgroundColor3 = Colors.Accent
+            end)
+            
+            optBtn.MouseLeave:Connect(function()
+                optBtn.BackgroundTransparency = 0.5
+                optBtn.BackgroundColor3 = Colors.BackgroundLight
+            end)
+            
+            optBtn.MouseButton1Click:Connect(function()
+                currentSelection = opt
+                dropBtn.Text = "  " .. opt
+                isOpen = false
+                optionsFrame.Visible = false
+                arrow.Text = "▼"
+                if callback then callback(opt) end
+            end)
+        end
+        
+        dropBtn.MouseButton1Click:Connect(function()
+            isOpen = not isOpen
+            optionsFrame.Visible = isOpen
+            arrow.Text = isOpen and "▲" or "▼"
+        end)
+        
+        return container, function() return currentSelection end
+    end
+    
     local function createButton(parent, text, posX, posY, width, callback)
         local btn = Instance.new("TextButton")
-        btn.Size = UDim2.new(0, width, 0, 22)
+        btn.Size = UDim2.new(0, width, 0, 24)
         btn.Position = UDim2.new(0, posX, 0, posY)
-        btn.BackgroundColor3 = Colors.AccentDark
-        btn.BackgroundTransparency = 0.3
+        btn.BackgroundColor3 = Colors.BackgroundLight
         btn.BorderSizePixel = 0
         btn.Text = text
         btn.TextColor3 = Colors.Text
         btn.TextSize = 10
         btn.Font = Enum.Font.GothamMedium
-        btn.AutoButtonColor = false
         btn.Parent = parent
         
         local btnCorner = Instance.new("UICorner")
@@ -1376,11 +1121,11 @@ local function createAdminGui(player)
         btnStroke.Parent = btn
         
         btn.MouseEnter:Connect(function()
-            TweenService:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = Colors.Accent, BackgroundTransparency = 0}):Play()
+            TweenService:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = Colors.Accent}):Play()
         end)
         
         btn.MouseLeave:Connect(function()
-            TweenService:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = Colors.AccentDark, BackgroundTransparency = 0.3}):Play()
+            TweenService:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = Colors.BackgroundLight}):Play()
         end)
         
         btn.MouseButton1Click:Connect(callback)
@@ -1390,9 +1135,9 @@ local function createAdminGui(player)
     
     local function createInput(parent, placeholder, posX, posY, width)
         local inputFrame = Instance.new("Frame")
-        inputFrame.Size = UDim2.new(0, width, 0, 20)
+        inputFrame.Size = UDim2.new(0, width, 0, 22)
         inputFrame.Position = UDim2.new(0, posX, 0, posY)
-        inputFrame.BackgroundColor3 = Colors.DropdownBg
+        inputFrame.BackgroundColor3 = Colors.BackgroundLight
         inputFrame.BorderSizePixel = 0
         inputFrame.Parent = parent
         
@@ -1419,14 +1164,6 @@ local function createAdminGui(player)
         textBox.ClearTextOnFocus = false
         textBox.Parent = inputFrame
         
-        textBox.Focused:Connect(function()
-            TweenService:Create(inputStroke, TweenInfo.new(0.1), {Color = Colors.Accent}):Play()
-        end)
-        
-        textBox.FocusLost:Connect(function()
-            TweenService:Create(inputStroke, TweenInfo.new(0.1), {Color = Colors.Border}):Play()
-        end)
-        
         return inputFrame, textBox
     end
     
@@ -1442,120 +1179,72 @@ local function createAdminGui(player)
     trackingPage.Parent = contentArea
     tabPages["Tracking"] = trackingPage
     
-    -- Values Section (left)
-    local valuesSection = createSection(trackingPage, "Values", 0, 220, 110)
+    local valuesSection = createSection(trackingPage, "Settings", 0, 0, 230, 130)
     
-    createCheckbox(valuesSection, "Enabled", 8, 16, false, function(enabled)
-        if enabled then
-            local targetName = playerInput and playerInput.Text or ""
-            if targetName ~= "" then
-                local target = findPlayer(targetName)
-                if target and isValidTarget(player, target) then
-                    statusLabel.Text = "🎯 Tracking: " .. target.Name
-                end
-            end
-        else
-            stopTracking(player)
-            statusLabel.Text = "✓ Tracking disabled"
-        end
-    end)
-    
+    createCheckbox(valuesSection, "Enabled", 8, 16, false, nil)
     createCheckbox(valuesSection, "Toggle Mode", 8, 36, false, function(enabled)
         trackingMode[player.UserId] = enabled and "toggle" or "hold"
     end)
     
-    local _, lockPartDropdown = createDropdown(valuesSection, "Lock Part", 8, 56, {"Head", "Torso", "Random"}, "Head", function(val)
-        -- Store lock part preference
-    end, screenGui)
-    
-    createSlider(valuesSection, "Sensitivity:", 8, 90, 1, 10, 6, function(val)
-        -- Sensitivity setting
+    createSlider(valuesSection, "Smoothness:", 8, 58, 0.05, 0.5, 0.1, function(val)
+        camTrackingSettings[player.UserId].smoothness = val
     end)
     
-    -- Checks Section
-    local checksSection = createSection(trackingPage, "Checks", 120, 220, 80)
+    createCheckbox(valuesSection, "Prediction", 8, 96, false, function(enabled)
+        camTrackingSettings[player.UserId].prediction = enabled
+    end)
     
-    createCheckbox(checksSection, "Team Check", 8, 16, true, nil)
-    createCheckbox(checksSection, "Wall Check", 8, 36, true, nil)
-    createCheckbox(checksSection, "Alive Check", 8, 56, true, nil)
-    
-    -- Target Info Section (right)
-    local targetSection = createSection(trackingPage, "Target Info", 0, 220, 160)
-    targetSection.Position = UDim2.new(0, 235, 0, 0)
+    local targetSection = createSection(trackingPage, "Target", 245, 0, 230, 180)
     
     local targetNameLabel = Instance.new("TextLabel")
-    targetNameLabel.Size = UDim2.new(1, -16, 0, 18)
+    targetNameLabel.Size = UDim2.new(1, -16, 0, 16)
     targetNameLabel.Position = UDim2.new(0, 8, 0, 16)
     targetNameLabel.BackgroundTransparency = 1
-    targetNameLabel.Text = "👤 Target: None"
+    targetNameLabel.Text = "Target: None"
     targetNameLabel.TextColor3 = Colors.AccentBright
     targetNameLabel.TextSize = 11
     targetNameLabel.Font = Enum.Font.GothamBold
     targetNameLabel.TextXAlignment = Enum.TextXAlignment.Left
     targetNameLabel.Parent = targetSection
     
-    local targetCoordsLabel = Instance.new("TextLabel")
-    targetCoordsLabel.Size = UDim2.new(1, -16, 0, 14)
-    targetCoordsLabel.Position = UDim2.new(0, 8, 0, 36)
-    targetCoordsLabel.BackgroundTransparency = 1
-    targetCoordsLabel.Text = "📍 X: 0 | Y: 0 | Z: 0"
-    targetCoordsLabel.TextColor3 = Colors.Warning
-    targetCoordsLabel.TextSize = 10
-    targetCoordsLabel.Font = Enum.Font.Gotham
-    targetCoordsLabel.TextXAlignment = Enum.TextXAlignment.Left
-    targetCoordsLabel.Parent = targetSection
-    
     local targetDistLabel = Instance.new("TextLabel")
-    targetDistLabel.Size = UDim2.new(0.5, -8, 0, 14)
-    targetDistLabel.Position = UDim2.new(0, 8, 0, 52)
+    targetDistLabel.Size = UDim2.new(1, -16, 0, 14)
+    targetDistLabel.Position = UDim2.new(0, 8, 0, 34)
     targetDistLabel.BackgroundTransparency = 1
-    targetDistLabel.Text = "📏 Distance: 0m"
+    targetDistLabel.Text = "Distance: 0m | Status: --"
     targetDistLabel.TextColor3 = Colors.Text
     targetDistLabel.TextSize = 10
     targetDistLabel.Font = Enum.Font.Gotham
     targetDistLabel.TextXAlignment = Enum.TextXAlignment.Left
     targetDistLabel.Parent = targetSection
     
-    local targetVisLabel = Instance.new("TextLabel")
-    targetVisLabel.Size = UDim2.new(0.5, -8, 0, 14)
-    targetVisLabel.Position = UDim2.new(0.5, 0, 0, 52)
-    targetVisLabel.BackgroundTransparency = 1
-    targetVisLabel.Text = "👁 VISIBLE"
-    targetVisLabel.TextColor3 = Colors.Success
-    targetVisLabel.TextSize = 10
-    targetVisLabel.Font = Enum.Font.GothamBold
-    targetVisLabel.TextXAlignment = Enum.TextXAlignment.Left
-    targetVisLabel.Parent = targetSection
-    
-    -- Health bar in target section
     local targetHealthBg = Instance.new("Frame")
-    targetHealthBg.Size = UDim2.new(1, -16, 0, 10)
-    targetHealthBg.Position = UDim2.new(0, 8, 0, 72)
-    targetHealthBg.BackgroundColor3 = Colors.SliderBg
+    targetHealthBg.Size = UDim2.new(1, -16, 0, 8)
+    targetHealthBg.Position = UDim2.new(0, 8, 0, 54)
+    targetHealthBg.BackgroundColor3 = Colors.BackgroundLight
     targetHealthBg.BorderSizePixel = 0
     targetHealthBg.Parent = targetSection
     
     local targetHealthCorner = Instance.new("UICorner")
-    targetHealthCorner.CornerRadius = UDim.new(0, 5)
+    targetHealthCorner.CornerRadius = UDim.new(0, 4)
     targetHealthCorner.Parent = targetHealthBg
     
     local targetHealthFill = Instance.new("Frame")
     targetHealthFill.Size = UDim2.new(1, 0, 1, 0)
-    targetHealthFill.BackgroundColor3 = Colors.Success
+    targetHealthFill.BackgroundColor3 = Colors.Health_High
     targetHealthFill.BorderSizePixel = 0
     targetHealthFill.Parent = targetHealthBg
     
-    local targetHealthFillCorner = Instance.new("UICorner")
-    targetHealthFillCorner.CornerRadius = UDim.new(0, 5)
-    targetHealthFillCorner.Parent = targetHealthFill
+    local targetHealthCorner2 = Instance.new("UICorner")
+    targetHealthCorner2.CornerRadius = UDim.new(0, 4)
+    targetHealthCorner2.Parent = targetHealthFill
     
-    -- Player input
-    local _, playerInput = createInput(targetSection, "Enter player name...", 8, 95, 130)
+    local _, playerInput = createInput(targetSection, "Player name...", 8, 75, 140)
     
-    createButton(targetSection, "🎯 Track", 8, 122, 65, function()
+    createButton(targetSection, "Track", 8, 105, 70, function()
         local targetName = playerInput.Text
         if targetName == "" then
-            statusLabel.Text = "⚠ Enter a player name"
+            statusLabel.Text = "⚠ Enter player name"
             return
         end
         
@@ -1573,63 +1262,55 @@ local function createAdminGui(player)
         end
         
         statusLabel.Text = "🎯 Tracking: " .. target.Name
-        targetNameLabel.Text = "👤 Target: " .. target.Name
+        targetNameLabel.Text = "Target: " .. target.Name
         
         local camera = Workspace.CurrentCamera
+        local settings = camTrackingSettings[player.UserId]
         
         local connection = RunService.RenderStepped:Connect(function()
             local adminChar = player.Character
             local targetChar = target.Character
-            
             if not adminChar or not targetChar then return end
             
             local adminHRP = adminChar:FindFirstChild("HumanoidRootPart")
-            local targetHRP = targetChar:FindFirstChild("HumanoidRootPart")
+            local targetPart = targetChar:FindFirstChild(settings.lockPart) or targetChar:FindFirstChild("Head")
             local targetHumanoid = targetChar:FindFirstChild("Humanoid")
             
-            if adminHRP and targetHRP and camera then
-                local targetPos = targetHRP.Position
-                local adminPos = adminHRP.Position
-                local distance = (adminPos - targetPos).Magnitude
-                local canSee = hasLineOfSight(player, target)
+            if adminHRP and targetPart and camera then
+                local targetPos = targetPart.Position
                 
-                if canSee then
-                    local lookAtCFrame = CFrame.new(camera.CFrame.Position, targetPos)
-                    camera.CFrame = camera.CFrame:Lerp(lookAtCFrame, 0.1)
-                    targetVisLabel.Text = "👁 VISIBLE"
-                    targetVisLabel.TextColor3 = Colors.Success
-                else
-                    targetVisLabel.Text = "🚫 HIDDEN"
-                    targetVisLabel.TextColor3 = Colors.Danger
+                -- Prediction
+                if settings.prediction then
+                    local targetHRP = targetChar:FindFirstChild("HumanoidRootPart")
+                    if targetHRP then
+                        local velocity = targetHRP.AssemblyLinearVelocity
+                        targetPos = targetPos + velocity * 0.1
+                    end
                 end
                 
-                targetCoordsLabel.Text = string.format("📍 X: %.0f | Y: %.0f | Z: %.0f", targetPos.X, targetPos.Y, targetPos.Z)
-                targetDistLabel.Text = string.format("📏 Distance: %.0fm", distance)
+                local distance = (adminHRP.Position - targetPos).Magnitude
+                local canSee = hasLineOfSight(player, target)
+                
+                local lookAtCFrame = CFrame.new(camera.CFrame.Position, targetPos)
+                camera.CFrame = camera.CFrame:Lerp(lookAtCFrame, settings.smoothness)
+                
+                targetDistLabel.Text = string.format("Distance: %dm | %s", math.floor(distance), canSee and "VISIBLE" or "HIDDEN")
+                targetDistLabel.TextColor3 = canSee and Colors.Health_High or Colors.Health_Low
                 
                 if targetHumanoid then
                     local healthPercent = targetHumanoid.Health / targetHumanoid.MaxHealth
                     targetHealthFill.Size = UDim2.new(healthPercent, 0, 1, 0)
-                    
-                    if healthPercent > 0.6 then
-                        targetHealthFill.BackgroundColor3 = Colors.Success
-                    elseif healthPercent > 0.3 then
-                        targetHealthFill.BackgroundColor3 = Colors.Warning
-                    else
-                        targetHealthFill.BackgroundColor3 = Colors.Danger
-                    end
+                    targetHealthFill.BackgroundColor3 = getHealthColor(healthPercent)
                 end
             end
         end)
         
-        activeTracking[player.UserId] = {
-            connection = connection,
-            target = target
-        }
+        activeTracking[player.UserId] = { connection = connection, target = target }
     end)
     
-    createButton(targetSection, "⬛ Stop", 80, 122, 60, function()
+    createButton(targetSection, "Stop", 85, 105, 60, function()
         if stopTracking(player) then
-            targetNameLabel.Text = "👤 Target: None"
+            targetNameLabel.Text = "Target: None"
             statusLabel.Text = "✓ Tracking stopped"
         end
     end)
@@ -1643,13 +1324,11 @@ local function createAdminGui(player)
     espPage.Parent = contentArea
     tabPages["ESP"] = espPage
     
-    -- ESP Settings Section
-    local espSettingsSection = createSection(espPage, "ESP Settings", 0, 220, 180)
+    local espSection = createSection(espPage, "ESP Features", 0, 0, 230, 200)
     
-    local espEnabledCheck
-    espEnabledCheck = createCheckbox(espSettingsSection, "⚡ Enabled", 8, 16, false, function(enabled)
+    createCheckbox(espSection, "Enabled", 8, 16, false, function(enabled)
         if enabled then
-            enableESP(player)
+            enableESP(player, screenGui)
             statusLabel.Text = "✓ ESP Enabled"
         else
             clearAllESP(player)
@@ -1657,85 +1336,55 @@ local function createAdminGui(player)
         end
     end)
     
-    createCheckbox(espSettingsSection, "Box Highlight", 8, 36, true, function(enabled)
+    createCheckbox(espSection, "Corner Box", 8, 36, true, function(enabled)
         espSettings[player.UserId].boxEnabled = enabled
+    end)
+    
+    createCheckbox(espSection, "Skeleton", 8, 56, true, function(enabled)
+        espSettings[player.UserId].skeletonEnabled = enabled
         if espEnabled[player.UserId] then
             clearAllESP(player)
-            enableESP(player)
+            enableESP(player, screenGui)
         end
     end)
     
-    createCheckbox(espSettingsSection, "Tracers", 8, 56, true, function(enabled)
+    createCheckbox(espSection, "Tracers", 8, 76, true, function(enabled)
         espSettings[player.UserId].tracerEnabled = enabled
-        if espEnabled[player.UserId] then
-            clearAllESP(player)
-            enableESP(player)
-        end
     end)
     
-    createCheckbox(espSettingsSection, "Names", 8, 76, true, function(enabled)
+    createCheckbox(espSection, "Names", 8, 96, true, function(enabled)
         espSettings[player.UserId].nameEnabled = enabled
-        if espEnabled[player.UserId] then
-            clearAllESP(player)
-            enableESP(player)
-        end
     end)
     
-    createCheckbox(espSettingsSection, "Health Bars", 8, 96, true, function(enabled)
+    createCheckbox(espSection, "Health Bars", 8, 116, true, function(enabled)
         espSettings[player.UserId].healthEnabled = enabled
-        if espEnabled[player.UserId] then
-            clearAllESP(player)
-            enableESP(player)
-        end
     end)
     
-    createCheckbox(espSettingsSection, "Distance", 8, 116, true, function(enabled)
+    createCheckbox(espSection, "Distance", 8, 136, true, function(enabled)
         espSettings[player.UserId].distanceEnabled = enabled
-        if espEnabled[player.UserId] then
-            clearAllESP(player)
-            enableESP(player)
-        end
     end)
     
-    createCheckbox(espSettingsSection, "Head Dot", 8, 136, true, function(enabled)
+    createCheckbox(espSection, "Head Dot", 8, 156, true, function(enabled)
         espSettings[player.UserId].headDotEnabled = enabled
-        if espEnabled[player.UserId] then
-            clearAllESP(player)
-            enableESP(player)
-        end
     end)
     
-    createCheckbox(espSettingsSection, "Weapon Info", 8, 156, true, function(enabled)
-        espSettings[player.UserId].weaponEnabled = enabled
-        if espEnabled[player.UserId] then
-            clearAllESP(player)
-            enableESP(player)
-        end
+    local espAppearSection = createSection(espPage, "Appearance", 245, 0, 230, 160)
+    
+    createSlider(espAppearSection, "Tracer Width:", 8, 16, 1, 5, 1, function(val)
+        espSettings[player.UserId].tracerThickness = val
     end)
     
-    -- ESP Appearance Section
-    local espAppearSection = createSection(espPage, "Appearance", 0, 220, 120)
-    espAppearSection.Position = UDim2.new(0, 235, 0, 0)
+    createSlider(espAppearSection, "Box Width:", 8, 54, 1, 5, 1, function(val)
+        espSettings[player.UserId].boxThickness = val
+    end)
     
-    createSlider(espAppearSection, "Fill Transparency:", 8, 16, 0, 10, 8, nil)
-    createSlider(espAppearSection, "Outline Opacity:", 8, 56, 0, 10, 10, nil)
-    createSlider(espAppearSection, "Tracer Width:", 8, 96, 1, 5, 2, nil)
+    createSlider(espAppearSection, "Skeleton Width:", 8, 92, 1, 3, 1, function(val)
+        espSettings[player.UserId].skeletonThickness = val
+    end)
     
-    -- ESP Color Section
-    local espColorSection = createSection(espPage, "Distance Colors", 130, 220, 70)
-    espColorSection.Position = UDim2.new(0, 235, 0, 0)
-    
-    local colorInfo = Instance.new("TextLabel")
-    colorInfo.Size = UDim2.new(1, -16, 0, 50)
-    colorInfo.Position = UDim2.new(0, 8, 0, 16)
-    colorInfo.BackgroundTransparency = 1
-    colorInfo.Text = "🔴 < 30m  |  🟠 < 75m\n🟡 < 150m  |  🟢 > 150m"
-    colorInfo.TextColor3 = Colors.Text
-    colorInfo.TextSize = 10
-    colorInfo.Font = Enum.Font.Gotham
-    colorInfo.TextXAlignment = Enum.TextXAlignment.Left
-    colorInfo.TextYAlignment = Enum.TextYAlignment.Top
-    colorInfo.Parent = espColorSection
+    createDropdown(espAppearSection, "Tracer Origin", 8, 126, {"Bottom", "Top", "Mouse"}, "Bottom", function(val)
+        espSettings[player.UserId].tracerOrigin = val
+    end)
     
     -- ===== VISUALS TAB =====
     local visualsPage = Instance.new("Frame")
@@ -1746,8 +1395,7 @@ local function createAdminGui(player)
     visualsPage.Parent = contentArea
     tabPages["Visuals"] = visualsPage
     
-    -- FOV Section
-    local fovSection = createSection(visualsPage, "Field Of View", 0, 220, 100)
+    local fovSection = createSection(visualsPage, "Camera FOV", 0, 0, 230, 100)
     
     local fovEnabled = false
     local customFOV = 70
@@ -1758,53 +1406,51 @@ local function createAdminGui(player)
         local camera = Workspace.CurrentCamera
         if camera then
             if enabled then
-                -- Start FOV control
                 if fovConnection then fovConnection:Disconnect() end
                 fovConnection = RunService.RenderStepped:Connect(function()
                     if fovEnabled and camera then
                         camera.FieldOfView = customFOV
                     end
                 end)
-                camera.FieldOfView = customFOV
-                statusLabel.Text = "✓ FOV set to " .. customFOV
+                statusLabel.Text = "✓ FOV: " .. customFOV
             else
-                -- Reset to default
                 if fovConnection then 
-                    fovConnection:Disconnect() 
+                    fovConnection:Disconnect()
                     fovConnection = nil
                 end
                 camera.FieldOfView = 70
-                statusLabel.Text = "✓ FOV reset to default"
+                statusLabel.Text = "✓ FOV reset"
             end
         end
     end)
     
-    createCheckbox(fovSection, "Visible Circle", 8, 36, true, nil)
-    
-    createSlider(fovSection, "FOV Amount:", 8, 56, 30, 120, 70, function(val)
+    createSlider(fovSection, "FOV Amount:", 8, 40, 30, 120, 70, function(val)
         customFOV = val
         if fovEnabled then
             local camera = Workspace.CurrentCamera
-            if camera then
-                camera.FieldOfView = val
-            end
+            if camera then camera.FieldOfView = val end
         end
-        statusLabel.Text = "FOV: " .. val
     end)
     
-    -- FOV Circle Appearance
-    local fovAppearSection = createSection(visualsPage, "FOV Circle", 0, 220, 100)
-    fovAppearSection.Position = UDim2.new(0, 235, 0, 0)
+    -- Camera Tracking Section
+    local camSection = createSection(visualsPage, "Camera Tracking", 245, 0, 230, 140)
     
-    createCheckbox(fovAppearSection, "Filled", 8, 16, false, nil)
-    createSlider(fovAppearSection, "Circle Trans:", 8, 36, 0, 10, 5, nil)
-    createSlider(fovAppearSection, "Circle Sides:", 8, 72, 16, 64, 32, nil)
+    createDropdown(camSection, "Lock Part", 8, 16, {"Head", "HumanoidRootPart", "UpperTorso", "Torso"}, "Head", function(val)
+        camTrackingSettings[player.UserId].lockPart = val
+    end)
     
-    -- Third Person Section
-    local thirdPersonSection = createSection(visualsPage, "Third Person", 110, 220, 70)
+    createSlider(camSection, "Smoothness:", 8, 60, 0.05, 0.5, 0.1, function(val)
+        camTrackingSettings[player.UserId].smoothness = val
+    end)
+    
+    createCheckbox(camSection, "Velocity Predict", 8, 98, false, function(enabled)
+        camTrackingSettings[player.UserId].prediction = enabled
+    end)
+    
+    local thirdPersonSection = createSection(visualsPage, "Third Person", 0, 110, 230, 70)
     
     createCheckbox(thirdPersonSection, "Enable", 8, 16, false, nil)
-    createSlider(thirdPersonSection, "Sensitivity:", 8, 36, 0, 10, 3, nil)
+    createSlider(thirdPersonSection, "Distance:", 8, 38, 5, 30, 12, nil)
     
     -- ===== TELEPORT TAB =====
     local teleportPage = Instance.new("Frame")
@@ -1815,23 +1461,16 @@ local function createAdminGui(player)
     teleportPage.Parent = contentArea
     tabPages["Teleport"] = teleportPage
     
-    -- Teleport Section
-    local tpSection = createSection(teleportPage, "Teleport Controls", 0, 220, 160)
+    local tpSection = createSection(teleportPage, "Teleport", 0, 0, 230, 150)
     
-    local _, tpInput = createInput(tpSection, "Enter player name...", 8, 16, 140)
+    local _, tpInput = createInput(tpSection, "Player name...", 8, 16, 140)
     
-    createButton(tpSection, "🚀 Teleport To", 8, 45, 100, function()
+    createButton(tpSection, "Teleport To", 8, 46, 100, function()
         local targetName = tpInput.Text
-        if targetName == "" then
-            statusLabel.Text = "⚠ Enter a player name"
-            return
-        end
+        if targetName == "" then return end
         
         local target = findPlayer(targetName)
-        if not target then
-            statusLabel.Text = "⚠ Player not found"
-            return
-        end
+        if not target then return end
         
         local adminChar = player.Character
         local targetChar = target.Character
@@ -1847,18 +1486,12 @@ local function createAdminGui(player)
         end
     end)
     
-    createButton(tpSection, "📥 Bring Player", 8, 75, 100, function()
+    createButton(tpSection, "Bring", 8, 78, 100, function()
         local targetName = tpInput.Text
-        if targetName == "" then
-            statusLabel.Text = "⚠ Enter a player name"
-            return
-        end
+        if targetName == "" then return end
         
         local target = findPlayer(targetName)
-        if not target then
-            statusLabel.Text = "⚠ Player not found"
-            return
-        end
+        if not target then return end
         
         local adminChar = player.Character
         local targetChar = target.Character
@@ -1874,24 +1507,6 @@ local function createAdminGui(player)
         end
     end)
     
-    createButton(tpSection, "📍 Locate All", 8, 105, 100, function()
-        local count = 0
-        for _, p in ipairs(Players:GetPlayers()) do
-            if isValidTarget(player, p) then
-                local char = p.Character
-                if char then
-                    local hrp = char:FindFirstChild("HumanoidRootPart")
-                    if hrp then
-                        count = count + 1
-                        local canSee = hasLineOfSight(player, p)
-                        print(string.format("[LOCATE] %s %s: X:%.0f Y:%.0f Z:%.0f", canSee and "👁" or "🚫", p.Name, hrp.Position.X, hrp.Position.Y, hrp.Position.Z))
-                    end
-                end
-            end
-        end
-        statusLabel.Text = "✓ Located " .. count .. " enemies (check console)"
-    end)
-    
     -- ===== FUNCTIONS TAB =====
     local functionsPage = Instance.new("Frame")
     functionsPage.Name = "FunctionsPage"
@@ -1901,106 +1516,64 @@ local function createAdminGui(player)
     functionsPage.Parent = contentArea
     tabPages["Functions"] = functionsPage
     
-    -- Character Section
-    local charSection = createSection(functionsPage, "Character", 0, 220, 150)
+    local charSection = createSection(functionsPage, "Character", 0, 0, 230, 150)
     
-    local godModeEnabled = false
     local godModeConnection = nil
     
-    createCheckbox(charSection, "💛 God Mode", 8, 16, false, function(enabled)
-        godModeEnabled = enabled
-        
+    createCheckbox(charSection, "God Mode", 8, 16, false, function(enabled)
         if enabled then
             godModeConnection = RunService.Heartbeat:Connect(function()
                 local char = player.Character
                 if char then
                     local humanoid = char:FindFirstChild("Humanoid")
-                    if humanoid then
-                        humanoid.Health = humanoid.MaxHealth
-                    end
+                    if humanoid then humanoid.Health = humanoid.MaxHealth end
                 end
             end)
-            statusLabel.Text = "✓ God Mode enabled"
+            statusLabel.Text = "✓ God Mode ON"
         else
-            if godModeConnection then
-                godModeConnection:Disconnect()
-                godModeConnection = nil
-            end
-            statusLabel.Text = "✓ God Mode disabled"
+            if godModeConnection then godModeConnection:Disconnect() end
+            statusLabel.Text = "✓ God Mode OFF"
         end
     end)
     
-    createCheckbox(charSection, "⚡ Speed Boost", 8, 36, false, function(enabled)
+    createCheckbox(charSection, "Speed Boost", 8, 36, false, function(enabled)
         local char = player.Character
         if char then
             local humanoid = char:FindFirstChild("Humanoid")
             if humanoid then
                 humanoid.WalkSpeed = enabled and 100 or 16
-                statusLabel.Text = enabled and "✓ Speed Boost ON" or "✓ Speed Boost OFF"
             end
         end
     end)
     
-    createCheckbox(charSection, "🦘 Infinite Jump", 8, 56, false, function(enabled)
-        statusLabel.Text = enabled and "✓ Inf Jump ON" or "✓ Inf Jump OFF"
-    end)
-    
-    createCheckbox(charSection, "👻 No Clip", 8, 76, false, function(enabled)
-        statusLabel.Text = enabled and "✓ No Clip ON" or "✓ No Clip OFF"
-    end)
-    
-    createSlider(charSection, "Walk Speed:", 8, 100, 16, 200, 16, function(val)
+    createSlider(charSection, "Walk Speed:", 8, 60, 16, 200, 16, function(val)
         local char = player.Character
         if char then
             local humanoid = char:FindFirstChild("Humanoid")
-            if humanoid then
-                humanoid.WalkSpeed = val
-            end
+            if humanoid then humanoid.WalkSpeed = val end
         end
     end)
     
-    -- Items Section
-    local itemsSection = createSection(functionsPage, "Items & Stats", 0, 220, 90)
-    itemsSection.Position = UDim2.new(0, 235, 0, 0)
-    
-    createButton(itemsSection, "🔓 Unlock All", 8, 16, 110, function()
-        local itemsFolder = ServerStorage:FindFirstChild("Items")
-        if itemsFolder then
-            for _, item in ipairs(itemsFolder:GetChildren()) do
-                local clone = item:Clone()
-                clone.Parent = player.Backpack
-            end
+    createSlider(charSection, "Jump Power:", 8, 98, 50, 300, 50, function(val)
+        local char = player.Character
+        if char then
+            local humanoid = char:FindFirstChild("Humanoid")
+            if humanoid then humanoid.JumpPower = val end
         end
-        statusLabel.Text = "✓ Items unlocked"
     end)
     
-    createButton(itemsSection, "📊 Max Stats", 8, 46, 110, function()
-        local leaderstats = player:FindFirstChild("leaderstats")
-        if leaderstats then
-            for _, stat in ipairs(leaderstats:GetChildren()) do
-                if stat:IsA("IntValue") or stat:IsA("NumberValue") then
-                    stat.Value = 999999
-                end
-            end
-        end
-        statusLabel.Text = "✓ Stats maxed"
-    end)
-    
-    -- Tab switching logic
+    -- Tab switching
     for tabName, tabBtn in pairs(tabButtons) do
         tabBtn.MouseButton1Click:Connect(function()
             for name, btn in pairs(tabButtons) do
-                TweenService:Create(btn, TweenInfo.new(0.15), {
-                    BackgroundColor3 = name == tabName and Colors.TabActive or Colors.TabInactive,
-                    TextColor3 = name == tabName and Colors.AccentBright or Colors.TextDim
-                }):Play()
+                btn.BackgroundColor3 = name == tabName and Colors.Accent or Colors.BackgroundLight
+                btn.BackgroundTransparency = name == tabName and 0.5 or 0.7
+                btn.TextColor3 = name == tabName and Colors.Text or Colors.TextDim
             end
             
             for name, page in pairs(tabPages) do
                 page.Visible = name == tabName
             end
-            
-            currentTab = tabName
         end)
     end
     
@@ -2008,75 +1581,63 @@ local function createAdminGui(player)
     local function startRMBTracking()
         stopRightMouseTracking(player)
         
-        local nearestPlayer, distance = getNearestValidTarget(player)
+        local nearestPlayer, dist = getNearestValidTarget(player)
         if not nearestPlayer then
-            statusLabel.Text = "⚠ No visible enemies nearby"
+            statusLabel.Text = "⚠ No visible targets"
             return
         end
         
-        statusLabel.Text = "🎯 RMB tracking: " .. nearestPlayer.Name
-        targetNameLabel.Text = "👤 Target: " .. nearestPlayer.Name .. " (RMB)"
+        statusLabel.Text = "🎯 RMB: " .. nearestPlayer.Name
+        targetNameLabel.Text = "Target: " .. nearestPlayer.Name .. " (RMB)"
         
         local camera = Workspace.CurrentCamera
+        local settings = camTrackingSettings[player.UserId]
         
         local connection = RunService.RenderStepped:Connect(function()
-            local currentNearest, dist = getNearestValidTarget(player)
-            if not currentNearest then 
-                targetVisLabel.Text = "⚠ NO TARGET"
-                targetVisLabel.TextColor3 = Colors.Warning
-                return 
-            end
+            local currentNearest, d = getNearestValidTarget(player)
+            if not currentNearest then return end
             
-            local adminChar = player.Character
             local targetChar = currentNearest.Character
+            if not targetChar then return end
             
-            if not adminChar or not targetChar then return end
-            
-            local adminHRP = adminChar:FindFirstChild("HumanoidRootPart")
-            local targetHRP = targetChar:FindFirstChild("HumanoidRootPart")
+            local targetPart = targetChar:FindFirstChild(settings.lockPart) or targetChar:FindFirstChild("Head")
             local targetHumanoid = targetChar:FindFirstChild("Humanoid")
             
-            if adminHRP and targetHRP and camera then
-                local targetPos = targetHRP.Position
+            if targetPart and camera then
+                local targetPos = targetPart.Position
+                
+                if settings.prediction then
+                    local targetHRP = targetChar:FindFirstChild("HumanoidRootPart")
+                    if targetHRP then
+                        targetPos = targetPos + targetHRP.AssemblyLinearVelocity * 0.1
+                    end
+                end
                 
                 local lookAtCFrame = CFrame.new(camera.CFrame.Position, targetPos)
-                camera.CFrame = camera.CFrame:Lerp(lookAtCFrame, 0.2)
+                camera.CFrame = camera.CFrame:Lerp(lookAtCFrame, settings.smoothness * 2)
                 
-                targetNameLabel.Text = "👤 Target: " .. currentNearest.Name .. " (RMB)"
-                targetCoordsLabel.Text = string.format("📍 X: %.0f | Y: %.0f | Z: %.0f", targetPos.X, targetPos.Y, targetPos.Z)
-                targetDistLabel.Text = string.format("📏 Distance: %.0fm", dist)
-                targetVisLabel.Text = "🔒 LOCKED"
-                targetVisLabel.TextColor3 = Colors.Success
+                targetDistLabel.Text = string.format("Distance: %dm | LOCKED", math.floor(d))
                 
                 if targetHumanoid then
                     local healthPercent = targetHumanoid.Health / targetHumanoid.MaxHealth
                     targetHealthFill.Size = UDim2.new(healthPercent, 0, 1, 0)
-                    
-                    if healthPercent > 0.6 then
-                        targetHealthFill.BackgroundColor3 = Colors.Success
-                    elseif healthPercent > 0.3 then
-                        targetHealthFill.BackgroundColor3 = Colors.Warning
-                    else
-                        targetHealthFill.BackgroundColor3 = Colors.Danger
-                    end
+                    targetHealthFill.BackgroundColor3 = getHealthColor(healthPercent)
                 end
             end
         end)
         
-        rightMouseTracking[player.UserId] = {
-            connection = connection
-        }
+        rightMouseTracking[player.UserId] = { connection = connection }
     end
     
     local function stopRMBTrackingUI()
         stopRightMouseTracking(player)
         if not activeTracking[player.UserId] then
-            targetNameLabel.Text = "👤 Target: None"
-            statusLabel.Text = "✓ Ready | RCtrl to toggle | RMB to track"
+            targetNameLabel.Text = "Target: None"
+            statusLabel.Text = "✓ Ready | RCtrl toggle | RMB track"
         end
     end
     
-    -- Input Handling
+    -- Input
     UserInputService.InputBegan:Connect(function(input, gameProcessed)
         if gameProcessed then return end
         
@@ -2099,7 +1660,7 @@ local function createAdminGui(player)
         end
     end)
     
-    UserInputService.InputEnded:Connect(function(input, gameProcessed)
+    UserInputService.InputEnded:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton2 then
             if trackingMode[player.UserId] == "hold" then
                 stopRMBTrackingUI()
@@ -2108,14 +1669,13 @@ local function createAdminGui(player)
     end)
 end
 
--- Give GUI to admins
+-- Initialize
 Players.PlayerAdded:Connect(function(player)
     if isAdmin(player) then
         createAdminGui(player)
     end
 end)
 
--- For admins already in game
 for _, player in ipairs(Players:GetPlayers()) do
     if isAdmin(player) then
         createAdminGui(player)
