@@ -745,7 +745,8 @@ local function createAdminGui(player)
         fovRadius = 150,
         fovEnabled = true,
         showFOVCircle = true,
-        requireLOS = true
+        requireLOS = true,
+        fovOpacity = 0.5
     }
     
     crosshairSettings[player.UserId] = {
@@ -1288,7 +1289,7 @@ local function createAdminGui(player)
     createCheckbox(valuesSection, "Prediction", 8, 78, false, function(e) camTrackingSettings[player.UserId].prediction = e end)
     createCheckbox(valuesSection, "Require Line of Sight", 8, 98, true, function(e) aimlockSettings[player.UserId].requireLOS = e end)
     
-    local aimlockSection = createSection(trackingPage, "Aimlock FOV", 245, 0, 230, 160)
+    local aimlockSection = createSection(trackingPage, "Aimlock FOV", 245, 0, 230, 200)
     createDropdown(aimlockSection, "Lock Part", 8, 16, {"Head", "HumanoidRootPart", "UpperTorso", "Torso"}, "Head", function(v) camTrackingSettings[player.UserId].lockPart = v end)
     createCheckbox(aimlockSection, "Show FOV Circle", 8, 62, true, function(e) 
         aimlockSettings[player.UserId].showFOVCircle = e
@@ -1299,7 +1300,11 @@ local function createAdminGui(player)
         aimlockSettings[player.UserId].fovRadius = v
         updateFOVCircle()
     end)
-    createSlider(aimlockSection, "Arrow Distance:", 8, 124, 100, 500, 200, function(v) 
+    createSlider(aimlockSection, "Circle Opacity:", 8, 124, 0, 100, 50, function(v) 
+        aimlockSettings[player.UserId].fovOpacity = v / 100
+        fovStroke.Transparency = 1 - (v / 100)
+    end)
+    createSlider(aimlockSection, "Arrow Distance:", 8, 162, 100, 500, 200, function(v) 
         espSettings[player.UserId].arrowDistance = v
     end)
     
