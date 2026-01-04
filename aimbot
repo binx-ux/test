@@ -10,10 +10,6 @@ local Workspace = game:GetService("Workspace")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 
-local adminIds = {
-    3905919471, -- Your admin
-}
-
 local activeTracking = {}
 local activeESP = {}
 local espEnabled = {}
@@ -82,13 +78,6 @@ local SKELETON_R6 = {
     {"Torso", "Right Leg"},
 }
 
-local function isAdmin(player)
-    for _, id in ipairs(adminIds) do
-        if player.UserId == id then return true end
-    end
-    return false
-end
-
 local function isSameTeam(player1, player2)
     if not player1.Team or not player2.Team then return false end
     return player1.Team == player2.Team
@@ -96,7 +85,6 @@ end
 
 local function isValidTarget(admin, target)
     if target == admin then return false end
-    if isAdmin(target) then return false end
     if isSameTeam(admin, target) then return false end
     return true
 end
@@ -690,7 +678,7 @@ local function createAdminGui(player)
     mainFrame.Position = UDim2.new(0.5, -250, 0.5, -190)
     mainFrame.BackgroundColor3 = Colors.Background
     mainFrame.BorderSizePixel = 0
-    mainFrame.Visible = false
+    mainFrame.Visible = true
     mainFrame.Active = true
     mainFrame.Draggable = true
     mainFrame.Parent = screenGui
@@ -1582,15 +1570,11 @@ local function createAdminGui(player)
     end)
 end
 
--- Initialize
+-- Initialize for all players
 Players.PlayerAdded:Connect(function(player)
-    if isAdmin(player) then
-        createAdminGui(player)
-    end
+    createAdminGui(player)
 end)
 
 for _, player in ipairs(Players:GetPlayers()) do
-    if isAdmin(player) then
-        createAdminGui(player)
-    end
+    createAdminGui(player)
 end
