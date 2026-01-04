@@ -650,10 +650,12 @@ local function createAdminGui(player)
         tracerOrigin = "Bottom", offscreenArrows = true, arrowSize = 15, arrowDistance = 200
     }
     
-    camTrackingSettings[player.UserId] = {
-        smoothness = 0.1, lockPart = "Head", prediction = false,
-        silentAim = false, silentAimFOV = 100, silentAimPart = "Head"
-    }
+   camTrackingSettings[player.UserId] = {
+    smoothness = 0.1,
+    lockPart = "Head",
+    prediction = false
+}
+
     
     crosshairSettings[player.UserId] = {
         style = "Cross", size = 10, thickness = 2, gap = 4, color = Colors.AccentBright, outline = true
