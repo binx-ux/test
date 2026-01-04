@@ -1395,12 +1395,12 @@ local function createAdminGui(player)
     createSlider(charSection, "Jump Power:", 8, 118, 50, 300, 50, function(v) local c = player.Character; if c then local h = c:FindFirstChild("Humanoid"); if h then h.JumpPower = v; statusLabel.Text = "Jump Power: " .. v end end end)
     
     -- Server Section
-    local serverSection = createSection(functionsPage, "Server", 245, 0, 230, 160)
+    local serverSection = createSection(functionsPage, "Server", 245, 0, 230, 200)
     
     -- Rejoin Button
     local rejoinBtn = Instance.new("TextButton")
-    rejoinBtn.Size = UDim2.new(0, 210, 0, 32)
-    rejoinBtn.Position = UDim2.new(0, 8, 0, 20)
+    rejoinBtn.Size = UDim2.new(0, 210, 0, 35)
+    rejoinBtn.Position = UDim2.new(0, 8, 0, 24)
     rejoinBtn.BackgroundColor3 = Colors.Accent
     rejoinBtn.BackgroundTransparency = 0.3
     rejoinBtn.Text = "🔁 Rejoin Server"
@@ -1427,8 +1427,8 @@ local function createAdminGui(player)
     
     -- Server Hop Button
     local serverHopBtn = Instance.new("TextButton")
-    serverHopBtn.Size = UDim2.new(0, 210, 0, 32)
-    serverHopBtn.Position = UDim2.new(0, 8, 0, 58)
+    serverHopBtn.Size = UDim2.new(0, 210, 0, 35)
+    serverHopBtn.Position = UDim2.new(0, 8, 0, 68)
     serverHopBtn.BackgroundColor3 = Colors.Accent
     serverHopBtn.BackgroundTransparency = 0.3
     serverHopBtn.Text = "🔄 Server Hop"
@@ -1476,8 +1476,8 @@ local function createAdminGui(player)
     
     -- Random Server Button
     local randomBtn = Instance.new("TextButton")
-    randomBtn.Size = UDim2.new(0, 210, 0, 32)
-    randomBtn.Position = UDim2.new(0, 8, 0, 96)
+    randomBtn.Size = UDim2.new(0, 210, 0, 35)
+    randomBtn.Position = UDim2.new(0, 8, 0, 112)
     randomBtn.BackgroundColor3 = Colors.Accent
     randomBtn.BackgroundTransparency = 0.3
     randomBtn.Text = "🎲 Random Server"
@@ -1498,6 +1498,28 @@ local function createAdminGui(player)
         pcall(function()
             TeleportService:Teleport(placeId, player)
         end)
+    end)
+    
+    -- Disconnect Button
+    local disconnectBtn = Instance.new("TextButton")
+    disconnectBtn.Size = UDim2.new(0, 210, 0, 35)
+    disconnectBtn.Position = UDim2.new(0, 8, 0, 156)
+    disconnectBtn.BackgroundColor3 = Color3.fromRGB(200, 60, 60)
+    disconnectBtn.BackgroundTransparency = 0.3
+    disconnectBtn.Text = "⛔ Disconnect"
+    disconnectBtn.TextColor3 = Colors.Text
+    disconnectBtn.TextSize = 11
+    disconnectBtn.Font = Enum.Font.GothamBold
+    disconnectBtn.Parent = serverSection
+    local dcCorner = Instance.new("UICorner")
+    dcCorner.CornerRadius = UDim.new(0, 4)
+    dcCorner.Parent = disconnectBtn
+    
+    disconnectBtn.MouseEnter:Connect(function() disconnectBtn.BackgroundTransparency = 0.1 end)
+    disconnectBtn.MouseLeave:Connect(function() disconnectBtn.BackgroundTransparency = 0.3 end)
+    
+    disconnectBtn.MouseButton1Click:Connect(function()
+        player:Kick("Disconnected by Admin Panel")
     end)
     
     -- Server Section
