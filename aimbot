@@ -1167,8 +1167,7 @@ local function createAdminGui(player)
     
     local aimlockSection = createSection(trackingPage, "Aimlock", 245, 0, 230, 180)
     createDropdown(aimlockSection, "Lock Part", 8, 16, {"Head", "HumanoidRootPart", "UpperTorso", "Torso"}, "Head", function(v) camTrackingSettings[player.UserId].lockPart = v end)
-    createCheckbox(aimlockSection, "Silent Aim", 8, 60, false, function(e) camTrackingSettings[player.UserId].silentAim = e; statusLabel.Text = e and "✓ Silent Aim ON" or "✓ Silent Aim OFF" end)
-    createSlider(aimlockSection, "Silent FOV:", 8, 84, 50, 300, 100, function(v) camTrackingSettings[player.UserId].silentAimFOV = v end)
+    
     
     -- ESP TAB
     local espPage = Instance.new("Frame")
