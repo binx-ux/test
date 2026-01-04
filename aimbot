@@ -1,6 +1,6 @@
 -- ServerScriptService
--- Clean Cheat-Style Admin Panel V3
--- Added: Bunny Hop, Fullbright, No Fog, Custom Crosshair
+-- Clean Cheat-Style Admin Panel V4
+-- Fixed: ESP real-time toggle, Improved Aimlock with FOV
 
 -- Services
 local Players = game:GetService("Players")
@@ -27,6 +27,10 @@ local crosshairEnabled = {}
 local crosshairSettings = {}
 local originalLighting = {}
 local originalFog = {}
+
+-- Aimlock FOV settings
+local aimlockSettings = {}
+local fovCircleEnabled = {}
 
 -- Clean Color Scheme
 local Colors = {
@@ -88,28 +92,76 @@ local function hasLineOfSight(admin, target)
     return raycastResult == nil
 end
 
-local function getNearestValidTarget(admin)
+-- Check if target is within FOV circle
+local function isInFOV(admin, target, fovRadius)
+    local camera = Workspace.CurrentCamera
+    if not camera then return false end
+    local targetChar = target.Character
+    if not targetChar then return false end
+    
+    local settings = camTrackingSettings[admin.UserId] or {}
+    local lockPart = settings.lockPart or "Head"
+    local targetPart = targetChar:FindFirstChild(lockPart) or targetChar:FindFirstChild("Head") or targetChar:FindFirstChild("HumanoidRootPart")
+    if not targetPart then return false end
+    
+    local screenPos, onScreen = camera:WorldToViewportPoint(targetPart.Position)
+    if not onScreen or screenPos.Z < 0 then return false end
+    
+    local screenCenter = camera.ViewportSize / 2
+    local targetScreenPos = Vector2.new(screenPos.X, screenPos.Y)
+    local distanceFromCenter = (targetScreenPos - screenCenter).Magnitude
+    
+    return distanceFromCenter <= fovRadius
+end
+
+local function getNearestValidTarget(admin, useFOV)
     local adminChar = admin.Character
     if not adminChar then return nil end
     local adminHRP = adminChar:FindFirstChild("HumanoidRootPart")
     if not adminHRP then return nil end
-    local nearestPlayer, nearestDistance = nil, math.huge
+    
+    local settings = aimlockSettings[admin.UserId] or {}
+    local fovRadius = settings.fovRadius or 150
+    local requireLOS = settings.requireLOS ~= false
+    
+    local nearestPlayer, nearestScreenDistance = nil, math.huge
+    local camera = Workspace.CurrentCamera
+    if not camera then return nil end
+    
+    local screenCenter = camera.ViewportSize / 2
+    
     for _, player in ipairs(Players:GetPlayers()) do
         if isValidTarget(admin, player) then
             local char = player.Character
             if char then
-                local hrp = char:FindFirstChild("HumanoidRootPart")
-                if hrp then
-                    local distance = (adminHRP.Position - hrp.Position).Magnitude
-                    if distance < nearestDistance and hasLineOfSight(admin, player) then
-                        nearestDistance = distance
-                        nearestPlayer = player
+                local lockPartName = (camTrackingSettings[admin.UserId] or {}).lockPart or "Head"
+                local targetPart = char:FindFirstChild(lockPartName) or char:FindFirstChild("Head") or char:FindFirstChild("HumanoidRootPart")
+                if targetPart then
+                    local screenPos, onScreen = camera:WorldToViewportPoint(targetPart.Position)
+                    if onScreen and screenPos.Z > 0 then
+                        local targetScreenPos = Vector2.new(screenPos.X, screenPos.Y)
+                        local screenDistance = (targetScreenPos - screenCenter).Magnitude
+                        
+                        -- Check if within FOV
+                        if useFOV and screenDistance > fovRadius then
+                            continue
+                        end
+                        
+                        -- Check line of sight if required
+                        if requireLOS and not hasLineOfSight(admin, player) then
+                            continue
+                        end
+                        
+                        if screenDistance < nearestScreenDistance then
+                            nearestScreenDistance = screenDistance
+                            nearestPlayer = player
+                        end
                     end
                 end
             end
         end
     end
-    return nearestPlayer, nearestDistance
+    return nearestPlayer, nearestScreenDistance
 end
 
 local function stopRightMouseTracking(admin)
@@ -257,7 +309,6 @@ local function createCleanESP(target, admin, screenGui)
     nameLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
     nameLabel.TextSize = 12
     nameLabel.Font = Enum.Font.GothamBold
-    nameLabel.Visible = settings.nameEnabled ~= false
     nameLabel.Parent = billboardGui
     
     local distanceLabel = Instance.new("TextLabel")
@@ -271,7 +322,6 @@ local function createCleanESP(target, admin, screenGui)
     distanceLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
     distanceLabel.TextSize = 10
     distanceLabel.Font = Enum.Font.Gotham
-    distanceLabel.Visible = settings.distanceEnabled ~= false
     distanceLabel.Parent = billboardGui
     
     local healthBarBg = Instance.new("Frame")
@@ -281,7 +331,6 @@ local function createCleanESP(target, admin, screenGui)
     healthBarBg.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
     healthBarBg.BackgroundTransparency = 0.3
     healthBarBg.BorderSizePixel = 0
-    healthBarBg.Visible = settings.healthEnabled ~= false
     healthBarBg.Parent = billboardGui
     
     local healthBarFill = Instance.new("Frame")
@@ -296,30 +345,28 @@ local function createCleanESP(target, admin, screenGui)
     local isR15 = target.Character:FindFirstChild("UpperTorso") ~= nil
     local bones = isR15 and SKELETON_CONNECTIONS or SKELETON_R6
     
-    if settings.skeletonEnabled then
-        for i, connection in ipairs(bones) do
-            local line = Instance.new("Frame")
-            line.Name = "Bone_" .. i
-            line.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-            line.BorderSizePixel = 0
-            line.AnchorPoint = Vector2.new(0.5, 0)
-            line.Visible = false
-            line.Parent = drawingFrame
-            table.insert(skeletonParts, {line = line, part1 = connection[1], part2 = connection[2]})
-        end
+    -- Always create skeleton lines (we'll control visibility in update)
+    for i, connection in ipairs(bones) do
+        local line = Instance.new("Frame")
+        line.Name = "Bone_" .. i
+        line.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        line.BorderSizePixel = 0
+        line.AnchorPoint = Vector2.new(0.5, 0)
+        line.Visible = false
+        line.Parent = drawingFrame
+        table.insert(skeletonParts, {line = line, part1 = connection[1], part2 = connection[2]})
     end
     
     local cornerLines = {}
-    if settings.boxEnabled ~= false then
-        for i = 1, 8 do
-            local line = Instance.new("Frame")
-            line.Name = "Corner_" .. i
-            line.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-            line.BorderSizePixel = 0
-            line.Visible = false
-            line.Parent = drawingFrame
-            table.insert(cornerLines, line)
-        end
+    -- Always create corner box lines
+    for i = 1, 8 do
+        local line = Instance.new("Frame")
+        line.Name = "Corner_" .. i
+        line.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        line.BorderSizePixel = 0
+        line.Visible = false
+        line.Parent = drawingFrame
+        table.insert(cornerLines, line)
     end
     
     local tracerLine = Instance.new("Frame")
@@ -327,7 +374,7 @@ local function createCleanESP(target, admin, screenGui)
     tracerLine.BackgroundColor3 = Colors.ESP_Far
     tracerLine.BorderSizePixel = 0
     tracerLine.AnchorPoint = Vector2.new(0.5, 0)
-    tracerLine.Visible = settings.tracerEnabled ~= false
+    tracerLine.Visible = false
     tracerLine.Parent = drawingFrame
     
     local headDot = Instance.new("Frame")
@@ -335,7 +382,7 @@ local function createCleanESP(target, admin, screenGui)
     headDot.Size = UDim2.new(0, 6, 0, 6)
     headDot.BackgroundColor3 = Colors.ESP_Close
     headDot.BorderSizePixel = 0
-    headDot.Visible = settings.headDotEnabled ~= false
+    headDot.Visible = false
     headDot.Parent = drawingFrame
     local headDotCorner = Instance.new("UICorner")
     headDotCorner.CornerRadius = UDim.new(1, 0)
@@ -391,17 +438,27 @@ local function updateCleanESP(admin, target, espComponents)
     local canSee = hasLineOfSight(admin, target)
     local espColor = getESPColor(distance)
     
+    -- Get CURRENT settings (this is the fix - always read fresh settings)
     local settings = espSettings[admin.UserId] or {}
     local tracerThickness = settings.tracerThickness or 1
     local boxThickness = settings.boxThickness or 1
     
+    -- Update name label visibility
+    if espComponents.nameLabel then
+        espComponents.nameLabel.Visible = settings.nameEnabled ~= false
+        espComponents.nameLabel.TextColor3 = canSee and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(180, 180, 180)
+    end
+    
+    -- Update distance label visibility
     if espComponents.distanceLabel then
+        espComponents.distanceLabel.Visible = settings.distanceEnabled ~= false
         espComponents.distanceLabel.Text = string.format("[%dm]", math.floor(distance))
         espComponents.distanceLabel.TextColor3 = espColor
     end
     
-    if espComponents.nameLabel then
-        espComponents.nameLabel.TextColor3 = canSee and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(180, 180, 180)
+    -- Update health bar visibility
+    if espComponents.healthBarBg then
+        espComponents.healthBarBg.Visible = settings.healthEnabled ~= false
     end
     
     if targetHumanoid and espComponents.healthBarFill then
@@ -411,148 +468,176 @@ local function updateCleanESP(admin, target, espComponents)
         espComponents.healthBarFill.BackgroundColor3 = getHealthColor(healthPercent)
     end
     
-    -- Corner Box
-    if #espComponents.cornerLines > 0 and settings.boxEnabled ~= false then
-        local hrpPos, onScreen = worldToScreen(targetHRP.Position)
-        local headPos = targetHead and worldToScreen(targetHead.Position + Vector3.new(0, 0.5, 0))
-        local footPos = worldToScreen(targetHRP.Position - Vector3.new(0, 3, 0))
-        
-        if onScreen and hrpPos and headPos and footPos then
-            local height = math.abs(footPos.Y - headPos.Y)
-            local width = height * 0.6
-            local topLeft = Vector2.new(hrpPos.X - width/2, headPos.Y)
-            local topRight = Vector2.new(hrpPos.X + width/2, headPos.Y)
-            local bottomLeft = Vector2.new(hrpPos.X - width/2, footPos.Y)
-            local bottomRight = Vector2.new(hrpPos.X + width/2, footPos.Y)
-            local cornerSize = math.min(width, height) * 0.25
+    -- Corner Box - check if enabled in CURRENT settings
+    if #espComponents.cornerLines > 0 then
+        if settings.boxEnabled ~= false then
+            local hrpPos, onScreen = worldToScreen(targetHRP.Position)
+            local headPos = targetHead and worldToScreen(targetHead.Position + Vector3.new(0, 0.5, 0))
+            local footPos = worldToScreen(targetHRP.Position - Vector3.new(0, 3, 0))
             
-            espComponents.cornerLines[1].Size = UDim2.new(0, cornerSize, 0, boxThickness)
-            espComponents.cornerLines[1].Position = UDim2.new(0, topLeft.X, 0, topLeft.Y)
-            espComponents.cornerLines[1].BackgroundColor3 = espColor
-            espComponents.cornerLines[1].Visible = true
-            
-            espComponents.cornerLines[2].Size = UDim2.new(0, boxThickness, 0, cornerSize)
-            espComponents.cornerLines[2].Position = UDim2.new(0, topLeft.X, 0, topLeft.Y)
-            espComponents.cornerLines[2].BackgroundColor3 = espColor
-            espComponents.cornerLines[2].Visible = true
-            
-            espComponents.cornerLines[3].Size = UDim2.new(0, cornerSize, 0, boxThickness)
-            espComponents.cornerLines[3].Position = UDim2.new(0, topRight.X - cornerSize, 0, topRight.Y)
-            espComponents.cornerLines[3].BackgroundColor3 = espColor
-            espComponents.cornerLines[3].Visible = true
-            
-            espComponents.cornerLines[4].Size = UDim2.new(0, boxThickness, 0, cornerSize)
-            espComponents.cornerLines[4].Position = UDim2.new(0, topRight.X - boxThickness, 0, topRight.Y)
-            espComponents.cornerLines[4].BackgroundColor3 = espColor
-            espComponents.cornerLines[4].Visible = true
-            
-            espComponents.cornerLines[5].Size = UDim2.new(0, cornerSize, 0, boxThickness)
-            espComponents.cornerLines[5].Position = UDim2.new(0, bottomLeft.X, 0, bottomLeft.Y - boxThickness)
-            espComponents.cornerLines[5].BackgroundColor3 = espColor
-            espComponents.cornerLines[5].Visible = true
-            
-            espComponents.cornerLines[6].Size = UDim2.new(0, boxThickness, 0, cornerSize)
-            espComponents.cornerLines[6].Position = UDim2.new(0, bottomLeft.X, 0, bottomLeft.Y - cornerSize)
-            espComponents.cornerLines[6].BackgroundColor3 = espColor
-            espComponents.cornerLines[6].Visible = true
-            
-            espComponents.cornerLines[7].Size = UDim2.new(0, cornerSize, 0, boxThickness)
-            espComponents.cornerLines[7].Position = UDim2.new(0, bottomRight.X - cornerSize, 0, bottomRight.Y - boxThickness)
-            espComponents.cornerLines[7].BackgroundColor3 = espColor
-            espComponents.cornerLines[7].Visible = true
-            
-            espComponents.cornerLines[8].Size = UDim2.new(0, boxThickness, 0, cornerSize)
-            espComponents.cornerLines[8].Position = UDim2.new(0, bottomRight.X - boxThickness, 0, bottomRight.Y - cornerSize)
-            espComponents.cornerLines[8].BackgroundColor3 = espColor
-            espComponents.cornerLines[8].Visible = true
+            if onScreen and hrpPos and headPos and footPos then
+                local height = math.abs(footPos.Y - headPos.Y)
+                local width = height * 0.6
+                local topLeft = Vector2.new(hrpPos.X - width/2, headPos.Y)
+                local topRight = Vector2.new(hrpPos.X + width/2, headPos.Y)
+                local bottomLeft = Vector2.new(hrpPos.X - width/2, footPos.Y)
+                local bottomRight = Vector2.new(hrpPos.X + width/2, footPos.Y)
+                local cornerSize = math.min(width, height) * 0.25
+                
+                espComponents.cornerLines[1].Size = UDim2.new(0, cornerSize, 0, boxThickness)
+                espComponents.cornerLines[1].Position = UDim2.new(0, topLeft.X, 0, topLeft.Y)
+                espComponents.cornerLines[1].BackgroundColor3 = espColor
+                espComponents.cornerLines[1].Visible = true
+                
+                espComponents.cornerLines[2].Size = UDim2.new(0, boxThickness, 0, cornerSize)
+                espComponents.cornerLines[2].Position = UDim2.new(0, topLeft.X, 0, topLeft.Y)
+                espComponents.cornerLines[2].BackgroundColor3 = espColor
+                espComponents.cornerLines[2].Visible = true
+                
+                espComponents.cornerLines[3].Size = UDim2.new(0, cornerSize, 0, boxThickness)
+                espComponents.cornerLines[3].Position = UDim2.new(0, topRight.X - cornerSize, 0, topRight.Y)
+                espComponents.cornerLines[3].BackgroundColor3 = espColor
+                espComponents.cornerLines[3].Visible = true
+                
+                espComponents.cornerLines[4].Size = UDim2.new(0, boxThickness, 0, cornerSize)
+                espComponents.cornerLines[4].Position = UDim2.new(0, topRight.X - boxThickness, 0, topRight.Y)
+                espComponents.cornerLines[4].BackgroundColor3 = espColor
+                espComponents.cornerLines[4].Visible = true
+                
+                espComponents.cornerLines[5].Size = UDim2.new(0, cornerSize, 0, boxThickness)
+                espComponents.cornerLines[5].Position = UDim2.new(0, bottomLeft.X, 0, bottomLeft.Y - boxThickness)
+                espComponents.cornerLines[5].BackgroundColor3 = espColor
+                espComponents.cornerLines[5].Visible = true
+                
+                espComponents.cornerLines[6].Size = UDim2.new(0, boxThickness, 0, cornerSize)
+                espComponents.cornerLines[6].Position = UDim2.new(0, bottomLeft.X, 0, bottomLeft.Y - cornerSize)
+                espComponents.cornerLines[6].BackgroundColor3 = espColor
+                espComponents.cornerLines[6].Visible = true
+                
+                espComponents.cornerLines[7].Size = UDim2.new(0, cornerSize, 0, boxThickness)
+                espComponents.cornerLines[7].Position = UDim2.new(0, bottomRight.X - cornerSize, 0, bottomRight.Y - boxThickness)
+                espComponents.cornerLines[7].BackgroundColor3 = espColor
+                espComponents.cornerLines[7].Visible = true
+                
+                espComponents.cornerLines[8].Size = UDim2.new(0, boxThickness, 0, cornerSize)
+                espComponents.cornerLines[8].Position = UDim2.new(0, bottomRight.X - boxThickness, 0, bottomRight.Y - cornerSize)
+                espComponents.cornerLines[8].BackgroundColor3 = espColor
+                espComponents.cornerLines[8].Visible = true
+            else
+                for _, line in ipairs(espComponents.cornerLines) do line.Visible = false end
+            end
         else
+            -- Box disabled - hide all corner lines
             for _, line in ipairs(espComponents.cornerLines) do line.Visible = false end
         end
     end
     
-    -- Skeleton
-    if #espComponents.skeletonParts > 0 and settings.skeletonEnabled then
-        for _, bone in ipairs(espComponents.skeletonParts) do
-            local part1 = target.Character:FindFirstChild(bone.part1)
-            local part2 = target.Character:FindFirstChild(bone.part2)
-            if part1 and part2 then
-                local pos1, onScreen1 = worldToScreen(part1.Position)
-                local pos2, onScreen2 = worldToScreen(part2.Position)
-                if onScreen1 and onScreen2 then
-                    drawLine(bone.line, pos1, pos2, settings.skeletonThickness or 1, espColor)
+    -- Skeleton - check if enabled in CURRENT settings
+    if #espComponents.skeletonParts > 0 then
+        if settings.skeletonEnabled then
+            for _, bone in ipairs(espComponents.skeletonParts) do
+                local part1 = target.Character:FindFirstChild(bone.part1)
+                local part2 = target.Character:FindFirstChild(bone.part2)
+                if part1 and part2 then
+                    local pos1, onScreen1 = worldToScreen(part1.Position)
+                    local pos2, onScreen2 = worldToScreen(part2.Position)
+                    if onScreen1 and onScreen2 then
+                        drawLine(bone.line, pos1, pos2, settings.skeletonThickness or 1, espColor)
+                    else
+                        bone.line.Visible = false
+                    end
                 else
                     bone.line.Visible = false
                 end
-            else
+            end
+        else
+            -- Skeleton disabled - hide all bones
+            for _, bone in ipairs(espComponents.skeletonParts) do
                 bone.line.Visible = false
             end
         end
     end
     
-    -- Tracer
-    if espComponents.tracerLine and settings.tracerEnabled ~= false then
-        local targetPos, onScreen = worldToScreen(targetHRP.Position)
-        local screenSize = camera.ViewportSize
-        local startPos = Vector2.new(screenSize.X / 2, screenSize.Y)
-        if settings.tracerOrigin == "Top" then
-            startPos = Vector2.new(screenSize.X / 2, 0)
-        elseif settings.tracerOrigin == "Mouse" then
-            local mouse = admin:GetMouse()
-            startPos = Vector2.new(mouse.X, mouse.Y)
-        end
-        if onScreen and targetPos then
-            drawLine(espComponents.tracerLine, startPos, targetPos, tracerThickness, espColor)
+    -- Tracer - check if enabled in CURRENT settings
+    if espComponents.tracerLine then
+        if settings.tracerEnabled ~= false then
+            local targetPos, onScreen = worldToScreen(targetHRP.Position)
+            local screenSize = camera.ViewportSize
+            local startPos = Vector2.new(screenSize.X / 2, screenSize.Y)
+            if settings.tracerOrigin == "Top" then
+                startPos = Vector2.new(screenSize.X / 2, 0)
+            elseif settings.tracerOrigin == "Mouse" then
+                local mouse = admin:GetMouse()
+                startPos = Vector2.new(mouse.X, mouse.Y)
+            end
+            if onScreen and targetPos then
+                drawLine(espComponents.tracerLine, startPos, targetPos, tracerThickness, espColor)
+            else
+                espComponents.tracerLine.Visible = false
+            end
         else
+            -- Tracer disabled - hide it
             espComponents.tracerLine.Visible = false
         end
     end
     
-    -- Head Dot
-    if espComponents.headDot and targetHead and settings.headDotEnabled ~= false then
-        local headScreenPos, onScreen = worldToScreen(targetHead.Position)
-        if onScreen and headScreenPos then
-            espComponents.headDot.Position = UDim2.new(0, headScreenPos.X - 3, 0, headScreenPos.Y - 3)
-            espComponents.headDot.BackgroundColor3 = canSee and Colors.ESP_Visible or Colors.ESP_Hidden
-            espComponents.headDot.Visible = true
+    -- Head Dot - check if enabled in CURRENT settings
+    if espComponents.headDot then
+        if settings.headDotEnabled ~= false and targetHead then
+            local headScreenPos, onScreen = worldToScreen(targetHead.Position)
+            if onScreen and headScreenPos then
+                espComponents.headDot.Position = UDim2.new(0, headScreenPos.X - 3, 0, headScreenPos.Y - 3)
+                espComponents.headDot.BackgroundColor3 = canSee and Colors.ESP_Visible or Colors.ESP_Hidden
+                espComponents.headDot.Visible = true
+            else
+                espComponents.headDot.Visible = false
+            end
         else
+            -- Head dot disabled - hide it
             espComponents.headDot.Visible = false
         end
     end
     
-    -- Offscreen Arrows
-    if espComponents.arrowFrame and espComponents.arrowLines and settings.offscreenArrows then
-        local targetPos, onScreen = worldToScreen(targetHRP.Position)
-        if not onScreen and distance < (settings.arrowDistance or 500) then
-            local screenSize = camera.ViewportSize
-            local screenCenter = Vector2.new(screenSize.X / 2, screenSize.Y / 2)
-            local camCF = camera.CFrame
-            local targetDirection = (targetHRP.Position - camCF.Position).Unit
-            local x = targetDirection:Dot(camCF.RightVector)
-            local y = targetDirection:Dot(camCF.UpVector)
-            local angle = math.atan2(y, x)
-            local arrowDist = math.min(screenSize.X, screenSize.Y) / 2 - 50
-            local arrowX = math.clamp(screenCenter.X + math.cos(angle) * arrowDist, 40, screenSize.X - 40)
-            local arrowY = math.clamp(screenCenter.Y - math.sin(angle) * arrowDist, 40, screenSize.Y - 40)
-            
-            espComponents.arrowFrame.Position = UDim2.new(0, arrowX, 0, arrowY)
-            espComponents.arrowFrame.Rotation = -math.deg(angle) + 90
-            espComponents.arrowFrame.Visible = true
-            
-            local arrowSize = settings.arrowSize or 15
-            espComponents.arrowLines[1].Size = UDim2.new(0, arrowSize, 0, 3)
-            espComponents.arrowLines[1].Position = UDim2.new(0, -arrowSize/2, 0, arrowSize/2)
-            espComponents.arrowLines[1].Rotation = 45
-            espComponents.arrowLines[1].BackgroundColor3 = espColor
-            espComponents.arrowLines[1].Visible = true
-            
-            espComponents.arrowLines[2].Size = UDim2.new(0, arrowSize, 0, 3)
-            espComponents.arrowLines[2].Position = UDim2.new(0, arrowSize/2, 0, arrowSize/2)
-            espComponents.arrowLines[2].Rotation = -45
-            espComponents.arrowLines[2].BackgroundColor3 = espColor
-            espComponents.arrowLines[2].Visible = true
-            
-            espComponents.arrowLines[3].Visible = false
+    -- Offscreen Arrows - check if enabled in CURRENT settings
+    if espComponents.arrowFrame and espComponents.arrowLines then
+        if settings.offscreenArrows then
+            local targetPos, onScreen = worldToScreen(targetHRP.Position)
+            if not onScreen and distance < (settings.arrowDistance or 500) then
+                local screenSize = camera.ViewportSize
+                local screenCenter = Vector2.new(screenSize.X / 2, screenSize.Y / 2)
+                local camCF = camera.CFrame
+                local targetDirection = (targetHRP.Position - camCF.Position).Unit
+                local x = targetDirection:Dot(camCF.RightVector)
+                local y = targetDirection:Dot(camCF.UpVector)
+                local angle = math.atan2(y, x)
+                local arrowDist = math.min(screenSize.X, screenSize.Y) / 2 - 50
+                local arrowX = math.clamp(screenCenter.X + math.cos(angle) * arrowDist, 40, screenSize.X - 40)
+                local arrowY = math.clamp(screenCenter.Y - math.sin(angle) * arrowDist, 40, screenSize.Y - 40)
+                
+                espComponents.arrowFrame.Position = UDim2.new(0, arrowX, 0, arrowY)
+                espComponents.arrowFrame.Rotation = -math.deg(angle) + 90
+                espComponents.arrowFrame.Visible = true
+                
+                local arrowSize = settings.arrowSize or 15
+                espComponents.arrowLines[1].Size = UDim2.new(0, arrowSize, 0, 3)
+                espComponents.arrowLines[1].Position = UDim2.new(0, -arrowSize/2, 0, arrowSize/2)
+                espComponents.arrowLines[1].Rotation = 45
+                espComponents.arrowLines[1].BackgroundColor3 = espColor
+                espComponents.arrowLines[1].Visible = true
+                
+                espComponents.arrowLines[2].Size = UDim2.new(0, arrowSize, 0, 3)
+                espComponents.arrowLines[2].Position = UDim2.new(0, arrowSize/2, 0, arrowSize/2)
+                espComponents.arrowLines[2].Rotation = -45
+                espComponents.arrowLines[2].BackgroundColor3 = espColor
+                espComponents.arrowLines[2].Visible = true
+                
+                espComponents.arrowLines[3].Visible = false
+            else
+                espComponents.arrowFrame.Visible = false
+                for _, line in ipairs(espComponents.arrowLines) do line.Visible = false end
+            end
         else
+            -- Arrows disabled - hide them
             espComponents.arrowFrame.Visible = false
             for _, line in ipairs(espComponents.arrowLines) do line.Visible = false end
         end
@@ -650,12 +735,18 @@ local function createAdminGui(player)
         tracerOrigin = "Bottom", offscreenArrows = true, arrowSize = 15, arrowDistance = 200
     }
     
-   camTrackingSettings[player.UserId] = {
-    smoothness = 0.1,
-    lockPart = "Head",
-    prediction = false
-}
-
+    camTrackingSettings[player.UserId] = {
+        smoothness = 0.15,
+        lockPart = "Head",
+        prediction = false
+    }
+    
+    aimlockSettings[player.UserId] = {
+        fovRadius = 150,
+        fovEnabled = true,
+        showFOVCircle = true,
+        requireLOS = true
+    }
     
     crosshairSettings[player.UserId] = {
         style = "Cross", size = 10, thickness = 2, gap = 4, color = Colors.AccentBright, outline = true
@@ -665,6 +756,7 @@ local function createAdminGui(player)
     fullbrightEnabled[player.UserId] = false
     noFogEnabled[player.UserId] = false
     crosshairEnabled[player.UserId] = false
+    fovCircleEnabled[player.UserId] = true
     trackingMode[player.UserId] = "hold"
     toggleTrackingActive[player.UserId] = false
     
@@ -674,6 +766,34 @@ local function createAdminGui(player)
     screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     screenGui.IgnoreGuiInset = true
     screenGui.Parent = player:WaitForChild("PlayerGui")
+    
+    -- FOV Circle
+    local fovCircle = Instance.new("Frame")
+    fovCircle.Name = "FOVCircle"
+    fovCircle.Size = UDim2.new(0, 300, 0, 300)
+    fovCircle.Position = UDim2.new(0.5, 0, 0.5, 0)
+    fovCircle.AnchorPoint = Vector2.new(0.5, 0.5)
+    fovCircle.BackgroundTransparency = 1
+    fovCircle.Visible = false
+    fovCircle.Parent = screenGui
+    
+    local fovCircleStroke = Instance.new("UICorner")
+    fovCircleStroke.CornerRadius = UDim.new(1, 0)
+    fovCircleStroke.Parent = fovCircle
+    
+    local fovStroke = Instance.new("UIStroke")
+    fovStroke.Color = Colors.AccentBright
+    fovStroke.Thickness = 1
+    fovStroke.Transparency = 0.5
+    fovStroke.Parent = fovCircle
+    
+    -- Update FOV circle size
+    local function updateFOVCircle()
+        local settings = aimlockSettings[player.UserId]
+        local radius = settings.fovRadius or 150
+        fovCircle.Size = UDim2.new(0, radius * 2, 0, radius * 2)
+        fovCircle.Visible = settings.showFOVCircle and fovCircleEnabled[player.UserId]
+    end
     
     -- Custom Crosshair
     local crosshairFrame = Instance.new("Frame")
@@ -849,7 +969,7 @@ local function createAdminGui(player)
     titleText.Size = UDim2.new(1, -40, 1, 0)
     titleText.Position = UDim2.new(0, 12, 0, 0)
     titleText.BackgroundTransparency = 1
-    titleText.Text = "⚡ Binxix's GUI | Clean ESP"
+    titleText.Text = "⚡ Binxix's GUI | Clean ESP V4"
     titleText.TextColor3 = Colors.Text
     titleText.TextSize = 13
     titleText.Font = Enum.Font.GothamBold
@@ -1164,12 +1284,21 @@ local function createAdminGui(player)
     
     local valuesSection = createSection(trackingPage, "Settings", 0, 0, 230, 130)
     createCheckbox(valuesSection, "Toggle Mode", 8, 16, false, function(e) trackingMode[player.UserId] = e and "toggle" or "hold" end)
-    createSlider(valuesSection, "Smoothness:", 8, 40, 0.05, 0.5, 0.1, function(v) camTrackingSettings[player.UserId].smoothness = v end)
+    createSlider(valuesSection, "Smoothness:", 8, 40, 0.05, 0.5, 0.15, function(v) camTrackingSettings[player.UserId].smoothness = v end)
     createCheckbox(valuesSection, "Prediction", 8, 78, false, function(e) camTrackingSettings[player.UserId].prediction = e end)
+    createCheckbox(valuesSection, "Require Line of Sight", 8, 98, true, function(e) aimlockSettings[player.UserId].requireLOS = e end)
     
-    local aimlockSection = createSection(trackingPage, "Aimlock", 245, 0, 230, 180)
+    local aimlockSection = createSection(trackingPage, "Aimlock", 245, 0, 230, 200)
     createDropdown(aimlockSection, "Lock Part", 8, 16, {"Head", "HumanoidRootPart", "UpperTorso", "Torso"}, "Head", function(v) camTrackingSettings[player.UserId].lockPart = v end)
-    
+    createCheckbox(aimlockSection, "Show FOV Circle", 8, 60, true, function(e) 
+        aimlockSettings[player.UserId].showFOVCircle = e
+        fovCircleEnabled[player.UserId] = e
+        updateFOVCircle()
+    end)
+    createSlider(aimlockSection, "FOV Radius:", 8, 84, 50, 400, 150, function(v) 
+        aimlockSettings[player.UserId].fovRadius = v
+        updateFOVCircle()
+    end)
     
     -- ESP TAB
     local espPage = Instance.new("Frame")
@@ -1183,7 +1312,7 @@ local function createAdminGui(player)
     local espSection = createSection(espPage, "ESP Features", 0, 0, 230, 220)
     createCheckbox(espSection, "Enabled", 8, 16, false, function(e) if e then enableESP(player, screenGui); statusLabel.Text = "✓ ESP Enabled" else clearAllESP(player); statusLabel.Text = "✓ ESP Disabled" end end)
     createCheckbox(espSection, "Corner Box", 8, 36, true, function(e) espSettings[player.UserId].boxEnabled = e end)
-    createCheckbox(espSection, "Skeleton", 8, 56, true, function(e) espSettings[player.UserId].skeletonEnabled = e; if espEnabled[player.UserId] then clearAllESP(player); enableESP(player, screenGui) end end)
+    createCheckbox(espSection, "Skeleton", 8, 56, true, function(e) espSettings[player.UserId].skeletonEnabled = e end)
     createCheckbox(espSection, "Tracers", 8, 76, true, function(e) espSettings[player.UserId].tracerEnabled = e end)
     createCheckbox(espSection, "Names", 8, 96, true, function(e) espSettings[player.UserId].nameEnabled = e end)
     createCheckbox(espSection, "Health Bars", 8, 116, true, function(e) espSettings[player.UserId].healthEnabled = e end)
@@ -1265,53 +1394,107 @@ local function createAdminGui(player)
         end)
     end
     
-    -- RMB Tracking
+    -- Improved RMB Tracking with FOV
+    local currentTarget = nil
+    
     local function startRMBTracking()
         stopRightMouseTracking(player)
-        local nearestPlayer, dist = getNearestValidTarget(player)
-        if not nearestPlayer then statusLabel.Text = "⚠ No visible targets"; return end
-        statusLabel.Text = "🎯 RMB: " .. nearestPlayer.Name
+        
+        local settings = aimlockSettings[player.UserId]
+        local useFOV = settings.fovEnabled ~= false
+        
+        local nearestPlayer, dist = getNearestValidTarget(player, useFOV)
+        if not nearestPlayer then 
+            statusLabel.Text = "⚠ No targets in FOV"
+            return 
+        end
+        
+        currentTarget = nearestPlayer
+        statusLabel.Text = "🎯 Locked: " .. nearestPlayer.Name
+        
         local camera = Workspace.CurrentCamera
-        local settings = camTrackingSettings[player.UserId]
+        local camSettings = camTrackingSettings[player.UserId]
+        
         local connection = RunService.RenderStepped:Connect(function()
-            local currentNearest, d = getNearestValidTarget(player)
-            if not currentNearest then return end
-            local targetChar = currentNearest.Character
+            -- Check if target is still valid and in FOV
+            if not currentTarget or not currentTarget.Character then
+                -- Try to find new target
+                local newTarget = getNearestValidTarget(player, useFOV)
+                if newTarget then
+                    currentTarget = newTarget
+                    statusLabel.Text = "🎯 Locked: " .. newTarget.Name
+                else
+                    statusLabel.Text = "⚠ Target lost"
+                    return
+                end
+            end
+            
+            -- Check if still in FOV
+            if useFOV and not isInFOV(player, currentTarget, settings.fovRadius) then
+                -- Target left FOV, find new one
+                local newTarget = getNearestValidTarget(player, useFOV)
+                if newTarget then
+                    currentTarget = newTarget
+                    statusLabel.Text = "🎯 Locked: " .. newTarget.Name
+                else
+                    return
+                end
+            end
+            
+            local targetChar = currentTarget.Character
             if not targetChar then return end
-            local targetPart = targetChar:FindFirstChild(settings.lockPart) or targetChar:FindFirstChild("Head")
+            
+            local targetPart = targetChar:FindFirstChild(camSettings.lockPart) or targetChar:FindFirstChild("Head")
             if targetPart and camera then
                 local targetPos = targetPart.Position
-                if settings.prediction then
+                
+                -- Prediction
+                if camSettings.prediction then
                     local targetHRP = targetChar:FindFirstChild("HumanoidRootPart")
-                    if targetHRP then targetPos = targetPos + targetHRP.AssemblyLinearVelocity * 0.1 end
+                    if targetHRP then
+                        targetPos = targetPos + targetHRP.AssemblyLinearVelocity * 0.08
+                    end
                 end
+                
                 local lookAtCFrame = CFrame.new(camera.CFrame.Position, targetPos)
-                camera.CFrame = camera.CFrame:Lerp(lookAtCFrame, settings.smoothness * 2)
+                camera.CFrame = camera.CFrame:Lerp(lookAtCFrame, camSettings.smoothness * 1.5)
             end
         end)
+        
         rightMouseTracking[player.UserId] = {connection = connection}
     end
     
     local function stopRMBTrackingUI()
         stopRightMouseTracking(player)
-        if not activeTracking[player.UserId] then statusLabel.Text = "✓ Ready | RCtrl toggle | RMB track" end
+        currentTarget = nil
+        if not activeTracking[player.UserId] then 
+            statusLabel.Text = "✓ Ready | RCtrl toggle | RMB track" 
+        end
     end
     
     UserInputService.InputBegan:Connect(function(input, gameProcessed)
         if gameProcessed then return end
         if input.KeyCode == Enum.KeyCode.RightControl then mainFrame.Visible = not mainFrame.Visible end
         if input.UserInputType == Enum.UserInputType.MouseButton2 then
-            if trackingMode[player.UserId] == "hold" then startRMBTracking()
+            if trackingMode[player.UserId] == "hold" then 
+                startRMBTracking()
             else
-                if toggleTrackingActive[player.UserId] then toggleTrackingActive[player.UserId] = false; stopRMBTrackingUI()
-                else toggleTrackingActive[player.UserId] = true; startRMBTracking() end
+                if toggleTrackingActive[player.UserId] then 
+                    toggleTrackingActive[player.UserId] = false
+                    stopRMBTrackingUI()
+                else 
+                    toggleTrackingActive[player.UserId] = true
+                    startRMBTracking() 
+                end
             end
         end
     end)
     
     UserInputService.InputEnded:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton2 then
-            if trackingMode[player.UserId] == "hold" then stopRMBTrackingUI() end
+            if trackingMode[player.UserId] == "hold" then 
+                stopRMBTrackingUI() 
+            end
         end
     end)
     
@@ -1322,7 +1505,7 @@ local function createAdminGui(player)
     loadedNotif.BackgroundColor3 = Colors.Background
     loadedNotif.BackgroundTransparency = 0.3
     loadedNotif.BorderSizePixel = 0
-    loadedNotif.Text = "✓ Binxix's GUI loaded"
+    loadedNotif.Text = "✓ Binxix's GUI V4 loaded"
     loadedNotif.TextColor3 = Colors.AccentBright
     loadedNotif.TextSize = 12
     loadedNotif.Font = Enum.Font.GothamBold
