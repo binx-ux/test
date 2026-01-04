@@ -9,6 +9,10 @@ local Workspace = game:GetService("Workspace")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local Lighting = game:GetService("Lighting")
+local TeleportService = game:GetService("TeleportService")
+local HttpService = game:GetService("HttpService")
+local TeleportService = game:GetService("TeleportService")
+local HttpService = game:GetService("HttpService")
 
 local activeTracking = {}
 local activeESP = {}
@@ -1389,6 +1393,209 @@ local function createAdminGui(player)
     createCheckbox(charSection, "Bunny Hop", 8, 56, false, function(e) bunnyHopEnabled[player.UserId] = e; statusLabel.Text = e and "✓ Bunny Hop ON (Hold Space)" or "✓ Bunny Hop OFF" end)
     createSlider(charSection, "Walk Speed:", 8, 80, 16, 200, 16, function(v) local c = player.Character; if c then local h = c:FindFirstChild("Humanoid"); if h then h.WalkSpeed = v; statusLabel.Text = "Walk Speed: " .. v end end end)
     createSlider(charSection, "Jump Power:", 8, 118, 50, 300, 50, function(v) local c = player.Character; if c then local h = c:FindFirstChild("Humanoid"); if h then h.JumpPower = v; statusLabel.Text = "Jump Power: " .. v end end end)
+    
+    -- Server Section
+    local serverSection = createSection(functionsPage, "Server", 245, 0, 230, 130)
+    
+    -- Server Hop Button
+    local serverHopBtn = Instance.new("TextButton")
+    serverHopBtn.Size = UDim2.new(0, 210, 0, 28)
+    serverHopBtn.Position = UDim2.new(0, 8, 0, 18)
+    serverHopBtn.BackgroundColor3 = Colors.Accent
+    serverHopBtn.BackgroundTransparency = 0.3
+    serverHopBtn.Text = "🔄 Server Hop"
+    serverHopBtn.TextColor3 = Colors.Text
+    serverHopBtn.TextSize = 11
+    serverHopBtn.Font = Enum.Font.GothamBold
+    serverHopBtn.Parent = serverSection
+    local hopCorner = Instance.new("UICorner")
+    hopCorner.CornerRadius = UDim.new(0, 4)
+    hopCorner.Parent = serverHopBtn
+    
+    serverHopBtn.MouseEnter:Connect(function() serverHopBtn.BackgroundTransparency = 0.1 end)
+    serverHopBtn.MouseLeave:Connect(function() serverHopBtn.BackgroundTransparency = 0.3 end)
+    
+    serverHopBtn.MouseButton1Click:Connect(function()
+        statusLabel.Text = "🔄 Finding new server..."
+        local placeId = game.PlaceId
+        local currentJobId = game.JobId
+        
+        pcall(function()
+            local servers = {}
+            local url = "https://games.roblox.com/v1/games/" .. placeId .. "/servers/Public?sortOrder=Asc&limit=100"
+            local success, result = pcall(function()
+                return HttpService:JSONDecode(game:HttpGet(url))
+            end)
+            
+            if success and result and result.data then
+                for _, server in ipairs(result.data) do
+                    if server.id ~= currentJobId and server.playing < server.maxPlayers then
+                        table.insert(servers, server.id)
+                    end
+                end
+            end
+            
+            if #servers > 0 then
+                local randomServer = servers[math.random(1, #servers)]
+                statusLabel.Text = "✓ Hopping to new server..."
+                TeleportService:TeleportToPlaceInstance(placeId, randomServer, player)
+            else
+                -- Fallback: just teleport to the place
+                statusLabel.Text = "⚠ No servers found, rejoining..."
+                TeleportService:Teleport(placeId, player)
+            end
+        end)
+    end)
+    
+    -- Rejoin Button
+    local rejoinBtn = Instance.new("TextButton")
+    rejoinBtn.Size = UDim2.new(0, 210, 0, 28)
+    rejoinBtn.Position = UDim2.new(0, 8, 0, 52)
+    rejoinBtn.BackgroundColor3 = Colors.Accent
+    rejoinBtn.BackgroundTransparency = 0.3
+    rejoinBtn.Text = "🔁 Rejoin Server"
+    rejoinBtn.TextColor3 = Colors.Text
+    rejoinBtn.TextSize = 11
+    rejoinBtn.Font = Enum.Font.GothamBold
+    rejoinBtn.Parent = serverSection
+    local rejoinCorner = Instance.new("UICorner")
+    rejoinCorner.CornerRadius = UDim.new(0, 4)
+    rejoinCorner.Parent = rejoinBtn
+    
+    rejoinBtn.MouseEnter:Connect(function() rejoinBtn.BackgroundTransparency = 0.1 end)
+    rejoinBtn.MouseLeave:Connect(function() rejoinBtn.BackgroundTransparency = 0.3 end)
+    
+    rejoinBtn.MouseButton1Click:Connect(function()
+        statusLabel.Text = "🔁 Rejoining server..."
+        local placeId = game.PlaceId
+        local jobId = game.JobId
+        
+        pcall(function()
+            TeleportService:TeleportToPlaceInstance(placeId, jobId, player)
+        end)
+    end)
+    
+    -- Disconnect Button
+    local disconnectBtn = Instance.new("TextButton")
+    disconnectBtn.Size = UDim2.new(0, 210, 0, 28)
+    disconnectBtn.Position = UDim2.new(0, 8, 0, 86)
+    disconnectBtn.BackgroundColor3 = Color3.fromRGB(200, 60, 60)
+    disconnectBtn.BackgroundTransparency = 0.3
+    disconnectBtn.Text = "⛔ Disconnect"
+    disconnectBtn.TextColor3 = Colors.Text
+    disconnectBtn.TextSize = 11
+    disconnectBtn.Font = Enum.Font.GothamBold
+    disconnectBtn.Parent = serverSection
+    local dcCorner = Instance.new("UICorner")
+    dcCorner.CornerRadius = UDim.new(0, 4)
+    dcCorner.Parent = disconnectBtn
+    
+    disconnectBtn.MouseEnter:Connect(function() disconnectBtn.BackgroundTransparency = 0.1 end)
+    disconnectBtn.MouseLeave:Connect(function() disconnectBtn.BackgroundTransparency = 0.3 end)
+    
+    disconnectBtn.MouseButton1Click:Connect(function()
+        player:Kick("Disconnected by Admin Panel")
+    end)
+    
+    -- Server Section
+    local serverSection = createSection(functionsPage, "Server", 245, 0, 230, 140)
+    
+    -- Helper to create buttons
+    local function createButton(parent, text, posX, posY, width, callback)
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(0, width, 0, 28)
+        btn.Position = UDim2.new(0, posX, 0, posY)
+        btn.BackgroundColor3 = Colors.Accent
+        btn.BackgroundTransparency = 0.3
+        btn.BorderSizePixel = 0
+        btn.Text = text
+        btn.TextColor3 = Colors.Text
+        btn.TextSize = 11
+        btn.Font = Enum.Font.GothamBold
+        btn.Parent = parent
+        local btnCorner = Instance.new("UICorner")
+        btnCorner.CornerRadius = UDim.new(0, 4)
+        btnCorner.Parent = btn
+        btn.MouseEnter:Connect(function()
+            btn.BackgroundTransparency = 0.1
+        end)
+        btn.MouseLeave:Connect(function()
+            btn.BackgroundTransparency = 0.3
+        end)
+        btn.MouseButton1Click:Connect(callback)
+        return btn
+    end
+    
+    -- Rejoin Button
+    createButton(serverSection, "🔄 Rejoin Server", 8, 20, 210, function()
+        statusLabel.Text = "⏳ Rejoining server..."
+        task.wait(0.5)
+        TeleportService:Teleport(game.PlaceId, player)
+    end)
+    
+    -- Server Hop Button
+    createButton(serverSection, "🌐 Server Hop", 8, 56, 210, function()
+        statusLabel.Text = "⏳ Finding new server..."
+        
+        local success, servers = pcall(function()
+            local url = "https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"
+            return HttpService:JSONDecode(game:HttpGet(url))
+        end)
+        
+        if success and servers and servers.data then
+            local currentJobId = game.JobId
+            local foundServer = nil
+            
+            for _, server in ipairs(servers.data) do
+                if server.id ~= currentJobId and server.playing < server.maxPlayers then
+                    foundServer = server.id
+                    break
+                end
+            end
+            
+            if foundServer then
+                statusLabel.Text = "✓ Found server! Teleporting..."
+                task.wait(0.5)
+                TeleportService:TeleportToPlaceInstance(game.PlaceId, foundServer, player)
+            else
+                statusLabel.Text = "⚠ No available servers found"
+            end
+        else
+            statusLabel.Text = "⚠ Failed to fetch servers"
+        end
+    end)
+    
+    -- Random Server Button
+    createButton(serverSection, "🎲 Random Server", 8, 92, 210, function()
+        statusLabel.Text = "⏳ Finding random server..."
+        
+        local success, servers = pcall(function()
+            local url = "https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"
+            return HttpService:JSONDecode(game:HttpGet(url))
+        end)
+        
+        if success and servers and servers.data then
+            local currentJobId = game.JobId
+            local availableServers = {}
+            
+            for _, server in ipairs(servers.data) do
+                if server.id ~= currentJobId and server.playing < server.maxPlayers then
+                    table.insert(availableServers, server.id)
+                end
+            end
+            
+            if #availableServers > 0 then
+                local randomServer = availableServers[math.random(1, #availableServers)]
+                statusLabel.Text = "✓ Found server! Teleporting..."
+                task.wait(0.5)
+                TeleportService:TeleportToPlaceInstance(game.PlaceId, randomServer, player)
+            else
+                statusLabel.Text = "⚠ No available servers found"
+            end
+        else
+            statusLabel.Text = "⚠ Failed to fetch servers"
+        end
+    end)
     
     -- Tab switching
     for tabName, tabBtn in pairs(tabButtons) do
