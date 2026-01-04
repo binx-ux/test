@@ -1,6 +1,1 @@
-
-
-⚙ Controls
-Key	Action
-Right Ctrl	Toggle panel
-RMB (Hold)	Track nearest valid enemy
+THIS IS AN WIP AIMBOT/ESP MEANT FOR ARSENAL BUT IT MIGHT WORK IN OTHER GAMES THAT FOLLOW THE SAME GUN LOGIC AS ARSENAL 
