@@ -1395,12 +1395,40 @@ local function createAdminGui(player)
     createSlider(charSection, "Jump Power:", 8, 118, 50, 300, 50, function(v) local c = player.Character; if c then local h = c:FindFirstChild("Humanoid"); if h then h.JumpPower = v; statusLabel.Text = "Jump Power: " .. v end end end)
     
     -- Server Section
-    local serverSection = createSection(functionsPage, "Server", 245, 0, 230, 130)
+    local serverSection = createSection(functionsPage, "Server", 245, 0, 230, 160)
+    
+    -- Rejoin Button
+    local rejoinBtn = Instance.new("TextButton")
+    rejoinBtn.Size = UDim2.new(0, 210, 0, 32)
+    rejoinBtn.Position = UDim2.new(0, 8, 0, 20)
+    rejoinBtn.BackgroundColor3 = Colors.Accent
+    rejoinBtn.BackgroundTransparency = 0.3
+    rejoinBtn.Text = "🔁 Rejoin Server"
+    rejoinBtn.TextColor3 = Colors.Text
+    rejoinBtn.TextSize = 11
+    rejoinBtn.Font = Enum.Font.GothamBold
+    rejoinBtn.Parent = serverSection
+    local rejoinCorner = Instance.new("UICorner")
+    rejoinCorner.CornerRadius = UDim.new(0, 4)
+    rejoinCorner.Parent = rejoinBtn
+    
+    rejoinBtn.MouseEnter:Connect(function() rejoinBtn.BackgroundTransparency = 0.1 end)
+    rejoinBtn.MouseLeave:Connect(function() rejoinBtn.BackgroundTransparency = 0.3 end)
+    
+    rejoinBtn.MouseButton1Click:Connect(function()
+        statusLabel.Text = "🔁 Rejoining server..."
+        local placeId = game.PlaceId
+        local jobId = game.JobId
+        
+        pcall(function()
+            TeleportService:TeleportToPlaceInstance(placeId, jobId, player)
+        end)
+    end)
     
     -- Server Hop Button
     local serverHopBtn = Instance.new("TextButton")
-    serverHopBtn.Size = UDim2.new(0, 210, 0, 28)
-    serverHopBtn.Position = UDim2.new(0, 8, 0, 18)
+    serverHopBtn.Size = UDim2.new(0, 210, 0, 32)
+    serverHopBtn.Position = UDim2.new(0, 8, 0, 58)
     serverHopBtn.BackgroundColor3 = Colors.Accent
     serverHopBtn.BackgroundTransparency = 0.3
     serverHopBtn.Text = "🔄 Server Hop"
@@ -1440,61 +1468,36 @@ local function createAdminGui(player)
                 statusLabel.Text = "✓ Hopping to new server..."
                 TeleportService:TeleportToPlaceInstance(placeId, randomServer, player)
             else
-                -- Fallback: just teleport to the place
                 statusLabel.Text = "⚠ No servers found, rejoining..."
                 TeleportService:Teleport(placeId, player)
             end
         end)
     end)
     
-    -- Rejoin Button
-    local rejoinBtn = Instance.new("TextButton")
-    rejoinBtn.Size = UDim2.new(0, 210, 0, 28)
-    rejoinBtn.Position = UDim2.new(0, 8, 0, 52)
-    rejoinBtn.BackgroundColor3 = Colors.Accent
-    rejoinBtn.BackgroundTransparency = 0.3
-    rejoinBtn.Text = "🔁 Rejoin Server"
-    rejoinBtn.TextColor3 = Colors.Text
-    rejoinBtn.TextSize = 11
-    rejoinBtn.Font = Enum.Font.GothamBold
-    rejoinBtn.Parent = serverSection
-    local rejoinCorner = Instance.new("UICorner")
-    rejoinCorner.CornerRadius = UDim.new(0, 4)
-    rejoinCorner.Parent = rejoinBtn
+    -- Random Server Button
+    local randomBtn = Instance.new("TextButton")
+    randomBtn.Size = UDim2.new(0, 210, 0, 32)
+    randomBtn.Position = UDim2.new(0, 8, 0, 96)
+    randomBtn.BackgroundColor3 = Colors.Accent
+    randomBtn.BackgroundTransparency = 0.3
+    randomBtn.Text = "🎲 Random Server"
+    randomBtn.TextColor3 = Colors.Text
+    randomBtn.TextSize = 11
+    randomBtn.Font = Enum.Font.GothamBold
+    randomBtn.Parent = serverSection
+    local randomCorner = Instance.new("UICorner")
+    randomCorner.CornerRadius = UDim.new(0, 4)
+    randomCorner.Parent = randomBtn
     
-    rejoinBtn.MouseEnter:Connect(function() rejoinBtn.BackgroundTransparency = 0.1 end)
-    rejoinBtn.MouseLeave:Connect(function() rejoinBtn.BackgroundTransparency = 0.3 end)
+    randomBtn.MouseEnter:Connect(function() randomBtn.BackgroundTransparency = 0.1 end)
+    randomBtn.MouseLeave:Connect(function() randomBtn.BackgroundTransparency = 0.3 end)
     
-    rejoinBtn.MouseButton1Click:Connect(function()
-        statusLabel.Text = "🔁 Rejoining server..."
+    randomBtn.MouseButton1Click:Connect(function()
+        statusLabel.Text = "🎲 Joining random server..."
         local placeId = game.PlaceId
-        local jobId = game.JobId
-        
         pcall(function()
-            TeleportService:TeleportToPlaceInstance(placeId, jobId, player)
+            TeleportService:Teleport(placeId, player)
         end)
-    end)
-    
-    -- Disconnect Button
-    local disconnectBtn = Instance.new("TextButton")
-    disconnectBtn.Size = UDim2.new(0, 210, 0, 28)
-    disconnectBtn.Position = UDim2.new(0, 8, 0, 86)
-    disconnectBtn.BackgroundColor3 = Color3.fromRGB(200, 60, 60)
-    disconnectBtn.BackgroundTransparency = 0.3
-    disconnectBtn.Text = "⛔ Disconnect"
-    disconnectBtn.TextColor3 = Colors.Text
-    disconnectBtn.TextSize = 11
-    disconnectBtn.Font = Enum.Font.GothamBold
-    disconnectBtn.Parent = serverSection
-    local dcCorner = Instance.new("UICorner")
-    dcCorner.CornerRadius = UDim.new(0, 4)
-    dcCorner.Parent = disconnectBtn
-    
-    disconnectBtn.MouseEnter:Connect(function() disconnectBtn.BackgroundTransparency = 0.1 end)
-    disconnectBtn.MouseLeave:Connect(function() disconnectBtn.BackgroundTransparency = 0.3 end)
-    
-    disconnectBtn.MouseButton1Click:Connect(function()
-        player:Kick("Disconnected by Admin Panel")
     end)
     
     -- Server Section
