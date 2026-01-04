@@ -1288,16 +1288,19 @@ local function createAdminGui(player)
     createCheckbox(valuesSection, "Prediction", 8, 78, false, function(e) camTrackingSettings[player.UserId].prediction = e end)
     createCheckbox(valuesSection, "Require Line of Sight", 8, 98, true, function(e) aimlockSettings[player.UserId].requireLOS = e end)
     
-    local aimlockSection = createSection(trackingPage, "Aimlock", 245, 0, 230, 200)
+    local aimlockSection = createSection(trackingPage, "Aimlock FOV", 245, 0, 230, 160)
     createDropdown(aimlockSection, "Lock Part", 8, 16, {"Head", "HumanoidRootPart", "UpperTorso", "Torso"}, "Head", function(v) camTrackingSettings[player.UserId].lockPart = v end)
-    createCheckbox(aimlockSection, "Show FOV Circle", 8, 60, true, function(e) 
+    createCheckbox(aimlockSection, "Show FOV Circle", 8, 62, true, function(e) 
         aimlockSettings[player.UserId].showFOVCircle = e
         fovCircleEnabled[player.UserId] = e
         updateFOVCircle()
     end)
-    createSlider(aimlockSection, "FOV Radius:", 8, 84, 50, 400, 150, function(v) 
+    createSlider(aimlockSection, "FOV Radius:", 8, 86, 50, 400, 150, function(v) 
         aimlockSettings[player.UserId].fovRadius = v
         updateFOVCircle()
+    end)
+    createSlider(aimlockSection, "Arrow Distance:", 8, 124, 100, 500, 200, function(v) 
+        espSettings[player.UserId].arrowDistance = v
     end)
     
     -- ESP TAB
