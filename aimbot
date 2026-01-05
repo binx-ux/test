@@ -985,7 +985,7 @@ local function createAdminGui(player)
     titleText.Size = UDim2.new(1, -40, 1, 0)
     titleText.Position = UDim2.new(0, 12, 0, 0)
     titleText.BackgroundTransparency = 1
-    titleText.Text = "⚡ Binxix's GUI"
+    titleText.Text = "⚡ Binxix's GUI | Clean ESP V4"
     titleText.TextColor3 = Colors.Text
     titleText.TextSize = 13
     titleText.Font = Enum.Font.GothamBold
@@ -1348,6 +1348,184 @@ local function createAdminGui(player)
     createSlider(espAppearSection, "Box Width:", 8, 54, 1, 5, 1, function(v) espSettings[player.UserId].boxThickness = v end)
     createSlider(espAppearSection, "Skeleton Width:", 8, 92, 1, 3, 1, function(v) espSettings[player.UserId].skeletonThickness = v end)
     createDropdown(espAppearSection, "Tracer Origin", 8, 130, {"Bottom", "Top", "Mouse"}, "Bottom", function(v) espSettings[player.UserId].tracerOrigin = v end)
+    
+    -- ========================================
+    -- MINIMAP / RADAR
+    -- ========================================
+    local radarEnabled = false
+    local radarSize = 150
+    local radarZoom = 1
+    
+    local radarFrame = Instance.new("Frame")
+    radarFrame.Name = "Radar"
+    radarFrame.Size = UDim2.new(0, radarSize, 0, radarSize)
+    radarFrame.Position = UDim2.new(0, 10, 0, 10)
+    radarFrame.BackgroundColor3 = Colors.Background
+    radarFrame.BackgroundTransparency = 0.3
+    radarFrame.BorderSizePixel = 0
+    radarFrame.Visible = false
+    radarFrame.Parent = screenGui
+    
+    local radarCorner = Instance.new("UICorner")
+    radarCorner.CornerRadius = UDim.new(1, 0)
+    radarCorner.Parent = radarFrame
+    
+    local radarStroke = Instance.new("UIStroke")
+    radarStroke.Color = Colors.Accent
+    radarStroke.Thickness = 2
+    radarStroke.Parent = radarFrame
+    
+    -- Radar center dot (you)
+    local radarCenter = Instance.new("Frame")
+    radarCenter.Name = "CenterDot"
+    radarCenter.Size = UDim2.new(0, 8, 0, 8)
+    radarCenter.Position = UDim2.new(0.5, -4, 0.5, -4)
+    radarCenter.BackgroundColor3 = Colors.AccentBright
+    radarCenter.BorderSizePixel = 0
+    radarCenter.Parent = radarFrame
+    local centerCorner = Instance.new("UICorner")
+    centerCorner.CornerRadius = UDim.new(1, 0)
+    centerCorner.Parent = radarCenter
+    
+    -- Radar crosshairs
+    local radarLineV = Instance.new("Frame")
+    radarLineV.Size = UDim2.new(0, 1, 1, 0)
+    radarLineV.Position = UDim2.new(0.5, 0, 0, 0)
+    radarLineV.BackgroundColor3 = Colors.Border
+    radarLineV.BackgroundTransparency = 0.5
+    radarLineV.BorderSizePixel = 0
+    radarLineV.Parent = radarFrame
+    
+    local radarLineH = Instance.new("Frame")
+    radarLineH.Size = UDim2.new(1, 0, 0, 1)
+    radarLineH.Position = UDim2.new(0, 0, 0.5, 0)
+    radarLineH.BackgroundColor3 = Colors.Border
+    radarLineH.BackgroundTransparency = 0.5
+    radarLineH.BorderSizePixel = 0
+    radarLineH.Parent = radarFrame
+    
+    -- Radar title
+    local radarTitle = Instance.new("TextLabel")
+    radarTitle.Size = UDim2.new(1, 0, 0, 16)
+    radarTitle.Position = UDim2.new(0, 0, 1, 4)
+    radarTitle.BackgroundTransparency = 1
+    radarTitle.Text = "RADAR"
+    radarTitle.TextColor3 = Colors.AccentBright
+    radarTitle.TextSize = 10
+    radarTitle.Font = Enum.Font.GothamBold
+    radarTitle.Parent = radarFrame
+    
+    -- Store radar dots for each player
+    local radarDots = {}
+    
+    local function updateRadar()
+        if not radarEnabled then return end
+        
+        local myChar = player.Character
+        if not myChar then return end
+        local myHRP = myChar:FindFirstChild("HumanoidRootPart")
+        if not myHRP then return end
+        
+        local myPos = myHRP.Position
+        local myLook = myHRP.CFrame.LookVector
+        local myRight = myHRP.CFrame.RightVector
+        
+        -- Get angle player is facing
+        local myAngle = math.atan2(myLook.X, myLook.Z)
+        
+        for _, targetPlayer in ipairs(Players:GetPlayers()) do
+            if targetPlayer ~= player and isValidTarget(player, targetPlayer) then
+                local targetChar = targetPlayer.Character
+                if targetChar then
+                    local targetHRP = targetChar:FindFirstChild("HumanoidRootPart")
+                    if targetHRP then
+                        -- Create dot if doesn't exist
+                        if not radarDots[targetPlayer.UserId] then
+                            local dot = Instance.new("Frame")
+                            dot.Name = "Dot_" .. targetPlayer.UserId
+                            dot.Size = UDim2.new(0, 6, 0, 6)
+                            dot.BackgroundColor3 = Colors.ESP_Close
+                            dot.BorderSizePixel = 0
+                            dot.Parent = radarFrame
+                            local dotCorner = Instance.new("UICorner")
+                            dotCorner.CornerRadius = UDim.new(1, 0)
+                            dotCorner.Parent = dot
+                            radarDots[targetPlayer.UserId] = dot
+                        end
+                        
+                        local dot = radarDots[targetPlayer.UserId]
+                        
+                        -- Calculate relative position
+                        local relativePos = targetHRP.Position - myPos
+                        local distance = relativePos.Magnitude
+                        
+                        -- Rotate to player's facing direction
+                        local rotatedX = relativePos.X * math.cos(-myAngle) - relativePos.Z * math.sin(-myAngle)
+                        local rotatedZ = relativePos.X * math.sin(-myAngle) + relativePos.Z * math.cos(-myAngle)
+                        
+                        -- Scale to radar (zoom factor)
+                        local scale = radarSize / (200 * radarZoom)
+                        local radarX = rotatedX * scale
+                        local radarY = -rotatedZ * scale -- Negative because screen Y is inverted
+                        
+                        -- Clamp to radar bounds
+                        local maxDist = radarSize / 2 - 6
+                        local dotDist = math.sqrt(radarX * radarX + radarY * radarY)
+                        if dotDist > maxDist then
+                            local ratio = maxDist / dotDist
+                            radarX = radarX * ratio
+                            radarY = radarY * ratio
+                        end
+                        
+                        -- Position dot
+                        dot.Position = UDim2.new(0.5, radarX - 3, 0.5, radarY - 3)
+                        
+                        -- Color by distance
+                        dot.BackgroundColor3 = getESPColor(distance)
+                        dot.Visible = true
+                    end
+                end
+            else
+                -- Remove dot if player left or invalid
+                if radarDots[targetPlayer.UserId] then
+                    radarDots[targetPlayer.UserId]:Destroy()
+                    radarDots[targetPlayer.UserId] = nil
+                end
+            end
+        end
+    end
+    
+    -- Radar update loop
+    RunService.RenderStepped:Connect(function()
+        if radarEnabled then
+            updateRadar()
+        end
+    end)
+    
+    -- Clean up dots when players leave
+    Players.PlayerRemoving:Connect(function(removedPlayer)
+        if radarDots[removedPlayer.UserId] then
+            radarDots[removedPlayer.UserId]:Destroy()
+            radarDots[removedPlayer.UserId] = nil
+        end
+    end)
+    
+    -- Radar controls in ESP tab
+    local radarSection = createSection(espPage, "Radar", 0, 230, 230, 60)
+    createCheckbox(radarSection, "Show Radar", 8, 16, false, function(e) 
+        radarEnabled = e
+        radarFrame.Visible = e
+        statusLabel.Text = e and "✓ Radar ON" or "✓ Radar OFF"
+        
+        -- Clear dots when disabled
+        if not e then
+            for userId, dot in pairs(radarDots) do
+                dot:Destroy()
+            end
+            radarDots = {}
+        end
+    end)
+    createSlider(radarSection, "Zoom:", 120, 16, 0.5, 3, 1, function(v) radarZoom = v end)
     
     -- VISUALS TAB
     local visualsPage = Instance.new("Frame")
@@ -1778,6 +1956,158 @@ local function createAdminGui(player)
     infoLabel.TextXAlignment = Enum.TextXAlignment.Left
     infoLabel.TextYAlignment = Enum.TextYAlignment.Top
     infoLabel.Parent = combatInfoSection
+    
+    -- Chat Spammer Section
+    local chatSection = createSection(combatPage, "Chat Spammer", 245, 0, 230, 250)
+    
+    local chatSpamEnabled = false
+    local chatSpamDelay = 1
+    local chatSpamMessage = "Binxix's GUI is the best!"
+    
+    -- Message input
+    local msgInputLabel = Instance.new("TextLabel")
+    msgInputLabel.Size = UDim2.new(1, -16, 0, 14)
+    msgInputLabel.Position = UDim2.new(0, 8, 0, 18)
+    msgInputLabel.BackgroundTransparency = 1
+    msgInputLabel.Text = "Message:"
+    msgInputLabel.TextColor3 = Colors.TextDim
+    msgInputLabel.TextSize = 10
+    msgInputLabel.Font = Enum.Font.Gotham
+    msgInputLabel.TextXAlignment = Enum.TextXAlignment.Left
+    msgInputLabel.Parent = chatSection
+    
+    local msgInputBox = Instance.new("TextBox")
+    msgInputBox.Size = UDim2.new(1, -16, 0, 28)
+    msgInputBox.Position = UDim2.new(0, 8, 0, 34)
+    msgInputBox.BackgroundColor3 = Colors.BackgroundLight
+    msgInputBox.BorderSizePixel = 0
+    msgInputBox.Text = chatSpamMessage
+    msgInputBox.PlaceholderText = "Enter message..."
+    msgInputBox.TextColor3 = Colors.Text
+    msgInputBox.PlaceholderColor3 = Colors.TextDim
+    msgInputBox.TextSize = 10
+    msgInputBox.Font = Enum.Font.Gotham
+    msgInputBox.TextXAlignment = Enum.TextXAlignment.Left
+    msgInputBox.ClearTextOnFocus = false
+    msgInputBox.Parent = chatSection
+    local msgInputCorner = Instance.new("UICorner")
+    msgInputCorner.CornerRadius = UDim.new(0, 4)
+    msgInputCorner.Parent = msgInputBox
+    local msgInputPadding = Instance.new("UIPadding")
+    msgInputPadding.PaddingLeft = UDim.new(0, 8)
+    msgInputPadding.Parent = msgInputBox
+    
+    msgInputBox.FocusLost:Connect(function()
+        chatSpamMessage = msgInputBox.Text
+    end)
+    
+    createSlider(chatSection, "Delay (sec):", 8, 70, 0.5, 10, 1, function(v) chatSpamDelay = v end)
+    
+    createCheckbox(chatSection, "Enable Spam", 8, 108, false, function(e) 
+        chatSpamEnabled = e
+        statusLabel.Text = e and "✓ Chat Spam ON" or "✓ Chat Spam OFF"
+    end)
+    
+    -- Chat spam loop
+    task.spawn(function()
+        while true do
+            task.wait(chatSpamDelay)
+            if chatSpamEnabled and chatSpamMessage ~= "" then
+                pcall(function()
+                    -- Try different chat methods
+                    local success = false
+                    
+                    -- Method 1: ReplicatedStorage DefaultChatSystemChatEvents
+                    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+                    local chatEvents = ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents")
+                    if chatEvents then
+                        local sayEvent = chatEvents:FindFirstChild("SayMessageRequest")
+                        if sayEvent then
+                            sayEvent:FireServer(chatSpamMessage, "All")
+                            success = true
+                        end
+                    end
+                    
+                    -- Method 2: TextChatService
+                    if not success then
+                        local TextChatService = game:GetService("TextChatService")
+                        local channels = TextChatService:FindFirstChild("TextChannels")
+                        if channels then
+                            local general = channels:FindFirstChild("RBXGeneral")
+                            if general then
+                                general:SendAsync(chatSpamMessage)
+                                success = true
+                            end
+                        end
+                    end
+                    
+                    -- Method 3: Legacy chat
+                    if not success then
+                        game:GetService("Players"):Chat(chatSpamMessage)
+                    end
+                end)
+            end
+        end
+    end)
+    
+    -- Quick messages
+    local quickMsgLabel = Instance.new("TextLabel")
+    quickMsgLabel.Size = UDim2.new(1, -16, 0, 14)
+    quickMsgLabel.Position = UDim2.new(0, 8, 0, 132)
+    quickMsgLabel.BackgroundTransparency = 1
+    quickMsgLabel.Text = "Quick Messages:"
+    quickMsgLabel.TextColor3 = Colors.TextDim
+    quickMsgLabel.TextSize = 10
+    quickMsgLabel.Font = Enum.Font.Gotham
+    quickMsgLabel.TextXAlignment = Enum.TextXAlignment.Left
+    quickMsgLabel.Parent = chatSection
+    
+    local quickMessages = {"GG", "EZ", "LOL", "Nice!", "Binxix on top"}
+    local quickBtnWidth = 65
+    for i, msg in ipairs(quickMessages) do
+        local row = math.floor((i-1) / 3)
+        local col = (i-1) % 3
+        local quickBtn = Instance.new("TextButton")
+        quickBtn.Size = UDim2.new(0, quickBtnWidth, 0, 22)
+        quickBtn.Position = UDim2.new(0, 8 + col * (quickBtnWidth + 4), 0, 148 + row * 26)
+        quickBtn.BackgroundColor3 = Colors.Accent
+        quickBtn.BackgroundTransparency = 0.5
+        quickBtn.Text = msg
+        quickBtn.TextColor3 = Colors.Text
+        quickBtn.TextSize = 9
+        quickBtn.Font = Enum.Font.GothamMedium
+        quickBtn.Parent = chatSection
+        local qCorner = Instance.new("UICorner")
+        qCorner.CornerRadius = UDim.new(0, 4)
+        qCorner.Parent = quickBtn
+        
+        quickBtn.MouseEnter:Connect(function() quickBtn.BackgroundTransparency = 0.3 end)
+        quickBtn.MouseLeave:Connect(function() quickBtn.BackgroundTransparency = 0.5 end)
+        
+        quickBtn.MouseButton1Click:Connect(function()
+            pcall(function()
+                local ReplicatedStorage = game:GetService("ReplicatedStorage")
+                local chatEvents = ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents")
+                if chatEvents then
+                    local sayEvent = chatEvents:FindFirstChild("SayMessageRequest")
+                    if sayEvent then
+                        sayEvent:FireServer(msg, "All")
+                        statusLabel.Text = "💬 Sent: " .. msg
+                        return
+                    end
+                end
+                local TextChatService = game:GetService("TextChatService")
+                local channels = TextChatService:FindFirstChild("TextChannels")
+                if channels then
+                    local general = channels:FindFirstChild("RBXGeneral")
+                    if general then
+                        general:SendAsync(msg)
+                        statusLabel.Text = "💬 Sent: " .. msg
+                    end
+                end
+            end)
+        end)
+    end
     
     -- PLAYERS TAB
     local playersPage = Instance.new("Frame")
