@@ -47,6 +47,11 @@ local infiniteAmmoEnabled = {}
 local bodyVelocity = {}
 local bodyGyro = {}
 
+-- Keybind system
+local keybinds = {}
+local waitingForKeybind = {}
+local keybindCallbacks = {}
+
 -- Clean Color Scheme
 local Colors = {
     Background = Color3.fromRGB(20, 20, 25),
@@ -959,8 +964,8 @@ local function createAdminGui(player)
     -- Main Frame
     local mainFrame = Instance.new("Frame")
     mainFrame.Name = "MainFrame"
-    mainFrame.Size = UDim2.new(0, 520, 0, 450)
-    mainFrame.Position = UDim2.new(0.5, -260, 0.5, -225)
+    mainFrame.Size = UDim2.new(0, 580, 0, 500)
+    mainFrame.Position = UDim2.new(0.5, -290, 0.5, -250)
     mainFrame.BackgroundColor3 = Colors.Background
     mainFrame.BorderSizePixel = 0
     mainFrame.Visible = true
@@ -1006,7 +1011,7 @@ local function createAdminGui(player)
     titleText.Size = UDim2.new(1, -40, 1, 0)
     titleText.Position = UDim2.new(0, 12, 0, 0)
     titleText.BackgroundTransparency = 1
-    titleText.Text = "⚡ Binxix's GUI  V4"
+    titleText.Text = "⚡ Binxix's GUI | Clean ESP V4"
     titleText.TextColor3 = Colors.Text
     titleText.TextSize = 13
     titleText.Font = Enum.Font.GothamBold
@@ -1354,7 +1359,91 @@ local function createAdminGui(player)
         return container
     end
     
-    -- Create Tab Pages
+    -- Keybind button creator
+    local function createKeybindButton(parent, label, posX, posY, defaultKey, keybindId, callback)
+        local container = Instance.new("Frame")
+        container.Size = UDim2.new(0, 200, 0, 36)
+        container.Position = UDim2.new(0, posX, 0, posY)
+        container.BackgroundTransparency = 1
+        container.Parent = parent
+        
+        local labelText = Instance.new("TextLabel")
+        labelText.Size = UDim2.new(0, 100, 0, 14)
+        labelText.BackgroundTransparency = 1
+        labelText.Text = label
+        labelText.TextColor3 = Colors.TextDim
+        labelText.TextSize = 10
+        labelText.Font = Enum.Font.Gotham
+        labelText.TextXAlignment = Enum.TextXAlignment.Left
+        labelText.Parent = container
+        
+        local keyBtn = Instance.new("TextButton")
+        keyBtn.Size = UDim2.new(0, 90, 0, 22)
+        keyBtn.Position = UDim2.new(0, 105, 0, 10)
+        keyBtn.BackgroundColor3 = Colors.BackgroundLight
+        keyBtn.BorderSizePixel = 0
+        keyBtn.Text = defaultKey and defaultKey.Name or "None"
+        keyBtn.TextColor3 = Colors.AccentBright
+        keyBtn.TextSize = 10
+        keyBtn.Font = Enum.Font.GothamBold
+        keyBtn.Parent = container
+        
+        local keyCorner = Instance.new("UICorner")
+        keyCorner.CornerRadius = UDim.new(0, 4)
+        keyCorner.Parent = keyBtn
+        
+        local keyStroke = Instance.new("UIStroke")
+        keyStroke.Color = Colors.Border
+        keyStroke.Thickness = 1
+        keyStroke.Parent = keyBtn
+        
+        -- Initialize keybind
+        keybinds[keybindId] = defaultKey
+        keybindCallbacks[keybindId] = callback
+        
+        keyBtn.MouseButton1Click:Connect(function()
+            keyBtn.Text = "..."
+            keyBtn.TextColor3 = Colors.ESP_Close
+            keyStroke.Color = Colors.ESP_Close
+            waitingForKeybind[player.UserId] = {
+                button = keyBtn,
+                stroke = keyStroke,
+                keybindId = keybindId
+            }
+        end)
+        
+        return container
+    end
+    
+    -- Keybind input handler
+    UserInputService.InputBegan:Connect(function(input, gameProcessed)
+        -- Check if waiting for keybind (always check this first, even if gameProcessed)
+        local waiting = waitingForKeybind[player.UserId]
+        if waiting and input.UserInputType == Enum.UserInputType.Keyboard then
+            local keyCode = input.KeyCode
+            keybinds[waiting.keybindId] = keyCode
+            waiting.button.Text = keyCode.Name
+            waiting.button.TextColor3 = Colors.AccentBright
+            waiting.stroke.Color = Colors.Border
+            waitingForKeybind[player.UserId] = nil
+            statusLabel.Text = "✓ Keybind set: " .. keyCode.Name
+            return
+        end
+        
+        if gameProcessed then return end
+        
+        -- Check keybind triggers
+        if input.UserInputType == Enum.UserInputType.Keyboard then
+            for keybindId, keyCode in pairs(keybinds) do
+                if keyCode and input.KeyCode == keyCode then
+                    local callback = keybindCallbacks[keybindId]
+                    if callback then
+                        callback()
+                    end
+                end
+            end
+        end
+    end)
     local tabPages = {}
     
     -- TRACKING TAB
@@ -1665,13 +1754,63 @@ local function createAdminGui(player)
     createSlider(charSection, "Jump Power:", 8, 118, 50, 300, 50, function(v) local c = player.Character; if c then local h = c:FindFirstChild("Humanoid"); if h then h.JumpPower = v; statusLabel.Text = "Jump Power: " .. v end end end)
     
     -- Fly Section
-    local flySection = createSection(movementPage, "Fly", 245, 0, 230, 150)
+    local flySection = createSection(movementPage, "Fly & Movement", 245, 0, 230, 230)
     flyEnabled[player.UserId] = false
     flySpeed[player.UserId] = 50
     
     -- Spin bot variables
     local spinBotEnabled = false
     local spinSpeed = 10
+    
+    local flyCheckbox
+    local flyIsEnabled = false
+    
+    local function toggleFly()
+        flyIsEnabled = not flyIsEnabled
+        flyEnabled[player.UserId] = flyIsEnabled
+        if flyIsEnabled then 
+            startFly()
+            statusLabel.Text = "✓ Fly ON (WASD + Space/Shift)"
+        else 
+            stopFly()
+            statusLabel.Text = "✓ Fly OFF"
+        end
+    end
+    
+    createCheckbox(flySection, "Fly Enabled", 8, 16, false, function(e) 
+        flyIsEnabled = e
+        flyEnabled[player.UserId] = e
+        if e then 
+            startFly()
+            statusLabel.Text = "✓ Fly ON (WASD + Space/Shift)"
+        else 
+            stopFly()
+            statusLabel.Text = "✓ Fly OFF"
+        end
+    end)
+    createSlider(flySection, "Fly Speed:", 8, 40, 10, 200, 50, function(v) flySpeed[player.UserId] = v end)
+    createCheckbox(flySection, "Noclip", 8, 78, false, function(e) 
+        noclipEnabled[player.UserId] = e
+        statusLabel.Text = e and "✓ Noclip ON" or "✓ Noclip OFF"
+    end)
+    createCheckbox(flySection, "Spin Bot", 8, 98, false, function(e) 
+        spinBotEnabled = e
+        statusLabel.Text = e and "✓ Spin Bot ON" or "✓ Spin Bot OFF"
+    end)
+    createSlider(flySection, "Spin Speed:", 8, 118, 1, 50, 10, function(v) spinSpeed = v end)
+    
+    -- Fly Keybind
+    createKeybindButton(flySection, "Fly Toggle:", 8, 152, Enum.KeyCode.F, "fly_toggle", function()
+        toggleFly()
+    end)
+    
+    -- Noclip Keybind
+    local noclipIsEnabled = false
+    createKeybindButton(flySection, "Noclip Toggle:", 8, 178, Enum.KeyCode.V, "noclip_toggle", function()
+        noclipIsEnabled = not noclipIsEnabled
+        noclipEnabled[player.UserId] = noclipIsEnabled
+        statusLabel.Text = noclipIsEnabled and "✓ Noclip ON" or "✓ Noclip OFF"
+    end)
     
     local function startFly()
         local char = player.Character
@@ -1713,27 +1852,6 @@ local function createAdminGui(player)
         if bodyVelocity[player.UserId] then bodyVelocity[player.UserId]:Destroy(); bodyVelocity[player.UserId] = nil end
         if bodyGyro[player.UserId] then bodyGyro[player.UserId]:Destroy(); bodyGyro[player.UserId] = nil end
     end
-    
-    createCheckbox(flySection, "Fly Enabled", 8, 16, false, function(e) 
-        flyEnabled[player.UserId] = e
-        if e then 
-            startFly()
-            statusLabel.Text = "✓ Fly ON (WASD + Space/Shift)"
-        else 
-            stopFly()
-            statusLabel.Text = "✓ Fly OFF"
-        end
-    end)
-    createSlider(flySection, "Fly Speed:", 8, 40, 10, 200, 50, function(v) flySpeed[player.UserId] = v end)
-    createCheckbox(flySection, "Noclip", 8, 78, false, function(e) 
-        noclipEnabled[player.UserId] = e
-        statusLabel.Text = e and "✓ Noclip ON" or "✓ Noclip OFF"
-    end)
-    createCheckbox(flySection, "Spin Bot", 8, 98, false, function(e) 
-        spinBotEnabled = e
-        statusLabel.Text = e and "✓ Spin Bot ON" or "✓ Spin Bot OFF"
-    end)
-    createSlider(flySection, "Spin Speed:", 8, 118, 1, 50, 10, function(v) spinSpeed = v end)
     
     -- Fly movement handler
     RunService.RenderStepped:Connect(function()
@@ -1803,7 +1921,7 @@ local function createAdminGui(player)
     end)
     
     -- Server Section
-    local serverSection = createSection(movementPage, "Server", 245, 160, 230, 130)
+    local serverSection = createSection(movementPage, "Server", 245, 240, 230, 130)
     
     -- Rejoin Button
     local rejoinBtn = Instance.new("TextButton")
@@ -2039,11 +2157,16 @@ local function createAdminGui(player)
     infoLabel.Parent = combatInfoSection
     
     -- Chat Spammer Section
-    local chatSection = createSection(combatPage, "Chat Spammer", 245, 0, 230, 250)
+    local chatSection = createSection(combatPage, "Chat Spammer", 245, 0, 230, 290)
     
     local chatSpamEnabled = false
     local chatSpamDelay = 1
     local chatSpamMessage = "Binxix's GUI is the best!"
+    
+    local function toggleChatSpam()
+        chatSpamEnabled = not chatSpamEnabled
+        statusLabel.Text = chatSpamEnabled and "✓ Chat Spam ON" or "✓ Chat Spam OFF"
+    end
     
     -- Message input
     local msgInputLabel = Instance.new("TextLabel")
@@ -2087,6 +2210,11 @@ local function createAdminGui(player)
     createCheckbox(chatSection, "Enable Spam", 8, 108, false, function(e) 
         chatSpamEnabled = e
         statusLabel.Text = e and "✓ Chat Spam ON" or "✓ Chat Spam OFF"
+    end)
+    
+    -- Chat Spam Keybind
+    createKeybindButton(chatSection, "Spam Toggle:", 8, 128, Enum.KeyCode.P, "chat_spam_toggle", function()
+        toggleChatSpam()
     end)
     
     -- Chat spam loop
@@ -2134,7 +2262,7 @@ local function createAdminGui(player)
     -- Quick messages
     local quickMsgLabel = Instance.new("TextLabel")
     quickMsgLabel.Size = UDim2.new(1, -16, 0, 14)
-    quickMsgLabel.Position = UDim2.new(0, 8, 0, 132)
+    quickMsgLabel.Position = UDim2.new(0, 8, 0, 168)
     quickMsgLabel.BackgroundTransparency = 1
     quickMsgLabel.Text = "Quick Messages:"
     quickMsgLabel.TextColor3 = Colors.TextDim
@@ -2150,7 +2278,7 @@ local function createAdminGui(player)
         local col = (i-1) % 3
         local quickBtn = Instance.new("TextButton")
         quickBtn.Size = UDim2.new(0, quickBtnWidth, 0, 22)
-        quickBtn.Position = UDim2.new(0, 8 + col * (quickBtnWidth + 4), 0, 148 + row * 26)
+        quickBtn.Position = UDim2.new(0, 8 + col * (quickBtnWidth + 4), 0, 184 + row * 26)
         quickBtn.BackgroundColor3 = Colors.Accent
         quickBtn.BackgroundTransparency = 0.5
         quickBtn.Text = msg
