@@ -761,7 +761,28 @@ local function createAdminGui(player)
         fovEnabled = true,
         showFOVCircle = true,
         requireLOS = true,
-        fovOpacity = 0.5
+        fovOpacity = 0.5,
+        -- New advanced settings
+        aimPart = "Head",
+        smoothness = 0.15,
+        prediction = true,
+        predictionAmount = 0.12,
+        stickyAim = true,
+        stickyStrength = 0.8,
+        targetSwitchDelay = 0.2,
+        priorityMode = "Distance", -- Distance, Health, Threat
+        maxDistance = 500,
+        autoShoot = false,
+        triggerbot = false,
+        triggerbotDelay = 0.05,
+        shakeReduction = true,
+        snapOnAcquire = false,
+        snapStrength = 0.5,
+        easing = "Smooth", -- Linear, Smooth, Snap
+        aimWhileJumping = true,
+        ignoreTeammates = true,
+        highlightTarget = true,
+        targetLockIndicator = true
     }
     
     crosshairSettings[player.UserId] = {
@@ -938,8 +959,8 @@ local function createAdminGui(player)
     -- Main Frame
     local mainFrame = Instance.new("Frame")
     mainFrame.Name = "MainFrame"
-    mainFrame.Size = UDim2.new(0, 520, 0, 400)
-    mainFrame.Position = UDim2.new(0.5, -260, 0.5, -200)
+    mainFrame.Size = UDim2.new(0, 520, 0, 450)
+    mainFrame.Position = UDim2.new(0.5, -260, 0.5, -225)
     mainFrame.BackgroundColor3 = Colors.Background
     mainFrame.BorderSizePixel = 0
     mainFrame.Visible = true
@@ -1035,7 +1056,7 @@ local function createAdminGui(player)
     end
     
     local contentArea = Instance.new("Frame")
-    contentArea.Size = UDim2.new(1, -16, 1, -80)
+    contentArea.Size = UDim2.new(1, -16, 1, -90)
     contentArea.Position = UDim2.new(0, 8, 0, 62)
     contentArea.BackgroundTransparency = 1
     contentArea.Parent = mainFrame
@@ -1298,14 +1319,17 @@ local function createAdminGui(player)
     trackingPage.Parent = contentArea
     tabPages["Tracking"] = trackingPage
     
-    local valuesSection = createSection(trackingPage, "Settings", 0, 0, 230, 130)
+    local valuesSection = createSection(trackingPage, "Aim Settings", 0, 0, 230, 200)
     createCheckbox(valuesSection, "Toggle Mode", 8, 16, false, function(e) trackingMode[player.UserId] = e and "toggle" or "hold" end)
-    createSlider(valuesSection, "Smoothness:", 8, 40, 0.05, 0.5, 0.15, function(v) camTrackingSettings[player.UserId].smoothness = v end)
-    createCheckbox(valuesSection, "Prediction", 8, 78, false, function(e) camTrackingSettings[player.UserId].prediction = e end)
-    createCheckbox(valuesSection, "Require Line of Sight", 8, 98, true, function(e) aimlockSettings[player.UserId].requireLOS = e end)
+    createSlider(valuesSection, "Smoothness:", 8, 40, 0.05, 1, 0.15, function(v) aimlockSettings[player.UserId].smoothness = v end)
+    createCheckbox(valuesSection, "Prediction", 8, 78, true, function(e) aimlockSettings[player.UserId].prediction = e end)
+    createSlider(valuesSection, "Predict Amount:", 8, 100, 0.05, 0.3, 0.12, function(v) aimlockSettings[player.UserId].predictionAmount = v end)
+    createCheckbox(valuesSection, "Require Line of Sight", 8, 138, true, function(e) aimlockSettings[player.UserId].requireLOS = e end)
+    createCheckbox(valuesSection, "Sticky Aim", 8, 158, true, function(e) aimlockSettings[player.UserId].stickyAim = e end)
+    createCheckbox(valuesSection, "Shake Reduction", 8, 178, true, function(e) aimlockSettings[player.UserId].shakeReduction = e end)
     
     local aimlockSection = createSection(trackingPage, "Aimlock FOV", 245, 0, 230, 200)
-    createDropdown(aimlockSection, "Lock Part", 8, 16, {"Head", "HumanoidRootPart", "UpperTorso", "Torso"}, "Head", function(v) camTrackingSettings[player.UserId].lockPart = v end)
+    createDropdown(aimlockSection, "Lock Part", 8, 16, {"Head", "HumanoidRootPart", "UpperTorso", "Torso", "LeftUpperArm", "RightUpperArm"}, "Head", function(v) aimlockSettings[player.UserId].aimPart = v end)
     createCheckbox(aimlockSection, "Show FOV Circle", 8, 62, true, function(e) 
         aimlockSettings[player.UserId].showFOVCircle = e
         fovCircleEnabled[player.UserId] = e
@@ -1319,9 +1343,18 @@ local function createAdminGui(player)
         aimlockSettings[player.UserId].fovOpacity = v / 100
         fovStroke.Transparency = 1 - (v / 100)
     end)
-    createSlider(aimlockSection, "Arrow Distance:", 8, 162, 100, 500, 200, function(v) 
-        espSettings[player.UserId].arrowDistance = v
-    end)
+    createSlider(aimlockSection, "Max Distance:", 8, 162, 100, 1000, 500, function(v) aimlockSettings[player.UserId].maxDistance = v end)
+    
+    -- Advanced Aimlock Section
+    local advancedSection = createSection(trackingPage, "Advanced", 0, 210, 230, 80)
+    createDropdown(advancedSection, "Priority Mode", 8, 16, {"Distance", "Health", "Crosshair", "Threat"}, "Distance", function(v) aimlockSettings[player.UserId].priorityMode = v end)
+    createDropdown(advancedSection, "Aim Easing", 8, 56, {"Smooth", "Linear", "Snap"}, "Smooth", function(v) aimlockSettings[player.UserId].easing = v end)
+    
+    -- Target Indicator Section
+    local indicatorSection = createSection(trackingPage, "Indicators", 245, 210, 230, 80)
+    createCheckbox(indicatorSection, "Highlight Target", 8, 16, true, function(e) aimlockSettings[player.UserId].highlightTarget = e end)
+    createCheckbox(indicatorSection, "Lock Indicator", 8, 36, true, function(e) aimlockSettings[player.UserId].targetLockIndicator = e end)
+    createCheckbox(indicatorSection, "Snap on Acquire", 8, 56, false, function(e) aimlockSettings[player.UserId].snapOnAcquire = e end)
     
     -- ESP TAB
     local espPage = Instance.new("Frame")
@@ -2121,70 +2154,303 @@ local function createAdminGui(player)
         end)
     end
     
-    -- Improved RMB Tracking with FOV
+    -- ========================================
+    -- ADVANCED AIMLOCK SYSTEM
+    -- ========================================
     local currentTarget = nil
+    local lastTargetSwitch = 0
+    local lastAimPosition = nil
+    local targetHighlight = nil
+    local lockIndicator = nil
+    
+    -- Create target highlight
+    local function createTargetHighlight()
+        if targetHighlight then targetHighlight:Destroy() end
+        targetHighlight = Instance.new("Highlight")
+        targetHighlight.Name = "AimlockHighlight"
+        targetHighlight.FillColor = Colors.AccentBright
+        targetHighlight.FillTransparency = 0.8
+        targetHighlight.OutlineColor = Colors.AccentBright
+        targetHighlight.OutlineTransparency = 0.3
+        targetHighlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+        return targetHighlight
+    end
+    
+    -- Create lock indicator (on-screen)
+    local lockIndicatorFrame = Instance.new("Frame")
+    lockIndicatorFrame.Name = "LockIndicator"
+    lockIndicatorFrame.Size = UDim2.new(0, 20, 0, 20)
+    lockIndicatorFrame.BackgroundTransparency = 1
+    lockIndicatorFrame.Visible = false
+    lockIndicatorFrame.Parent = screenGui
+    
+    local lockIndicatorLines = {}
+    for i = 1, 4 do
+        local line = Instance.new("Frame")
+        line.BackgroundColor3 = Colors.AccentBright
+        line.BorderSizePixel = 0
+        line.Parent = lockIndicatorFrame
+        table.insert(lockIndicatorLines, line)
+    end
+    -- Top left corner
+    lockIndicatorLines[1].Size = UDim2.new(0, 8, 0, 2)
+    lockIndicatorLines[1].Position = UDim2.new(0, 0, 0, 0)
+    lockIndicatorLines[2].Size = UDim2.new(0, 2, 0, 8)
+    lockIndicatorLines[2].Position = UDim2.new(0, 0, 0, 0)
+    -- Bottom right corner
+    lockIndicatorLines[3].Size = UDim2.new(0, 8, 0, 2)
+    lockIndicatorLines[3].Position = UDim2.new(1, -8, 1, -2)
+    lockIndicatorLines[4].Size = UDim2.new(0, 2, 0, 8)
+    lockIndicatorLines[4].Position = UDim2.new(1, -2, 1, -8)
+    
+    -- Advanced easing functions
+    local function easeOutQuad(t)
+        return 1 - (1 - t) * (1 - t)
+    end
+    
+    local function easeOutCubic(t)
+        return 1 - math.pow(1 - t, 3)
+    end
+    
+    local function smoothStep(t)
+        return t * t * (3 - 2 * t)
+    end
+    
+    -- Get target priority score
+    local function getTargetScore(admin, target, settings)
+        local camera = Workspace.CurrentCamera
+        if not camera then return math.huge end
+        
+        local targetChar = target.Character
+        if not targetChar then return math.huge end
+        
+        local adminChar = admin.Character
+        if not adminChar then return math.huge end
+        
+        local adminHRP = adminChar:FindFirstChild("HumanoidRootPart")
+        local targetHRP = targetChar:FindFirstChild("HumanoidRootPart")
+        local targetHumanoid = targetChar:FindFirstChild("Humanoid")
+        
+        if not adminHRP or not targetHRP then return math.huge end
+        
+        local worldDistance = (adminHRP.Position - targetHRP.Position).Magnitude
+        
+        -- Check max distance
+        if worldDistance > (settings.maxDistance or 500) then return math.huge end
+        
+        -- Get screen position for crosshair distance
+        local aimPart = targetChar:FindFirstChild(settings.aimPart) or targetChar:FindFirstChild("Head") or targetHRP
+        local screenPos, onScreen = camera:WorldToViewportPoint(aimPart.Position)
+        if not onScreen or screenPos.Z < 0 then return math.huge end
+        
+        local screenCenter = camera.ViewportSize / 2
+        local crosshairDistance = (Vector2.new(screenPos.X, screenPos.Y) - screenCenter).Magnitude
+        
+        -- Check FOV
+        if crosshairDistance > (settings.fovRadius or 150) then return math.huge end
+        
+        -- Check line of sight if required
+        if settings.requireLOS and not hasLineOfSight(admin, target) then return math.huge end
+        
+        local priorityMode = settings.priorityMode or "Distance"
+        
+        if priorityMode == "Distance" then
+            return worldDistance
+        elseif priorityMode == "Health" then
+            local health = targetHumanoid and targetHumanoid.Health or 100
+            return health -- Lower health = better target
+        elseif priorityMode == "Crosshair" then
+            return crosshairDistance -- Closer to crosshair = better
+        elseif priorityMode == "Threat" then
+            -- Combine factors: close + low health + facing you = high threat
+            local health = targetHumanoid and targetHumanoid.Health or 100
+            local healthFactor = health / 100
+            local distanceFactor = worldDistance / 100
+            
+            -- Check if target is looking at admin
+            local targetLook = targetHRP.CFrame.LookVector
+            local toAdmin = (adminHRP.Position - targetHRP.Position).Unit
+            local facingFactor = targetLook:Dot(toAdmin)
+            facingFactor = math.max(0, facingFactor) -- 0 to 1, 1 = directly facing
+            
+            -- Lower score = higher priority
+            return (distanceFactor * 0.3) + (healthFactor * 0.3) - (facingFactor * 0.4)
+        end
+        
+        return worldDistance
+    end
+    
+    -- Find best target
+    local function findBestTarget(admin, settings)
+        local bestTarget = nil
+        local bestScore = math.huge
+        
+        for _, target in ipairs(Players:GetPlayers()) do
+            if isValidTarget(admin, target) then
+                local score = getTargetScore(admin, target, settings)
+                if score < bestScore then
+                    bestScore = score
+                    bestTarget = target
+                end
+            end
+        end
+        
+        return bestTarget, bestScore
+    end
+    
+    -- Apply aim smoothing with easing
+    local function getSmoothedAim(currentCF, targetCF, settings, deltaTime)
+        local easing = settings.easing or "Smooth"
+        local smoothness = settings.smoothness or 0.15
+        
+        -- Calculate base lerp factor
+        local lerpFactor = smoothness
+        
+        -- Apply easing
+        if easing == "Smooth" then
+            lerpFactor = easeOutQuad(smoothness)
+        elseif easing == "Linear" then
+            lerpFactor = smoothness
+        elseif easing == "Snap" then
+            lerpFactor = smoothness * 2
+            if lerpFactor > 0.8 then lerpFactor = 1 end
+        end
+        
+        -- Shake reduction - dampen small movements
+        if settings.shakeReduction and lastAimPosition then
+            local movement = (targetCF.Position - lastAimPosition).Magnitude
+            if movement < 0.5 then
+                lerpFactor = lerpFactor * 0.5
+            end
+        end
+        
+        return currentCF:Lerp(targetCF, lerpFactor)
+    end
+    
+    -- Predict target position
+    local function getPredictedPosition(targetChar, settings)
+        local aimPartName = settings.aimPart or "Head"
+        local aimPart = targetChar:FindFirstChild(aimPartName) or targetChar:FindFirstChild("Head") or targetChar:FindFirstChild("HumanoidRootPart")
+        if not aimPart then return nil end
+        
+        local position = aimPart.Position
+        
+        if settings.prediction then
+            local hrp = targetChar:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                local velocity = hrp.AssemblyLinearVelocity
+                local predictionAmount = settings.predictionAmount or 0.12
+                position = position + (velocity * predictionAmount)
+            end
+        end
+        
+        return position
+    end
     
     local function startRMBTracking()
         stopRightMouseTracking(player)
         
         local settings = aimlockSettings[player.UserId]
-        local useFOV = settings.fovEnabled ~= false
         
-        local nearestPlayer, dist = getNearestValidTarget(player, useFOV)
-        if not nearestPlayer then 
+        local bestTarget, score = findBestTarget(player, settings)
+        if not bestTarget then 
             statusLabel.Text = "⚠ No targets in FOV"
             return 
         end
         
-        currentTarget = nearestPlayer
-        statusLabel.Text = "🎯 Locked: " .. nearestPlayer.Name
+        currentTarget = bestTarget
+        lastTargetSwitch = tick()
+        statusLabel.Text = "🎯 LOCKED: " .. bestTarget.Name
         
-        local camera = Workspace.CurrentCamera
-        local camSettings = camTrackingSettings[player.UserId]
+        -- Apply highlight
+        if settings.highlightTarget then
+            local highlight = createTargetHighlight()
+            if bestTarget.Character then
+                highlight.Parent = bestTarget.Character
+            end
+        end
         
-        local connection = RunService.RenderStepped:Connect(function()
-            -- Check if target is still valid and in FOV
-            if not currentTarget or not currentTarget.Character then
-                -- Try to find new target
-                local newTarget = getNearestValidTarget(player, useFOV)
+        -- Snap on acquire
+        if settings.snapOnAcquire then
+            local camera = Workspace.CurrentCamera
+            local targetPos = getPredictedPosition(bestTarget.Character, settings)
+            if targetPos and camera then
+                local snapStrength = settings.snapStrength or 0.5
+                local snapCF = CFrame.new(camera.CFrame.Position, targetPos)
+                camera.CFrame = camera.CFrame:Lerp(snapCF, snapStrength)
+            end
+        end
+        
+        local connection = RunService.RenderStepped:Connect(function(deltaTime)
+            local settings = aimlockSettings[player.UserId]
+            local camera = Workspace.CurrentCamera
+            if not camera then return end
+            
+            -- Check if current target is still valid
+            local currentScore = currentTarget and getTargetScore(player, currentTarget, settings) or math.huge
+            local shouldSwitch = false
+            
+            -- Target lost or invalid
+            if currentScore == math.huge then
+                shouldSwitch = true
+            end
+            
+            -- Check for better target (with delay to prevent flicking)
+            if not shouldSwitch and tick() - lastTargetSwitch > (settings.targetSwitchDelay or 0.2) then
+                local betterTarget, betterScore = findBestTarget(player, settings)
+                
+                -- Only switch if significantly better (sticky aim)
+                if settings.stickyAim then
+                    local stickyStrength = settings.stickyStrength or 0.8
+                    if betterTarget and betterTarget ~= currentTarget and betterScore < currentScore * stickyStrength then
+                        shouldSwitch = true
+                        currentTarget = betterTarget
+                    end
+                elseif betterTarget and betterTarget ~= currentTarget and betterScore < currentScore then
+                    shouldSwitch = true
+                    currentTarget = betterTarget
+                end
+            end
+            
+            -- Switch target if needed
+            if shouldSwitch then
+                local newTarget, newScore = findBestTarget(player, settings)
                 if newTarget then
                     currentTarget = newTarget
-                    statusLabel.Text = "🎯 Locked: " .. newTarget.Name
+                    lastTargetSwitch = tick()
+                    statusLabel.Text = "🎯 LOCKED: " .. newTarget.Name
+                    
+                    -- Update highlight
+                    if settings.highlightTarget and targetHighlight then
+                        targetHighlight.Parent = newTarget.Character
+                    end
                 else
                     statusLabel.Text = "⚠ Target lost"
                     return
                 end
             end
             
-            -- Check if still in FOV
-            if useFOV and not isInFOV(player, currentTarget, settings.fovRadius) then
-                -- Target left FOV, find new one
-                local newTarget = getNearestValidTarget(player, useFOV)
-                if newTarget then
-                    currentTarget = newTarget
-                    statusLabel.Text = "🎯 Locked: " .. newTarget.Name
-                else
-                    return
-                end
-            end
-            
-            local targetChar = currentTarget.Character
-            if not targetChar then return end
-            
-            local targetPart = targetChar:FindFirstChild(camSettings.lockPart) or targetChar:FindFirstChild("Head")
-            if targetPart and camera then
-                local targetPos = targetPart.Position
+            -- Aim at target
+            if currentTarget and currentTarget.Character then
+                local targetPos = getPredictedPosition(currentTarget.Character, settings)
                 
-                -- Prediction
-                if camSettings.prediction then
-                    local targetHRP = targetChar:FindFirstChild("HumanoidRootPart")
-                    if targetHRP then
-                        targetPos = targetPos + targetHRP.AssemblyLinearVelocity * 0.08
+                if targetPos then
+                    local targetCF = CFrame.new(camera.CFrame.Position, targetPos)
+                    local newCF = getSmoothedAim(camera.CFrame, targetCF, settings, deltaTime)
+                    camera.CFrame = newCF
+                    lastAimPosition = targetPos
+                    
+                    -- Update lock indicator
+                    if settings.targetLockIndicator then
+                        local screenPos, onScreen = camera:WorldToViewportPoint(targetPos)
+                        if onScreen then
+                            lockIndicatorFrame.Position = UDim2.new(0, screenPos.X - 10, 0, screenPos.Y - 10)
+                            lockIndicatorFrame.Visible = true
+                        else
+                            lockIndicatorFrame.Visible = false
+                        end
                     end
                 end
-                
-                local lookAtCFrame = CFrame.new(camera.CFrame.Position, targetPos)
-                camera.CFrame = camera.CFrame:Lerp(lookAtCFrame, camSettings.smoothness * 1.5)
             end
         end)
         
@@ -2194,6 +2460,17 @@ local function createAdminGui(player)
     local function stopRMBTrackingUI()
         stopRightMouseTracking(player)
         currentTarget = nil
+        lastAimPosition = nil
+        
+        -- Remove highlight
+        if targetHighlight then
+            targetHighlight:Destroy()
+            targetHighlight = nil
+        end
+        
+        -- Hide lock indicator
+        lockIndicatorFrame.Visible = false
+        
         if not activeTracking[player.UserId] then 
             statusLabel.Text = "✓ Ready | RCtrl toggle | RMB track" 
         end
