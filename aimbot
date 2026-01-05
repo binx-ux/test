@@ -1006,7 +1006,7 @@ local function createAdminGui(player)
     titleText.Size = UDim2.new(1, -40, 1, 0)
     titleText.Position = UDim2.new(0, 12, 0, 0)
     titleText.BackgroundTransparency = 1
-    titleText.Text = "⚡ Binxix's GUI | Clean ESP V4"
+    titleText.Text = "⚡ Binxix's GUI  V4"
     titleText.TextColor3 = Colors.Text
     titleText.TextSize = 13
     titleText.Font = Enum.Font.GothamBold
@@ -1228,8 +1228,8 @@ local function createAdminGui(player)
         container.Size = UDim2.new(0, 200, 0, 42)
         container.Position = UDim2.new(0, posX, 0, posY)
         container.BackgroundTransparency = 1
-        container.ZIndex = 10
         container.Parent = parent
+        
         local labelText = Instance.new("TextLabel")
         labelText.Size = UDim2.new(1, 0, 0, 14)
         labelText.BackgroundTransparency = 1
@@ -1238,8 +1238,8 @@ local function createAdminGui(player)
         labelText.TextSize = 10
         labelText.Font = Enum.Font.Gotham
         labelText.TextXAlignment = Enum.TextXAlignment.Left
-        labelText.ZIndex = 10
         labelText.Parent = container
+        
         local dropBtn = Instance.new("TextButton")
         dropBtn.Size = UDim2.new(1, 0, 0, 24)
         dropBtn.Position = UDim2.new(0, 0, 0, 16)
@@ -1250,11 +1250,12 @@ local function createAdminGui(player)
         dropBtn.TextSize = 10
         dropBtn.Font = Enum.Font.Gotham
         dropBtn.TextXAlignment = Enum.TextXAlignment.Left
-        dropBtn.ZIndex = 10
         dropBtn.Parent = container
+        
         local dropCorner = Instance.new("UICorner")
         dropCorner.CornerRadius = UDim.new(0, 3)
         dropCorner.Parent = dropBtn
+        
         local arrow = Instance.new("TextLabel")
         arrow.Size = UDim2.new(0, 16, 1, 0)
         arrow.Position = UDim2.new(1, -18, 0, 0)
@@ -1263,25 +1264,30 @@ local function createAdminGui(player)
         arrow.TextColor3 = Colors.Accent
         arrow.TextSize = 10
         arrow.Font = Enum.Font.GothamBold
-        arrow.ZIndex = 10
         arrow.Parent = dropBtn
+        
         local currentSelection = default
         local isOpen = false
+        
+        -- Create options frame at ScreenGui level so it's always on top
         local optionsFrame = Instance.new("Frame")
-        optionsFrame.Size = UDim2.new(1, 0, 0, #options * 24)
-        optionsFrame.Position = UDim2.new(0, 0, 1, 2)
+        optionsFrame.Name = "DropdownOptions"
+        optionsFrame.Size = UDim2.new(0, 200, 0, #options * 24)
         optionsFrame.BackgroundColor3 = Colors.Background
         optionsFrame.BorderSizePixel = 0
         optionsFrame.Visible = false
-        optionsFrame.ZIndex = 100
-        optionsFrame.Parent = dropBtn
+        optionsFrame.ZIndex = 999
+        optionsFrame.Parent = screenGui
+        
         local optCorner = Instance.new("UICorner")
         optCorner.CornerRadius = UDim.new(0, 3)
         optCorner.Parent = optionsFrame
+        
         local optStroke = Instance.new("UIStroke")
         optStroke.Color = Colors.Accent
         optStroke.Thickness = 1
         optStroke.Parent = optionsFrame
+        
         for i, opt in ipairs(options) do
             local optBtn = Instance.new("TextButton")
             optBtn.Size = UDim2.new(1, 0, 0, 24)
@@ -1293,10 +1299,17 @@ local function createAdminGui(player)
             optBtn.TextSize = 10
             optBtn.Font = Enum.Font.Gotham
             optBtn.TextXAlignment = Enum.TextXAlignment.Left
-            optBtn.ZIndex = 101
+            optBtn.ZIndex = 1000
             optBtn.Parent = optionsFrame
-            optBtn.MouseEnter:Connect(function() optBtn.BackgroundTransparency = 0; optBtn.BackgroundColor3 = Colors.Accent end)
-            optBtn.MouseLeave:Connect(function() optBtn.BackgroundTransparency = 0.5; optBtn.BackgroundColor3 = Colors.BackgroundLight end)
+            
+            optBtn.MouseEnter:Connect(function() 
+                optBtn.BackgroundTransparency = 0
+                optBtn.BackgroundColor3 = Colors.Accent 
+            end)
+            optBtn.MouseLeave:Connect(function() 
+                optBtn.BackgroundTransparency = 0.5
+                optBtn.BackgroundColor3 = Colors.BackgroundLight 
+            end)
             optBtn.MouseButton1Click:Connect(function()
                 currentSelection = opt
                 dropBtn.Text = "  " .. opt
@@ -1305,6 +1318,12 @@ local function createAdminGui(player)
                 arrow.Text = "▼"
                 if callback then callback(opt) end
             end)
+        end
+        
+        local function updateOptionsPosition()
+            local absPos = dropBtn.AbsolutePosition
+            local absSize = dropBtn.AbsoluteSize
+            optionsFrame.Position = UDim2.new(0, absPos.X, 0, absPos.Y + absSize.Y + 2)
         end
         
         local function closeDropdown()
@@ -1322,6 +1341,9 @@ local function createAdminGui(player)
             end
             
             isOpen = not isOpen
+            if isOpen then
+                updateOptionsPosition()
+            end
             optionsFrame.Visible = isOpen
             arrow.Text = isOpen and "▲" or "▼"
         end)
