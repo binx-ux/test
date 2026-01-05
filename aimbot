@@ -1406,9 +1406,13 @@ local function createAdminGui(player)
     createSlider(charSection, "Jump Power:", 8, 118, 50, 300, 50, function(v) local c = player.Character; if c then local h = c:FindFirstChild("Humanoid"); if h then h.JumpPower = v; statusLabel.Text = "Jump Power: " .. v end end end)
     
     -- Fly Section
-    local flySection = createSection(movementPage, "Fly", 245, 0, 230, 120)
+    local flySection = createSection(movementPage, "Fly", 245, 0, 230, 150)
     flyEnabled[player.UserId] = false
     flySpeed[player.UserId] = 50
+    
+    -- Spin bot variables
+    local spinBotEnabled = false
+    local spinSpeed = 10
     
     local function startFly()
         local char = player.Character
@@ -1466,6 +1470,11 @@ local function createAdminGui(player)
         noclipEnabled[player.UserId] = e
         statusLabel.Text = e and "✓ Noclip ON" or "✓ Noclip OFF"
     end)
+    createCheckbox(flySection, "Spin Bot", 8, 98, false, function(e) 
+        spinBotEnabled = e
+        statusLabel.Text = e and "✓ Spin Bot ON" or "✓ Spin Bot OFF"
+    end)
+    createSlider(flySection, "Spin Speed:", 8, 118, 1, 50, 10, function(v) spinSpeed = v end)
     
     -- Fly movement handler
     RunService.RenderStepped:Connect(function()
@@ -1521,10 +1530,21 @@ local function createAdminGui(player)
                 end
             end
         end
+        
+        -- Spin bot handler
+        if spinBotEnabled then
+            local char = player.Character
+            if char then
+                local hrp = char:FindFirstChild("HumanoidRootPart")
+                if hrp then
+                    hrp.CFrame = hrp.CFrame * CFrame.Angles(0, math.rad(spinSpeed), 0)
+                end
+            end
+        end
     end)
     
     -- Server Section
-    local serverSection = createSection(movementPage, "Server", 245, 130, 230, 160)
+    local serverSection = createSection(movementPage, "Server", 245, 160, 230, 130)
     
     -- Rejoin Button
     local rejoinBtn = Instance.new("TextButton")
