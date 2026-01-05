@@ -1220,12 +1220,15 @@ local function createAdminGui(player)
         return container
     end
     
+    -- Track all open dropdowns to close them
+    local openDropdowns = {}
+    
     local function createDropdown(parent, label, posX, posY, options, default, callback)
         local container = Instance.new("Frame")
-        container.Size = UDim2.new(0, 130, 0, 38)
+        container.Size = UDim2.new(0, 200, 0, 42)
         container.Position = UDim2.new(0, posX, 0, posY)
         container.BackgroundTransparency = 1
-        container.ZIndex = 5
+        container.ZIndex = 10
         container.Parent = parent
         local labelText = Instance.new("TextLabel")
         labelText.Size = UDim2.new(1, 0, 0, 14)
@@ -1235,10 +1238,10 @@ local function createAdminGui(player)
         labelText.TextSize = 10
         labelText.Font = Enum.Font.Gotham
         labelText.TextXAlignment = Enum.TextXAlignment.Left
-        labelText.ZIndex = 5
+        labelText.ZIndex = 10
         labelText.Parent = container
         local dropBtn = Instance.new("TextButton")
-        dropBtn.Size = UDim2.new(1, 0, 0, 22)
+        dropBtn.Size = UDim2.new(1, 0, 0, 24)
         dropBtn.Position = UDim2.new(0, 0, 0, 16)
         dropBtn.BackgroundColor3 = Colors.BackgroundLight
         dropBtn.BorderSizePixel = 0
@@ -1247,7 +1250,7 @@ local function createAdminGui(player)
         dropBtn.TextSize = 10
         dropBtn.Font = Enum.Font.Gotham
         dropBtn.TextXAlignment = Enum.TextXAlignment.Left
-        dropBtn.ZIndex = 5
+        dropBtn.ZIndex = 10
         dropBtn.Parent = container
         local dropCorner = Instance.new("UICorner")
         dropCorner.CornerRadius = UDim.new(0, 3)
@@ -1260,25 +1263,29 @@ local function createAdminGui(player)
         arrow.TextColor3 = Colors.Accent
         arrow.TextSize = 10
         arrow.Font = Enum.Font.GothamBold
-        arrow.ZIndex = 5
+        arrow.ZIndex = 10
         arrow.Parent = dropBtn
         local currentSelection = default
         local isOpen = false
         local optionsFrame = Instance.new("Frame")
-        optionsFrame.Size = UDim2.new(1, 0, 0, #options * 22)
+        optionsFrame.Size = UDim2.new(1, 0, 0, #options * 24)
         optionsFrame.Position = UDim2.new(0, 0, 1, 2)
         optionsFrame.BackgroundColor3 = Colors.Background
         optionsFrame.BorderSizePixel = 0
         optionsFrame.Visible = false
-        optionsFrame.ZIndex = 50
+        optionsFrame.ZIndex = 100
         optionsFrame.Parent = dropBtn
         local optCorner = Instance.new("UICorner")
         optCorner.CornerRadius = UDim.new(0, 3)
         optCorner.Parent = optionsFrame
+        local optStroke = Instance.new("UIStroke")
+        optStroke.Color = Colors.Accent
+        optStroke.Thickness = 1
+        optStroke.Parent = optionsFrame
         for i, opt in ipairs(options) do
             local optBtn = Instance.new("TextButton")
-            optBtn.Size = UDim2.new(1, 0, 0, 22)
-            optBtn.Position = UDim2.new(0, 0, 0, (i-1) * 22)
+            optBtn.Size = UDim2.new(1, 0, 0, 24)
+            optBtn.Position = UDim2.new(0, 0, 0, (i-1) * 24)
             optBtn.BackgroundColor3 = Colors.BackgroundLight
             optBtn.BackgroundTransparency = 0.5
             optBtn.Text = "  " .. opt
@@ -1286,7 +1293,7 @@ local function createAdminGui(player)
             optBtn.TextSize = 10
             optBtn.Font = Enum.Font.Gotham
             optBtn.TextXAlignment = Enum.TextXAlignment.Left
-            optBtn.ZIndex = 51
+            optBtn.ZIndex = 101
             optBtn.Parent = optionsFrame
             optBtn.MouseEnter:Connect(function() optBtn.BackgroundTransparency = 0; optBtn.BackgroundColor3 = Colors.Accent end)
             optBtn.MouseLeave:Connect(function() optBtn.BackgroundTransparency = 0.5; optBtn.BackgroundColor3 = Colors.BackgroundLight end)
@@ -1299,11 +1306,29 @@ local function createAdminGui(player)
                 if callback then callback(opt) end
             end)
         end
+        
+        local function closeDropdown()
+            isOpen = false
+            optionsFrame.Visible = false
+            arrow.Text = "▼"
+        end
+        
         dropBtn.MouseButton1Click:Connect(function()
+            -- Close all other dropdowns first
+            for _, closeFunc in pairs(openDropdowns) do
+                if closeFunc ~= closeDropdown then
+                    closeFunc()
+                end
+            end
+            
             isOpen = not isOpen
             optionsFrame.Visible = isOpen
             arrow.Text = isOpen and "▲" or "▼"
         end)
+        
+        -- Register this dropdown
+        table.insert(openDropdowns, closeDropdown)
+        
         return container
     end
     
@@ -1346,15 +1371,16 @@ local function createAdminGui(player)
     createSlider(aimlockSection, "Max Distance:", 8, 162, 100, 1000, 500, function(v) aimlockSettings[player.UserId].maxDistance = v end)
     
     -- Advanced Aimlock Section
-    local advancedSection = createSection(trackingPage, "Advanced", 0, 210, 230, 80)
+    local advancedSection = createSection(trackingPage, "Advanced", 0, 210, 230, 120)
     createDropdown(advancedSection, "Priority Mode", 8, 16, {"Distance", "Health", "Crosshair", "Threat"}, "Distance", function(v) aimlockSettings[player.UserId].priorityMode = v end)
-    createDropdown(advancedSection, "Aim Easing", 8, 56, {"Smooth", "Linear", "Snap"}, "Smooth", function(v) aimlockSettings[player.UserId].easing = v end)
+    createDropdown(advancedSection, "Aim Easing", 8, 70, {"Smooth", "Linear", "Snap"}, "Smooth", function(v) aimlockSettings[player.UserId].easing = v end)
     
     -- Target Indicator Section
-    local indicatorSection = createSection(trackingPage, "Indicators", 245, 210, 230, 80)
-    createCheckbox(indicatorSection, "Highlight Target", 8, 16, true, function(e) aimlockSettings[player.UserId].highlightTarget = e end)
-    createCheckbox(indicatorSection, "Lock Indicator", 8, 36, true, function(e) aimlockSettings[player.UserId].targetLockIndicator = e end)
-    createCheckbox(indicatorSection, "Snap on Acquire", 8, 56, false, function(e) aimlockSettings[player.UserId].snapOnAcquire = e end)
+    local indicatorSection = createSection(trackingPage, "Indicators", 245, 210, 230, 120)
+    createCheckbox(indicatorSection, "Highlight Target", 8, 20, true, function(e) aimlockSettings[player.UserId].highlightTarget = e end)
+    createCheckbox(indicatorSection, "Lock Indicator", 8, 44, true, function(e) aimlockSettings[player.UserId].targetLockIndicator = e end)
+    createCheckbox(indicatorSection, "Snap on Acquire", 8, 68, false, function(e) aimlockSettings[player.UserId].snapOnAcquire = e end)
+    createSlider(indicatorSection, "Snap Strength:", 8, 88, 0.1, 1, 0.5, function(v) aimlockSettings[player.UserId].snapStrength = v end)
     
     -- ESP TAB
     local espPage = Instance.new("Frame")
