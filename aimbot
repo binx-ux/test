@@ -36,6 +36,17 @@ local originalFog = {}
 local aimlockSettings = {}
 local fovCircleEnabled = {}
 
+-- New features
+local flyEnabled = {}
+local flySpeed = {}
+local noclipEnabled = {}
+local noRecoilEnabled = {}
+local noSpreadEnabled = {}
+local rapidFireEnabled = {}
+local infiniteAmmoEnabled = {}
+local bodyVelocity = {}
+local bodyGyro = {}
+
 -- Clean Color Scheme
 local Colors = {
     Background = Color3.fromRGB(20, 20, 25),
@@ -927,8 +938,8 @@ local function createAdminGui(player)
     -- Main Frame
     local mainFrame = Instance.new("Frame")
     mainFrame.Name = "MainFrame"
-    mainFrame.Size = UDim2.new(0, 500, 0, 380)
-    mainFrame.Position = UDim2.new(0.5, -250, 0.5, -190)
+    mainFrame.Size = UDim2.new(0, 520, 0, 400)
+    mainFrame.Position = UDim2.new(0.5, -260, 0.5, -200)
     mainFrame.BackgroundColor3 = Colors.Background
     mainFrame.BorderSizePixel = 0
     mainFrame.Visible = true
@@ -1003,7 +1014,7 @@ local function createAdminGui(player)
     tabContainer.BackgroundTransparency = 1
     tabContainer.Parent = mainFrame
     
-    local tabs = {"Tracking", "ESP", "Visuals", "Functions"}
+    local tabs = {"Tracking", "ESP", "Visuals", "Movement", "Combat", "Players"}
     local tabButtons = {}
     local tabWidth = 1 / #tabs
     
@@ -1378,29 +1389,147 @@ local function createAdminGui(player)
     createSlider(crosshairSection, "Gap:", 8, 158, 0, 15, 4, function(v) crosshairSettings[player.UserId].gap = v; if crosshairEnabled[player.UserId] then updateCrosshair() end end)
     createCheckbox(crosshairSection, "Outline", 120, 16, true, function(e) crosshairSettings[player.UserId].outline = e; if crosshairEnabled[player.UserId] then updateCrosshair() end end)
     
-    -- FUNCTIONS TAB
-    local functionsPage = Instance.new("Frame")
-    functionsPage.Name = "FunctionsPage"
-    functionsPage.Size = UDim2.new(1, 0, 1, 0)
-    functionsPage.BackgroundTransparency = 1
-    functionsPage.Visible = false
-    functionsPage.Parent = contentArea
-    tabPages["Functions"] = functionsPage
+    -- MOVEMENT TAB (formerly Functions)
+    local movementPage = Instance.new("Frame")
+    movementPage.Name = "MovementPage"
+    movementPage.Size = UDim2.new(1, 0, 1, 0)
+    movementPage.BackgroundTransparency = 1
+    movementPage.Visible = false
+    movementPage.Parent = contentArea
+    tabPages["Movement"] = movementPage
     
-    local charSection = createSection(functionsPage, "Character", 0, 0, 230, 200)
+    local charSection = createSection(movementPage, "Character", 0, 0, 230, 200)
     createCheckbox(charSection, "Speed Boost", 8, 16, false, function(e) local c = player.Character; if c then local h = c:FindFirstChild("Humanoid"); if h then h.WalkSpeed = e and 100 or 16; statusLabel.Text = e and "✓ Speed Boost ON" or "✓ Speed Boost OFF" end end end)
     createCheckbox(charSection, "High Jump", 8, 36, false, function(e) local c = player.Character; if c then local h = c:FindFirstChild("Humanoid"); if h then h.JumpPower = e and 150 or 50; statusLabel.Text = e and "✓ High Jump ON" or "✓ High Jump OFF" end end end)
     createCheckbox(charSection, "Bunny Hop", 8, 56, false, function(e) bunnyHopEnabled[player.UserId] = e; statusLabel.Text = e and "✓ Bunny Hop ON (Hold Space)" or "✓ Bunny Hop OFF" end)
     createSlider(charSection, "Walk Speed:", 8, 80, 16, 200, 16, function(v) local c = player.Character; if c then local h = c:FindFirstChild("Humanoid"); if h then h.WalkSpeed = v; statusLabel.Text = "Walk Speed: " .. v end end end)
     createSlider(charSection, "Jump Power:", 8, 118, 50, 300, 50, function(v) local c = player.Character; if c then local h = c:FindFirstChild("Humanoid"); if h then h.JumpPower = v; statusLabel.Text = "Jump Power: " .. v end end end)
     
+    -- Fly Section
+    local flySection = createSection(movementPage, "Fly", 245, 0, 230, 120)
+    flyEnabled[player.UserId] = false
+    flySpeed[player.UserId] = 50
+    
+    local function startFly()
+        local char = player.Character
+        if not char then return end
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        local humanoid = char:FindFirstChild("Humanoid")
+        if not hrp or not humanoid then return end
+        
+        -- Remove old fly objects
+        if bodyVelocity[player.UserId] then bodyVelocity[player.UserId]:Destroy() end
+        if bodyGyro[player.UserId] then bodyGyro[player.UserId]:Destroy() end
+        
+        -- Create BodyVelocity
+        local bv = Instance.new("BodyVelocity")
+        bv.Name = "FlyVelocity"
+        bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+        bv.Velocity = Vector3.new(0, 0, 0)
+        bv.Parent = hrp
+        bodyVelocity[player.UserId] = bv
+        
+        -- Create BodyGyro
+        local bg = Instance.new("BodyGyro")
+        bg.Name = "FlyGyro"
+        bg.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+        bg.P = 9e4
+        bg.CFrame = hrp.CFrame
+        bg.Parent = hrp
+        bodyGyro[player.UserId] = bg
+        
+        humanoid.PlatformStand = true
+    end
+    
+    local function stopFly()
+        local char = player.Character
+        if char then
+            local humanoid = char:FindFirstChild("Humanoid")
+            if humanoid then humanoid.PlatformStand = false end
+        end
+        if bodyVelocity[player.UserId] then bodyVelocity[player.UserId]:Destroy(); bodyVelocity[player.UserId] = nil end
+        if bodyGyro[player.UserId] then bodyGyro[player.UserId]:Destroy(); bodyGyro[player.UserId] = nil end
+    end
+    
+    createCheckbox(flySection, "Fly Enabled", 8, 16, false, function(e) 
+        flyEnabled[player.UserId] = e
+        if e then 
+            startFly()
+            statusLabel.Text = "✓ Fly ON (WASD + Space/Shift)"
+        else 
+            stopFly()
+            statusLabel.Text = "✓ Fly OFF"
+        end
+    end)
+    createSlider(flySection, "Fly Speed:", 8, 40, 10, 200, 50, function(v) flySpeed[player.UserId] = v end)
+    createCheckbox(flySection, "Noclip", 8, 78, false, function(e) 
+        noclipEnabled[player.UserId] = e
+        statusLabel.Text = e and "✓ Noclip ON" or "✓ Noclip OFF"
+    end)
+    
+    -- Fly movement handler
+    RunService.RenderStepped:Connect(function()
+        if flyEnabled[player.UserId] then
+            local char = player.Character
+            if not char then return end
+            local hrp = char:FindFirstChild("HumanoidRootPart")
+            local camera = Workspace.CurrentCamera
+            if not hrp or not camera then return end
+            
+            local bv = bodyVelocity[player.UserId]
+            local bg = bodyGyro[player.UserId]
+            if not bv or not bg then return end
+            
+            local speed = flySpeed[player.UserId] or 50
+            local direction = Vector3.new(0, 0, 0)
+            
+            if UserInputService:IsKeyDown(Enum.KeyCode.W) then
+                direction = direction + camera.CFrame.LookVector
+            end
+            if UserInputService:IsKeyDown(Enum.KeyCode.S) then
+                direction = direction - camera.CFrame.LookVector
+            end
+            if UserInputService:IsKeyDown(Enum.KeyCode.A) then
+                direction = direction - camera.CFrame.RightVector
+            end
+            if UserInputService:IsKeyDown(Enum.KeyCode.D) then
+                direction = direction + camera.CFrame.RightVector
+            end
+            if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
+                direction = direction + Vector3.new(0, 1, 0)
+            end
+            if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then
+                direction = direction - Vector3.new(0, 1, 0)
+            end
+            
+            if direction.Magnitude > 0 then
+                direction = direction.Unit
+            end
+            
+            bv.Velocity = direction * speed
+            bg.CFrame = camera.CFrame
+        end
+        
+        -- Noclip handler
+        if noclipEnabled[player.UserId] then
+            local char = player.Character
+            if char then
+                for _, part in ipairs(char:GetDescendants()) do
+                    if part:IsA("BasePart") then
+                        part.CanCollide = false
+                    end
+                end
+            end
+        end
+    end)
+    
     -- Server Section
-    local serverSection = createSection(functionsPage, "Server", 245, 0, 230, 200)
+    local serverSection = createSection(movementPage, "Server", 245, 130, 230, 160)
     
     -- Rejoin Button
     local rejoinBtn = Instance.new("TextButton")
-    rejoinBtn.Size = UDim2.new(0, 210, 0, 35)
-    rejoinBtn.Position = UDim2.new(0, 8, 0, 24)
+    rejoinBtn.Size = UDim2.new(0, 210, 0, 32)
+    rejoinBtn.Position = UDim2.new(0, 8, 0, 20)
     rejoinBtn.BackgroundColor3 = Colors.Accent
     rejoinBtn.BackgroundTransparency = 0.3
     rejoinBtn.Text = "🔁 Rejoin Server"
@@ -1419,7 +1548,6 @@ local function createAdminGui(player)
         statusLabel.Text = "🔁 Rejoining server..."
         local placeId = game.PlaceId
         local jobId = game.JobId
-        
         pcall(function()
             TeleportService:TeleportToPlaceInstance(placeId, jobId, player)
         end)
@@ -1427,8 +1555,8 @@ local function createAdminGui(player)
     
     -- Server Hop Button
     local serverHopBtn = Instance.new("TextButton")
-    serverHopBtn.Size = UDim2.new(0, 210, 0, 35)
-    serverHopBtn.Position = UDim2.new(0, 8, 0, 68)
+    serverHopBtn.Size = UDim2.new(0, 210, 0, 32)
+    serverHopBtn.Position = UDim2.new(0, 8, 0, 58)
     serverHopBtn.BackgroundColor3 = Colors.Accent
     serverHopBtn.BackgroundTransparency = 0.3
     serverHopBtn.Text = "🔄 Server Hop"
@@ -1447,14 +1575,12 @@ local function createAdminGui(player)
         statusLabel.Text = "🔄 Finding new server..."
         local placeId = game.PlaceId
         local currentJobId = game.JobId
-        
         pcall(function()
             local servers = {}
             local url = "https://games.roblox.com/v1/games/" .. placeId .. "/servers/Public?sortOrder=Asc&limit=100"
             local success, result = pcall(function()
                 return HttpService:JSONDecode(game:HttpGet(url))
             end)
-            
             if success and result and result.data then
                 for _, server in ipairs(result.data) do
                     if server.id ~= currentJobId and server.playing < server.maxPlayers then
@@ -1462,7 +1588,6 @@ local function createAdminGui(player)
                     end
                 end
             end
-            
             if #servers > 0 then
                 local randomServer = servers[math.random(1, #servers)]
                 statusLabel.Text = "✓ Hopping to new server..."
@@ -1476,8 +1601,8 @@ local function createAdminGui(player)
     
     -- Random Server Button
     local randomBtn = Instance.new("TextButton")
-    randomBtn.Size = UDim2.new(0, 210, 0, 35)
-    randomBtn.Position = UDim2.new(0, 8, 0, 112)
+    randomBtn.Size = UDim2.new(0, 210, 0, 32)
+    randomBtn.Position = UDim2.new(0, 8, 0, 96)
     randomBtn.BackgroundColor3 = Colors.Accent
     randomBtn.BackgroundTransparency = 0.3
     randomBtn.Text = "🎲 Random Server"
@@ -1500,26 +1625,349 @@ local function createAdminGui(player)
         end)
     end)
     
-    -- Disconnect Button
-    local disconnectBtn = Instance.new("TextButton")
-    disconnectBtn.Size = UDim2.new(0, 210, 0, 35)
-    disconnectBtn.Position = UDim2.new(0, 8, 0, 156)
-    disconnectBtn.BackgroundColor3 = Color3.fromRGB(200, 60, 60)
-    disconnectBtn.BackgroundTransparency = 0.3
-    disconnectBtn.Text = "⛔ Disconnect"
-    disconnectBtn.TextColor3 = Colors.Text
-    disconnectBtn.TextSize = 11
-    disconnectBtn.Font = Enum.Font.GothamBold
-    disconnectBtn.Parent = serverSection
-    local dcCorner = Instance.new("UICorner")
-    dcCorner.CornerRadius = UDim.new(0, 4)
-    dcCorner.Parent = disconnectBtn
+    -- COMBAT TAB
+    local combatPage = Instance.new("Frame")
+    combatPage.Name = "CombatPage"
+    combatPage.Size = UDim2.new(1, 0, 1, 0)
+    combatPage.BackgroundTransparency = 1
+    combatPage.Visible = false
+    combatPage.Parent = contentArea
+    tabPages["Combat"] = combatPage
     
-    disconnectBtn.MouseEnter:Connect(function() disconnectBtn.BackgroundTransparency = 0.1 end)
-    disconnectBtn.MouseLeave:Connect(function() disconnectBtn.BackgroundTransparency = 0.3 end)
+    noRecoilEnabled[player.UserId] = false
+    noSpreadEnabled[player.UserId] = false
+    rapidFireEnabled[player.UserId] = false
+    infiniteAmmoEnabled[player.UserId] = false
     
-    disconnectBtn.MouseButton1Click:Connect(function()
-        player:Kick("Disconnected by Admin Panel")
+    local weaponSection = createSection(combatPage, "Weapon Mods", 0, 0, 230, 160)
+    createCheckbox(weaponSection, "No Recoil", 8, 16, false, function(e) 
+        noRecoilEnabled[player.UserId] = e
+        statusLabel.Text = e and "✓ No Recoil ON" or "✓ No Recoil OFF"
+        -- Try to apply to common gun systems
+        pcall(function()
+            local char = player.Character
+            if char then
+                for _, tool in ipairs(char:GetChildren()) do
+                    if tool:IsA("Tool") then
+                        for _, desc in ipairs(tool:GetDescendants()) do
+                            if desc.Name:lower():find("recoil") and (desc:IsA("NumberValue") or desc:IsA("Vector3Value")) then
+                                if e then
+                                    desc:SetAttribute("OriginalValue", desc.Value)
+                                    if desc:IsA("NumberValue") then desc.Value = 0
+                                    elseif desc:IsA("Vector3Value") then desc.Value = Vector3.new(0,0,0) end
+                                else
+                                    local orig = desc:GetAttribute("OriginalValue")
+                                    if orig then desc.Value = orig end
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end)
+    end)
+    createCheckbox(weaponSection, "No Spread", 8, 36, false, function(e) 
+        noSpreadEnabled[player.UserId] = e
+        statusLabel.Text = e and "✓ No Spread ON" or "✓ No Spread OFF"
+        pcall(function()
+            local char = player.Character
+            if char then
+                for _, tool in ipairs(char:GetChildren()) do
+                    if tool:IsA("Tool") then
+                        for _, desc in ipairs(tool:GetDescendants()) do
+                            if desc.Name:lower():find("spread") and (desc:IsA("NumberValue") or desc:IsA("Vector3Value")) then
+                                if e then
+                                    desc:SetAttribute("OriginalValue", desc.Value)
+                                    if desc:IsA("NumberValue") then desc.Value = 0
+                                    elseif desc:IsA("Vector3Value") then desc.Value = Vector3.new(0,0,0) end
+                                else
+                                    local orig = desc:GetAttribute("OriginalValue")
+                                    if orig then desc.Value = orig end
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end)
+    end)
+    createCheckbox(weaponSection, "Rapid Fire", 8, 56, false, function(e) 
+        rapidFireEnabled[player.UserId] = e
+        statusLabel.Text = e and "✓ Rapid Fire ON" or "✓ Rapid Fire OFF"
+        pcall(function()
+            local char = player.Character
+            if char then
+                for _, tool in ipairs(char:GetChildren()) do
+                    if tool:IsA("Tool") then
+                        for _, desc in ipairs(tool:GetDescendants()) do
+                            if (desc.Name:lower():find("firerate") or desc.Name:lower():find("fire_rate") or desc.Name:lower():find("cooldown") or desc.Name:lower():find("delay")) and desc:IsA("NumberValue") then
+                                if e then
+                                    desc:SetAttribute("OriginalValue", desc.Value)
+                                    desc.Value = 0.01
+                                else
+                                    local orig = desc:GetAttribute("OriginalValue")
+                                    if orig then desc.Value = orig end
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end)
+    end)
+    createCheckbox(weaponSection, "Infinite Ammo", 8, 76, false, function(e) 
+        infiniteAmmoEnabled[player.UserId] = e
+        statusLabel.Text = e and "✓ Infinite Ammo ON" or "✓ Infinite Ammo OFF"
+    end)
+    
+    -- Infinite ammo loop
+    task.spawn(function()
+        while true do
+            task.wait(0.1)
+            if infiniteAmmoEnabled[player.UserId] then
+                pcall(function()
+                    local char = player.Character
+                    if char then
+                        for _, tool in ipairs(char:GetChildren()) do
+                            if tool:IsA("Tool") then
+                                for _, desc in ipairs(tool:GetDescendants()) do
+                                    if (desc.Name:lower():find("ammo") or desc.Name:lower():find("clip") or desc.Name:lower():find("magazine") or desc.Name:lower():find("bullets")) and desc:IsA("NumberValue") or desc:IsA("IntValue") then
+                                        if desc.Value < 999 then
+                                            desc.Value = 999
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end)
+            end
+        end
+    end)
+    
+    local combatInfoSection = createSection(combatPage, "Info", 0, 170, 230, 80)
+    local infoLabel = Instance.new("TextLabel")
+    infoLabel.Size = UDim2.new(1, -16, 1, -20)
+    infoLabel.Position = UDim2.new(0, 8, 0, 16)
+    infoLabel.BackgroundTransparency = 1
+    infoLabel.Text = "⚠ Weapon mods work on\ncompatible gun systems.\nResults may vary by game."
+    infoLabel.TextColor3 = Colors.TextDim
+    infoLabel.TextSize = 10
+    infoLabel.Font = Enum.Font.Gotham
+    infoLabel.TextWrapped = true
+    infoLabel.TextXAlignment = Enum.TextXAlignment.Left
+    infoLabel.TextYAlignment = Enum.TextYAlignment.Top
+    infoLabel.Parent = combatInfoSection
+    
+    -- PLAYERS TAB
+    local playersPage = Instance.new("Frame")
+    playersPage.Name = "PlayersPage"
+    playersPage.Size = UDim2.new(1, 0, 1, 0)
+    playersPage.BackgroundTransparency = 1
+    playersPage.Visible = false
+    playersPage.Parent = contentArea
+    tabPages["Players"] = playersPage
+    
+    local playerListSection = createSection(playersPage, "Player List", 0, 0, 480, 280)
+    
+    local scrollFrame = Instance.new("ScrollingFrame")
+    scrollFrame.Size = UDim2.new(1, -16, 1, -24)
+    scrollFrame.Position = UDim2.new(0, 8, 0, 18)
+    scrollFrame.BackgroundTransparency = 1
+    scrollFrame.BorderSizePixel = 0
+    scrollFrame.ScrollBarThickness = 4
+    scrollFrame.ScrollBarImageColor3 = Colors.Accent
+    scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+    scrollFrame.Parent = playerListSection
+    
+    local listLayout = Instance.new("UIListLayout")
+    listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    listLayout.Padding = UDim.new(0, 4)
+    listLayout.Parent = scrollFrame
+    
+    local function updatePlayerList()
+        -- Clear existing
+        for _, child in ipairs(scrollFrame:GetChildren()) do
+            if child:IsA("Frame") then child:Destroy() end
+        end
+        
+        local players = Players:GetPlayers()
+        for i, targetPlayer in ipairs(players) do
+            local playerFrame = Instance.new("Frame")
+            playerFrame.Size = UDim2.new(1, -8, 0, 36)
+            playerFrame.BackgroundColor3 = Colors.BackgroundLight
+            playerFrame.BackgroundTransparency = 0.5
+            playerFrame.BorderSizePixel = 0
+            playerFrame.LayoutOrder = i
+            playerFrame.Parent = scrollFrame
+            
+            local frameCorner = Instance.new("UICorner")
+            frameCorner.CornerRadius = UDim.new(0, 4)
+            frameCorner.Parent = playerFrame
+            
+            -- Player name
+            local nameLabel = Instance.new("TextLabel")
+            nameLabel.Size = UDim2.new(0, 180, 1, 0)
+            nameLabel.Position = UDim2.new(0, 8, 0, 0)
+            nameLabel.BackgroundTransparency = 1
+            nameLabel.Text = targetPlayer.Name
+            nameLabel.TextColor3 = targetPlayer == player and Colors.AccentBright or Colors.Text
+            nameLabel.TextSize = 11
+            nameLabel.Font = Enum.Font.GothamMedium
+            nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+            nameLabel.TextTruncate = Enum.TextTruncate.AtEnd
+            nameLabel.Parent = playerFrame
+            
+            -- Distance label
+            local distLabel = Instance.new("TextLabel")
+            distLabel.Size = UDim2.new(0, 50, 1, 0)
+            distLabel.Position = UDim2.new(0, 190, 0, 0)
+            distLabel.BackgroundTransparency = 1
+            distLabel.Text = "0m"
+            distLabel.TextColor3 = Colors.TextDim
+            distLabel.TextSize = 10
+            distLabel.Font = Enum.Font.Gotham
+            distLabel.Parent = playerFrame
+            
+            -- Update distance
+            task.spawn(function()
+                while playerFrame and playerFrame.Parent do
+                    task.wait(0.5)
+                    local myChar = player.Character
+                    local theirChar = targetPlayer.Character
+                    if myChar and theirChar then
+                        local myHRP = myChar:FindFirstChild("HumanoidRootPart")
+                        local theirHRP = theirChar:FindFirstChild("HumanoidRootPart")
+                        if myHRP and theirHRP then
+                            local dist = math.floor((myHRP.Position - theirHRP.Position).Magnitude)
+                            distLabel.Text = dist .. "m"
+                        end
+                    end
+                end
+            end)
+            
+            -- Teleport button
+            local tpBtn = Instance.new("TextButton")
+            tpBtn.Size = UDim2.new(0, 70, 0, 24)
+            tpBtn.Position = UDim2.new(0, 250, 0.5, -12)
+            tpBtn.BackgroundColor3 = Colors.Accent
+            tpBtn.BackgroundTransparency = 0.3
+            tpBtn.Text = "Teleport"
+            tpBtn.TextColor3 = Colors.Text
+            tpBtn.TextSize = 10
+            tpBtn.Font = Enum.Font.GothamMedium
+            tpBtn.Parent = playerFrame
+            local tpCorner = Instance.new("UICorner")
+            tpCorner.CornerRadius = UDim.new(0, 4)
+            tpCorner.Parent = tpBtn
+            
+            tpBtn.MouseEnter:Connect(function() tpBtn.BackgroundTransparency = 0.1 end)
+            tpBtn.MouseLeave:Connect(function() tpBtn.BackgroundTransparency = 0.3 end)
+            
+            tpBtn.MouseButton1Click:Connect(function()
+                local myChar = player.Character
+                local theirChar = targetPlayer.Character
+                if myChar and theirChar then
+                    local myHRP = myChar:FindFirstChild("HumanoidRootPart")
+                    local theirHRP = theirChar:FindFirstChild("HumanoidRootPart")
+                    if myHRP and theirHRP then
+                        myHRP.CFrame = theirHRP.CFrame * CFrame.new(0, 0, 3)
+                        statusLabel.Text = "✓ Teleported to " .. targetPlayer.Name
+                    end
+                end
+            end)
+            
+            -- Spectate button
+            local specBtn = Instance.new("TextButton")
+            specBtn.Size = UDim2.new(0, 70, 0, 24)
+            specBtn.Position = UDim2.new(0, 326, 0.5, -12)
+            specBtn.BackgroundColor3 = Colors.Accent
+            specBtn.BackgroundTransparency = 0.3
+            specBtn.Text = "Spectate"
+            specBtn.TextColor3 = Colors.Text
+            specBtn.TextSize = 10
+            specBtn.Font = Enum.Font.GothamMedium
+            specBtn.Parent = playerFrame
+            local specCorner = Instance.new("UICorner")
+            specCorner.CornerRadius = UDim.new(0, 4)
+            specCorner.Parent = specBtn
+            
+            specBtn.MouseEnter:Connect(function() specBtn.BackgroundTransparency = 0.1 end)
+            specBtn.MouseLeave:Connect(function() specBtn.BackgroundTransparency = 0.3 end)
+            
+            specBtn.MouseButton1Click:Connect(function()
+                local theirChar = targetPlayer.Character
+                if theirChar then
+                    local humanoid = theirChar:FindFirstChild("Humanoid")
+                    if humanoid then
+                        Workspace.CurrentCamera.CameraSubject = humanoid
+                        statusLabel.Text = "👁 Spectating " .. targetPlayer.Name
+                    end
+                end
+            end)
+            
+            -- Copy name button
+            local copyBtn = Instance.new("TextButton")
+            copyBtn.Size = UDim2.new(0, 50, 0, 24)
+            copyBtn.Position = UDim2.new(0, 402, 0.5, -12)
+            copyBtn.BackgroundColor3 = Colors.BackgroundLight
+            copyBtn.BackgroundTransparency = 0.3
+            copyBtn.Text = "Copy"
+            copyBtn.TextColor3 = Colors.Text
+            copyBtn.TextSize = 10
+            copyBtn.Font = Enum.Font.GothamMedium
+            copyBtn.Parent = playerFrame
+            local copyCorner = Instance.new("UICorner")
+            copyCorner.CornerRadius = UDim.new(0, 4)
+            copyCorner.Parent = copyBtn
+            
+            copyBtn.MouseEnter:Connect(function() copyBtn.BackgroundTransparency = 0.1 end)
+            copyBtn.MouseLeave:Connect(function() copyBtn.BackgroundTransparency = 0.3 end)
+            
+            copyBtn.MouseButton1Click:Connect(function()
+                pcall(function()
+                    setclipboard(targetPlayer.Name)
+                    statusLabel.Text = "✓ Copied: " .. targetPlayer.Name
+                end)
+            end)
+        end
+        
+        -- Update canvas size
+        scrollFrame.CanvasSize = UDim2.new(0, 0, 0, listLayout.AbsoluteContentSize.Y + 8)
+    end
+    
+    -- Initial update and refresh on player changes
+    updatePlayerList()
+    Players.PlayerAdded:Connect(updatePlayerList)
+    Players.PlayerRemoving:Connect(updatePlayerList)
+    
+    -- Reset spectate button
+    local resetSpecBtn = Instance.new("TextButton")
+    resetSpecBtn.Size = UDim2.new(0, 150, 0, 28)
+    resetSpecBtn.Position = UDim2.new(0.5, -75, 1, -36)
+    resetSpecBtn.BackgroundColor3 = Colors.Accent
+    resetSpecBtn.BackgroundTransparency = 0.3
+    resetSpecBtn.Text = "👤 Reset Camera"
+    resetSpecBtn.TextColor3 = Colors.Text
+    resetSpecBtn.TextSize = 11
+    resetSpecBtn.Font = Enum.Font.GothamBold
+    resetSpecBtn.Parent = playerListSection
+    local resetCorner = Instance.new("UICorner")
+    resetCorner.CornerRadius = UDim.new(0, 4)
+    resetCorner.Parent = resetSpecBtn
+    
+    resetSpecBtn.MouseEnter:Connect(function() resetSpecBtn.BackgroundTransparency = 0.1 end)
+    resetSpecBtn.MouseLeave:Connect(function() resetSpecBtn.BackgroundTransparency = 0.3 end)
+    
+    resetSpecBtn.MouseButton1Click:Connect(function()
+        local myChar = player.Character
+        if myChar then
+            local humanoid = myChar:FindFirstChild("Humanoid")
+            if humanoid then
+                Workspace.CurrentCamera.CameraSubject = humanoid
+                statusLabel.Text = "✓ Camera reset to self"
+            end
+        end
     end)
     
     -- Tab switching
