@@ -699,15 +699,6 @@ local function unloadScript(player)
     print("Binxix's GUI V5 has been unloaded!")
 end
 
--- ============================================
--- END OF PART 1 - CONTINUE WITH PART 2 BELOW
--- ============================================
-
--- ============================================
--- BINXIX'S GUI V5 - PART 2 OF 2
--- This continues directly from Part 1
--- ============================================
-
 local function createAdminGui(player)
     espSettings[player.UserId] = {
         boxEnabled = true, tracerEnabled = true, nameEnabled = true, healthEnabled = true,
