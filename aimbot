@@ -1,6 +1,5 @@
--- BINXIX'S GUI V5 - PART 1 OF 2
--- Updated: Gun Mods from quotas hub integrated
--- Paste Part 2 directly after this
+-- BINXIX'S GUI V5 - COMPLETE SCRIPT
+-- Features: Aimlock, ESP, Visuals, Movement, Combat (Gun Mods)
 
 -- Services
 local Players = game:GetService("Players")
@@ -10,7 +9,6 @@ local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local Lighting = game:GetService("Lighting")
 local TeleportService = game:GetService("TeleportService")
-local HttpService = game:GetService("HttpService")
 
 local activeTracking = {}
 local activeESP = {}
@@ -46,7 +44,6 @@ local keybinds = {}
 local waitingForKeybind = {}
 local keybindCallbacks = {}
 
--- Unload system
 local allConnections = {}
 local guiInstances = {}
 local isUnloading = false
@@ -109,60 +106,6 @@ local function hasLineOfSight(admin, target)
     raycastParams.IgnoreWater = true
     local raycastResult = Workspace:Raycast(origin, direction, raycastParams)
     return raycastResult == nil
-end
-
-local function isInFOV(admin, target, fovRadius)
-    local camera = Workspace.CurrentCamera
-    if not camera then return false end
-    local targetChar = target.Character
-    if not targetChar then return false end
-    local settings = camTrackingSettings[admin.UserId] or {}
-    local lockPart = settings.lockPart or "Head"
-    local targetPart = targetChar:FindFirstChild(lockPart) or targetChar:FindFirstChild("Head") or targetChar:FindFirstChild("HumanoidRootPart")
-    if not targetPart then return false end
-    local screenPos, onScreen = camera:WorldToViewportPoint(targetPart.Position)
-    if not onScreen or screenPos.Z < 0 then return false end
-    local screenCenter = camera.ViewportSize / 2
-    local targetScreenPos = Vector2.new(screenPos.X, screenPos.Y)
-    local distanceFromCenter = (targetScreenPos - screenCenter).Magnitude
-    return distanceFromCenter <= fovRadius
-end
-
-local function getNearestValidTarget(admin, useFOV)
-    local adminChar = admin.Character
-    if not adminChar then return nil end
-    local adminHRP = adminChar:FindFirstChild("HumanoidRootPart")
-    if not adminHRP then return nil end
-    local settings = aimlockSettings[admin.UserId] or {}
-    local fovRadius = settings.fovRadius or 150
-    local requireLOS = settings.requireLOS ~= false
-    local nearestPlayer, nearestScreenDistance = nil, math.huge
-    local camera = Workspace.CurrentCamera
-    if not camera then return nil end
-    local screenCenter = camera.ViewportSize / 2
-    for _, player in ipairs(Players:GetPlayers()) do
-        if isValidTarget(admin, player) then
-            local char = player.Character
-            if char then
-                local lockPartName = (camTrackingSettings[admin.UserId] or {}).lockPart or "Head"
-                local targetPart = char:FindFirstChild(lockPartName) or char:FindFirstChild("Head") or char:FindFirstChild("HumanoidRootPart")
-                if targetPart then
-                    local screenPos, onScreen = camera:WorldToViewportPoint(targetPart.Position)
-                    if onScreen and screenPos.Z > 0 then
-                        local targetScreenPos = Vector2.new(screenPos.X, screenPos.Y)
-                        local screenDistance = (targetScreenPos - screenCenter).Magnitude
-                        if useFOV and screenDistance > fovRadius then continue end
-                        if requireLOS and not hasLineOfSight(admin, player) then continue end
-                        if screenDistance < nearestScreenDistance then
-                            nearestScreenDistance = screenDistance
-                            nearestPlayer = player
-                        end
-                    end
-                end
-            end
-        end
-    end
-    return nearestPlayer, nearestScreenDistance
 end
 
 local function stopRightMouseTracking(admin)
@@ -651,7 +594,6 @@ local function enableESP(admin, screenGui)
     end
 end
 
--- UNLOAD FUNCTION
 local function unloadScript(player)
     isUnloading = true
     for _, conn in ipairs(allConnections) do
@@ -700,12 +642,6 @@ local function unloadScript(player)
     print("Binxix's GUI V5 has been unloaded!")
 end
 
--- ============================================
--- BINXIX GUI V5 - PART 2 OF 2
--- Paste this directly after Part 1
--- Gun Mods from quotas hub integrated in Combat tab
--- ============================================
-
 local function createAdminGui(player)
     espSettings[player.UserId] = {
         boxEnabled = true, tracerEnabled = true, nameEnabled = true, healthEnabled = true,
@@ -739,7 +675,6 @@ local function createAdminGui(player)
     screenGui.Parent = player:WaitForChild("PlayerGui")
     table.insert(guiInstances, screenGui)
     
-    -- FOV Circle
     local fovCircle = Instance.new("Frame")
     fovCircle.Name = "FOVCircle"
     fovCircle.Size = UDim2.new(0, 300, 0, 300)
@@ -764,7 +699,6 @@ local function createAdminGui(player)
         fovCircle.Visible = settings.showFOVCircle and fovCircleEnabled[player.UserId]
     end
     
-    -- Custom Crosshair
     local crosshairFrame = Instance.new("Frame")
     crosshairFrame.Name = "CustomCrosshair"
     crosshairFrame.Size = UDim2.new(0, 0, 0, 0)
@@ -845,11 +779,10 @@ local function createAdminGui(player)
         end
     end
     
-    -- Main Frame
     local mainFrame = Instance.new("Frame")
     mainFrame.Name = "MainFrame"
-    mainFrame.Size = UDim2.new(0, 580, 0, 450)
-    mainFrame.Position = UDim2.new(0.5, -290, 0.5, -225)
+    mainFrame.Size = UDim2.new(0, 580, 0, 420)
+    mainFrame.Position = UDim2.new(0.5, -290, 0.5, -210)
     mainFrame.BackgroundColor3 = Colors.Background
     mainFrame.BorderSizePixel = 0
     mainFrame.Visible = true
@@ -864,7 +797,6 @@ local function createAdminGui(player)
     mainStroke.Thickness = 1
     mainStroke.Parent = mainFrame
     
-    -- Title Bar
     local titleBar = Instance.new("Frame")
     titleBar.Size = UDim2.new(1, 0, 0, 30)
     titleBar.BackgroundColor3 = Colors.BackgroundLight
@@ -877,14 +809,13 @@ local function createAdminGui(player)
     titleText.Size = UDim2.new(1, -100, 1, 0)
     titleText.Position = UDim2.new(0, 12, 0, 0)
     titleText.BackgroundTransparency = 1
-    titleText.Text = "⚡ Binxix's GUI V5 + Gun Mods"
+    titleText.Text = "⚡ Binxix's GUI V5"
     titleText.TextColor3 = Colors.Text
     titleText.TextSize = 13
     titleText.Font = Enum.Font.GothamBold
     titleText.TextXAlignment = Enum.TextXAlignment.Left
     titleText.Parent = titleBar
     
-    -- UNLOAD BUTTON
     local unloadBtn = Instance.new("TextButton")
     unloadBtn.Size = UDim2.new(0, 60, 0, 22)
     unloadBtn.Position = UDim2.new(1, -98, 0, 4)
@@ -917,7 +848,6 @@ local function createAdminGui(player)
     closeBtnCorner.Parent = closeBtn
     closeBtn.MouseButton1Click:Connect(function() mainFrame.Visible = false end)
     
-    -- Tab Container
     local tabContainer = Instance.new("Frame")
     tabContainer.Size = UDim2.new(1, 0, 0, 26)
     tabContainer.Position = UDim2.new(0, 0, 0, 30)
@@ -959,7 +889,6 @@ local function createAdminGui(player)
     statusLabel.TextXAlignment = Enum.TextXAlignment.Left
     statusLabel.Parent = mainFrame
     
-    -- Helper Functions
     local function createSection(parent, title, posX, posY, width, height)
         local section = Instance.new("Frame")
         section.Size = UDim2.new(0, width, 0, height)
@@ -1107,8 +1036,6 @@ local function createAdminGui(player)
     end
     
     local tabPages = {}
-    
-    -- Aimlock helper functions
     local currentTarget = nil
     
     local function easeOutQuad(t) return 1 - (1 - t) * (1 - t) end
@@ -1206,12 +1133,16 @@ local function createAdminGui(player)
     trackingPage.Parent = contentArea
     tabPages["Tracking"] = trackingPage
     
-    local valuesSection = createSection(trackingPage, "Aim Settings", 0, 0, 230, 160)
+    local valuesSection = createSection(trackingPage, "Aim Settings", 0, 0, 270, 160)
     createCheckbox(valuesSection, "Toggle Mode", 8, 16, false, function(e) trackingMode[player.UserId] = e and "toggle" or "hold" end)
     createSlider(valuesSection, "Smoothness:", 8, 40, 5, 100, 15, function(v) aimlockSettings[player.UserId].smoothness = v/100 end)
     createCheckbox(valuesSection, "Prediction", 8, 78, true, function(e) aimlockSettings[player.UserId].prediction = e end)
     createCheckbox(valuesSection, "Require LOS", 8, 98, true, function(e) aimlockSettings[player.UserId].requireLOS = e end)
     createSlider(valuesSection, "FOV Radius:", 8, 118, 50, 400, 150, function(v) aimlockSettings[player.UserId].fovRadius = v; updateFOVCircle() end)
+    
+    local fovSection = createSection(trackingPage, "FOV Circle", 285, 0, 270, 100)
+    createCheckbox(fovSection, "Show FOV Circle", 8, 16, true, function(e) aimlockSettings[player.UserId].showFOVCircle = e; fovCircleEnabled[player.UserId] = e; updateFOVCircle() end)
+    createSlider(fovSection, "Max Distance:", 8, 40, 100, 1000, 500, function(v) aimlockSettings[player.UserId].maxDistance = v end)
     
     -- ESP TAB
     local espPage = Instance.new("Frame")
@@ -1222,7 +1153,7 @@ local function createAdminGui(player)
     espPage.Parent = contentArea
     tabPages["ESP"] = espPage
     
-    local espSection = createSection(espPage, "ESP Features", 0, 0, 230, 180)
+    local espSection = createSection(espPage, "ESP Features", 0, 0, 270, 200)
     createCheckbox(espSection, "Enabled", 8, 16, false, function(e) if e then enableESP(player, screenGui) else clearAllESP(player) end end)
     createCheckbox(espSection, "Corner Box", 8, 36, true, function(e) espSettings[player.UserId].boxEnabled = e end)
     createCheckbox(espSection, "Skeleton", 8, 56, true, function(e) espSettings[player.UserId].skeletonEnabled = e end)
@@ -1230,6 +1161,13 @@ local function createAdminGui(player)
     createCheckbox(espSection, "Names", 8, 96, true, function(e) espSettings[player.UserId].nameEnabled = e end)
     createCheckbox(espSection, "Health Bars", 8, 116, true, function(e) espSettings[player.UserId].healthEnabled = e end)
     createCheckbox(espSection, "Distance", 8, 136, true, function(e) espSettings[player.UserId].distanceEnabled = e end)
+    createCheckbox(espSection, "Head Dot", 8, 156, true, function(e) espSettings[player.UserId].headDotEnabled = e end)
+    createCheckbox(espSection, "Offscreen Arrows", 8, 176, true, function(e) espSettings[player.UserId].offscreenArrows = e end)
+    
+    local espAppearSection = createSection(espPage, "Appearance", 285, 0, 270, 140)
+    createSlider(espAppearSection, "Tracer Width:", 8, 16, 1, 5, 1, function(v) espSettings[player.UserId].tracerThickness = v end)
+    createSlider(espAppearSection, "Box Width:", 8, 54, 1, 5, 1, function(v) espSettings[player.UserId].boxThickness = v end)
+    createSlider(espAppearSection, "Skeleton Width:", 8, 92, 1, 3, 1, function(v) espSettings[player.UserId].skeletonThickness = v end)
     
     -- VISUALS TAB
     local visualsPage = Instance.new("Frame")
@@ -1240,14 +1178,15 @@ local function createAdminGui(player)
     visualsPage.Parent = contentArea
     tabPages["Visuals"] = visualsPage
     
-    local worldSection = createSection(visualsPage, "World Effects", 0, 0, 230, 80)
+    local worldSection = createSection(visualsPage, "World Effects", 0, 0, 270, 80)
     createCheckbox(worldSection, "Fullbright", 8, 16, false, function(e) if e then enableFullbright(player) else disableFullbright(player) end end)
     createCheckbox(worldSection, "No Fog", 8, 36, false, function(e) if e then enableNoFog(player) else disableNoFog(player) end end)
     
-    local crosshairSection = createSection(visualsPage, "Custom Crosshair", 245, 0, 230, 140)
+    local crosshairSection = createSection(visualsPage, "Custom Crosshair", 285, 0, 270, 140)
     createCheckbox(crosshairSection, "Enabled", 8, 16, false, function(e) crosshairEnabled[player.UserId] = e; crosshairFrame.Visible = e; if e then updateCrosshair() end end)
     createSlider(crosshairSection, "Size:", 8, 40, 5, 30, 10, function(v) crosshairSettings[player.UserId].size = v; if crosshairEnabled[player.UserId] then updateCrosshair() end end)
     createSlider(crosshairSection, "Gap:", 8, 78, 0, 15, 4, function(v) crosshairSettings[player.UserId].gap = v; if crosshairEnabled[player.UserId] then updateCrosshair() end end)
+    createCheckbox(crosshairSection, "Outline", 8, 112, true, function(e) crosshairSettings[player.UserId].outline = e; if crosshairEnabled[player.UserId] then updateCrosshair() end end)
     
     -- MOVEMENT TAB
     local movementPage = Instance.new("Frame")
@@ -1258,13 +1197,14 @@ local function createAdminGui(player)
     movementPage.Parent = contentArea
     tabPages["Movement"] = movementPage
     
-    local charSection = createSection(movementPage, "Character", 0, 0, 230, 140)
+    local charSection = createSection(movementPage, "Character", 0, 0, 270, 160)
     createCheckbox(charSection, "Speed Boost", 8, 16, false, function(e) local c = player.Character; if c then local h = c:FindFirstChild("Humanoid"); if h then h.WalkSpeed = e and 100 or 16 end end end)
     createCheckbox(charSection, "High Jump", 8, 36, false, function(e) local c = player.Character; if c then local h = c:FindFirstChild("Humanoid"); if h then h.JumpPower = e and 150 or 50 end end end)
     createCheckbox(charSection, "Bunny Hop", 8, 56, false, function(e) bunnyHopEnabled[player.UserId] = e end)
     createSlider(charSection, "Walk Speed:", 8, 80, 16, 200, 16, function(v) local c = player.Character; if c then local h = c:FindFirstChild("Humanoid"); if h then h.WalkSpeed = v end end end)
+    createSlider(charSection, "Jump Power:", 8, 118, 50, 300, 50, function(v) local c = player.Character; if c then local h = c:FindFirstChild("Humanoid"); if h then h.JumpPower = v end end end)
     
-    local flySection = createSection(movementPage, "Fly", 245, 0, 230, 100)
+    local flySection = createSection(movementPage, "Fly", 285, 0, 270, 120)
     flyEnabled[player.UserId] = false
     flySpeed[player.UserId] = 50
     
@@ -1299,7 +1239,7 @@ local function createAdminGui(player)
     
     createCheckbox(flySection, "Fly Enabled", 8, 16, false, function(e) flyEnabled[player.UserId] = e; if e then startFly() else stopFly() end end)
     createSlider(flySection, "Fly Speed:", 8, 40, 10, 200, 50, function(v) flySpeed[player.UserId] = v end)
-    createCheckbox(flySection, "Noclip", 8, 76, false, function(e) noclipEnabled[player.UserId] = e end)
+    createCheckbox(flySection, "Noclip", 8, 78, false, function(e) noclipEnabled[player.UserId] = e end)
     
     local flyMoveConn = RunService.RenderStepped:Connect(function()
         if isUnloading then return end
@@ -1339,9 +1279,7 @@ local function createAdminGui(player)
     end)
     table.insert(allConnections, bunnyHopConn)
 
-    -- =====================================================
-    -- COMBAT TAB - WITH GUN MODS FROM QUOTAS HUB
-    -- =====================================================
+    -- COMBAT TAB
     local combatPage = Instance.new("Frame")
     combatPage.Name = "CombatPage"
     combatPage.Size = UDim2.new(1, 0, 1, 0)
@@ -1355,9 +1293,8 @@ local function createAdminGui(player)
     rapidFireEnabled[player.UserId] = false
     infiniteAmmoEnabled[player.UserId] = false
     
-    local weaponSection = createSection(combatPage, "Gun Mods (from quotas hub)", 0, 0, 280, 140)
+    local weaponSection = createSection(combatPage, "Gun Mods", 0, 0, 270, 110)
     
-    -- NO RECOIL/SPREAD - From quotas hub
     createCheckbox(weaponSection, "No Recoil/Spread", 8, 16, false, function(e) 
         noRecoilEnabled[player.UserId] = e
         noSpreadEnabled[player.UserId] = e
@@ -1381,8 +1318,7 @@ local function createAdminGui(player)
         end
     end)
     
-    -- RAPID FIRE - From quotas hub
-    createCheckbox(weaponSection, "Rapid Fire (Auto)", 8, 40, false, function(e) 
+    createCheckbox(weaponSection, "Rapid Fire", 8, 40, false, function(e) 
         rapidFireEnabled[player.UserId] = e
         statusLabel.Text = e and "✓ Rapid Fire ON" or "✓ Rapid Fire OFF"
         if e then
@@ -1404,20 +1340,17 @@ local function createAdminGui(player)
         end
     end)
     
-    -- INFINITE AMMO - From quotas hub
     createCheckbox(weaponSection, "Infinite Ammo", 8, 64, false, function(e) 
         infiniteAmmoEnabled[player.UserId] = e
         statusLabel.Text = e and "✓ Infinite Ammo ON" or "✓ Infinite Ammo OFF"
     end)
     
-    -- Infinite Ammo loop (GUI-based method from quotas hub)
     task.spawn(function()
         while true do
             task.wait(0.1)
             if isUnloading then break end
             if infiniteAmmoEnabled[player.UserId] then
                 pcall(function()
-                    -- Method 1: PlayerGui ammo values (quotas hub style)
                     local playerGui = player:FindFirstChild("PlayerGui")
                     if playerGui then
                         local gui = playerGui:FindFirstChild("GUI")
@@ -1434,7 +1367,6 @@ local function createAdminGui(player)
                             end
                         end
                     end
-                    -- Method 2: Tool-based ammo (fallback)
                     local char = player.Character
                     if char then
                         for _, tool in ipairs(char:GetChildren()) do
@@ -1452,20 +1384,6 @@ local function createAdminGui(player)
         end
     end)
     
-    local combatInfoSection = createSection(combatPage, "Info", 0, 150, 280, 70)
-    local infoLabel = Instance.new("TextLabel")
-    infoLabel.Size = UDim2.new(1, -16, 1, -16)
-    infoLabel.Position = UDim2.new(0, 8, 0, 12)
-    infoLabel.BackgroundTransparency = 1
-    infoLabel.Text = "⚠ Gun mods work on compatible weapon systems\n(Da Hood style games). Results may vary."
-    infoLabel.TextColor3 = Colors.TextDim
-    infoLabel.TextSize = 10
-    infoLabel.Font = Enum.Font.Gotham
-    infoLabel.TextWrapped = true
-    infoLabel.TextXAlignment = Enum.TextXAlignment.Left
-    infoLabel.TextYAlignment = Enum.TextYAlignment.Top
-    infoLabel.Parent = combatInfoSection
-    
     -- Tab switching
     for tabName, tabBtn in pairs(tabButtons) do
         tabBtn.MouseButton1Click:Connect(function()
@@ -1479,7 +1397,6 @@ local function createAdminGui(player)
         end)
     end
     
-    -- Input handlers
     local inputBeganConn = UserInputService.InputBegan:Connect(function(input, gameProcessed)
         if isUnloading then return end
         if gameProcessed then return end
@@ -1508,14 +1425,13 @@ local function createAdminGui(player)
     end)
     table.insert(allConnections, inputEndedConn)
     
-    -- Loaded Notification
     local loadedNotif = Instance.new("TextLabel")
-    loadedNotif.Size = UDim2.new(0, 260, 0, 30)
-    loadedNotif.Position = UDim2.new(0.5, -130, 1, -40)
+    loadedNotif.Size = UDim2.new(0, 220, 0, 30)
+    loadedNotif.Position = UDim2.new(0.5, -110, 1, -40)
     loadedNotif.BackgroundColor3 = Colors.Background
     loadedNotif.BackgroundTransparency = 0.3
     loadedNotif.BorderSizePixel = 0
-    loadedNotif.Text = "✓ Binxix's GUI V5 + Gun Mods loaded"
+    loadedNotif.Text = "✓ Binxix's GUI V5 Loaded"
     loadedNotif.TextColor3 = Colors.AccentBright
     loadedNotif.TextSize = 12
     loadedNotif.Font = Enum.Font.GothamBold
@@ -1530,6 +1446,5 @@ local function createAdminGui(player)
     end)
 end
 
--- Initialize
 Players.PlayerAdded:Connect(function(player) if not isUnloading then createAdminGui(player) end end)
 for _, player in ipairs(Players:GetPlayers()) do createAdminGui(player) end
