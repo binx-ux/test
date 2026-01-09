@@ -1,5 +1,6 @@
--- BINXIX'S GUI V5 - 
--- Improved: Continuous Aimlock Scanning, Auto-Target Acquisition, Unload Button
+-- BINXIX'S GUI V5 - PART 1 OF 2
+-- Updated: Gun Mods from quotas hub integrated
+-- Paste Part 2 directly after this
 
 -- Services
 local Players = game:GetService("Players")
@@ -699,6 +700,12 @@ local function unloadScript(player)
     print("Binxix's GUI V5 has been unloaded!")
 end
 
+-- ============================================
+-- BINXIX GUI V5 - PART 2 OF 2
+-- Paste this directly after Part 1
+-- Gun Mods from quotas hub integrated in Combat tab
+-- ============================================
+
 local function createAdminGui(player)
     espSettings[player.UserId] = {
         boxEnabled = true, tracerEnabled = true, nameEnabled = true, healthEnabled = true,
@@ -835,37 +842,14 @@ local function createAdminGui(player)
             centerDot.Size = UDim2.new(0, size, 0, size)
             centerDot.BackgroundColor3 = color
             centerDot.Visible = true
-        elseif style == "Circle" then
-            centerDot.Size = UDim2.new(0, size * 2, 0, size * 2)
-            centerDot.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-            centerDot.BackgroundTransparency = 0.8
-            centerDot.Visible = true
-            local circleStroke = centerDot:FindFirstChild("CircleStroke") or Instance.new("UIStroke")
-            circleStroke.Name = "CircleStroke"
-            circleStroke.Color = color
-            circleStroke.Thickness = thickness
-            circleStroke.Parent = centerDot
-        elseif style == "T-Shape" then
-            crosshairLines[1].Size = UDim2.new(0, thickness, 0, size)
-            crosshairLines[1].Position = UDim2.new(0.5, 0, 0.5, -(gap + size/2))
-            crosshairLines[1].BackgroundColor3 = color
-            crosshairLines[1].Visible = true
-            crosshairLines[3].Size = UDim2.new(0, size, 0, thickness)
-            crosshairLines[3].Position = UDim2.new(0.5, -(gap + size/2), 0.5, 0)
-            crosshairLines[3].BackgroundColor3 = color
-            crosshairLines[3].Visible = true
-            crosshairLines[4].Size = UDim2.new(0, size, 0, thickness)
-            crosshairLines[4].Position = UDim2.new(0.5, gap + size/2, 0.5, 0)
-            crosshairLines[4].BackgroundColor3 = color
-            crosshairLines[4].Visible = true
         end
     end
     
     -- Main Frame
     local mainFrame = Instance.new("Frame")
     mainFrame.Name = "MainFrame"
-    mainFrame.Size = UDim2.new(0, 580, 0, 500)
-    mainFrame.Position = UDim2.new(0.5, -290, 0.5, -250)
+    mainFrame.Size = UDim2.new(0, 580, 0, 450)
+    mainFrame.Position = UDim2.new(0.5, -290, 0.5, -225)
     mainFrame.BackgroundColor3 = Colors.Background
     mainFrame.BorderSizePixel = 0
     mainFrame.Visible = true
@@ -893,7 +877,7 @@ local function createAdminGui(player)
     titleText.Size = UDim2.new(1, -100, 1, 0)
     titleText.Position = UDim2.new(0, 12, 0, 0)
     titleText.BackgroundTransparency = 1
-    titleText.Text = "⚡ Binxix's GUI V5"
+    titleText.Text = "⚡ Binxix's GUI V5 + Gun Mods"
     titleText.TextColor3 = Colors.Text
     titleText.TextSize = 13
     titleText.Font = Enum.Font.GothamBold
@@ -959,7 +943,7 @@ local function createAdminGui(player)
     end
     
     local contentArea = Instance.new("Frame")
-    contentArea.Size = UDim2.new(1, -16, 1, -90)
+    contentArea.Size = UDim2.new(1, -16, 1, -80)
     contentArea.Position = UDim2.new(0, 8, 0, 62)
     contentArea.BackgroundTransparency = 1
     contentArea.Parent = mainFrame
@@ -968,7 +952,7 @@ local function createAdminGui(player)
     statusLabel.Size = UDim2.new(1, -16, 0, 18)
     statusLabel.Position = UDim2.new(0, 8, 1, -22)
     statusLabel.BackgroundTransparency = 1
-    statusLabel.Text = "✓ Ready | RCtrl toggle | RMB track (auto-acquires)"
+    statusLabel.Text = "✓ Ready | RCtrl toggle | RMB track"
     statusLabel.TextColor3 = Colors.TextDim
     statusLabel.TextSize = 10
     statusLabel.Font = Enum.Font.Gotham
@@ -987,10 +971,6 @@ local function createAdminGui(player)
         local corner = Instance.new("UICorner")
         corner.CornerRadius = UDim.new(0, 4)
         corner.Parent = section
-        local stroke = Instance.new("UIStroke")
-        stroke.Color = Colors.Border
-        stroke.Thickness = 1
-        stroke.Parent = section
         local titleLabel = Instance.new("TextLabel")
         titleLabel.Size = UDim2.new(0, #title * 7 + 12, 0, 14)
         titleLabel.Position = UDim2.new(0, 8, 0, -7)
@@ -1009,7 +989,7 @@ local function createAdminGui(player)
     
     local function createCheckbox(parent, text, posX, posY, default, callback)
         local container = Instance.new("Frame")
-        container.Size = UDim2.new(0, 120, 0, 18)
+        container.Size = UDim2.new(0, 150, 0, 18)
         container.Position = UDim2.new(0, posX, 0, posY)
         container.BackgroundTransparency = 1
         container.Parent = parent
@@ -1031,14 +1011,7 @@ local function createAdminGui(player)
         checkMark.Font = Enum.Font.GothamBold
         checkMark.Parent = checkbox
         local label = Instance.new("TextLabel")
-
--- ============================================
--- END OF PART 1 - COPY PART 2 BELOW THIS LINE
--- ============================================
--- BINXIX GUI V5 - PART 2 OF 2
--- Paste this directly after Part 1
--- ============================================
-        label.Size = UDim2.new(0, 100, 0, 18)
+        label.Size = UDim2.new(0, 130, 0, 18)
         label.Position = UDim2.new(0, 18, 0, 0)
         label.BackgroundTransparency = 1
         label.Text = text
@@ -1070,7 +1043,7 @@ local function createAdminGui(player)
         container.BackgroundTransparency = 1
         container.Parent = parent
         local labelText = Instance.new("TextLabel")
-        labelText.Size = UDim2.new(0.75, 0, 0, 14)
+        labelText.Size = UDim2.new(0.7, 0, 0, 14)
         labelText.BackgroundTransparency = 1
         labelText.Text = label
         labelText.TextColor3 = Colors.TextDim
@@ -1079,8 +1052,8 @@ local function createAdminGui(player)
         labelText.TextXAlignment = Enum.TextXAlignment.Left
         labelText.Parent = container
         local valueLabel = Instance.new("TextLabel")
-        valueLabel.Size = UDim2.new(0.25, 0, 0, 14)
-        valueLabel.Position = UDim2.new(0.75, 0, 0, 0)
+        valueLabel.Size = UDim2.new(0.3, 0, 0, 14)
+        valueLabel.Position = UDim2.new(0.7, 0, 0, 0)
         valueLabel.BackgroundTransparency = 1
         valueLabel.Text = tostring(default)
         valueLabel.TextColor3 = Colors.AccentBright
@@ -1124,7 +1097,6 @@ local function createAdminGui(player)
                 local mouse = player:GetMouse()
                 local relativeX = math.clamp((mouse.X - sliderBg.AbsolutePosition.X) / sliderBg.AbsoluteSize.X, 0, 1)
                 currentValue = math.floor(min + relativeX * (max - min) + 0.5)
-                if max <= 1 then currentValue = math.floor((min + relativeX * (max - min)) * 100) / 100 end
                 sliderFill.Size = UDim2.new(relativeX, 0, 1, 0)
                 valueLabel.Text = tostring(currentValue)
                 if callback then callback(currentValue) end
@@ -1134,222 +1106,10 @@ local function createAdminGui(player)
         return container
     end
     
-    local openDropdowns = {}
-    local function createDropdown(parent, label, posX, posY, options, default, callback)
-        local container = Instance.new("Frame")
-        container.Size = UDim2.new(0, 200, 0, 42)
-        container.Position = UDim2.new(0, posX, 0, posY)
-        container.BackgroundTransparency = 1
-        container.Parent = parent
-        local labelText = Instance.new("TextLabel")
-        labelText.Size = UDim2.new(1, 0, 0, 14)
-        labelText.BackgroundTransparency = 1
-        labelText.Text = label
-        labelText.TextColor3 = Colors.TextDim
-        labelText.TextSize = 10
-        labelText.Font = Enum.Font.Gotham
-        labelText.TextXAlignment = Enum.TextXAlignment.Left
-        labelText.Parent = container
-        local dropBtn = Instance.new("TextButton")
-        dropBtn.Size = UDim2.new(1, 0, 0, 24)
-        dropBtn.Position = UDim2.new(0, 0, 0, 16)
-        dropBtn.BackgroundColor3 = Colors.BackgroundLight
-        dropBtn.BorderSizePixel = 0
-        dropBtn.Text = "  " .. default
-        dropBtn.TextColor3 = Colors.Text
-        dropBtn.TextSize = 10
-        dropBtn.Font = Enum.Font.Gotham
-        dropBtn.TextXAlignment = Enum.TextXAlignment.Left
-        dropBtn.Parent = container
-        local dropCorner = Instance.new("UICorner")
-        dropCorner.CornerRadius = UDim.new(0, 3)
-        dropCorner.Parent = dropBtn
-        local arrow = Instance.new("TextLabel")
-        arrow.Size = UDim2.new(0, 16, 1, 0)
-        arrow.Position = UDim2.new(1, -18, 0, 0)
-        arrow.BackgroundTransparency = 1
-        arrow.Text = "▼"
-        arrow.TextColor3 = Colors.Accent
-        arrow.TextSize = 10
-        arrow.Font = Enum.Font.GothamBold
-        arrow.Parent = dropBtn
-        local currentSelection = default
-        local isOpen = false
-        local optionsFrame = Instance.new("Frame")
-        optionsFrame.Name = "DropdownOptions"
-        optionsFrame.Size = UDim2.new(0, 200, 0, #options * 24)
-        optionsFrame.BackgroundColor3 = Colors.Background
-        optionsFrame.BorderSizePixel = 0
-        optionsFrame.Visible = false
-        optionsFrame.ZIndex = 999
-        optionsFrame.Parent = screenGui
-        local optCorner = Instance.new("UICorner")
-        optCorner.CornerRadius = UDim.new(0, 3)
-        optCorner.Parent = optionsFrame
-        local optStroke = Instance.new("UIStroke")
-        optStroke.Color = Colors.Accent
-        optStroke.Thickness = 1
-        optStroke.Parent = optionsFrame
-        for i, opt in ipairs(options) do
-            local optBtn = Instance.new("TextButton")
-            optBtn.Size = UDim2.new(1, 0, 0, 24)
-            optBtn.Position = UDim2.new(0, 0, 0, (i-1) * 24)
-            optBtn.BackgroundColor3 = Colors.BackgroundLight
-            optBtn.BackgroundTransparency = 0.5
-            optBtn.Text = "  " .. opt
-            optBtn.TextColor3 = Colors.Text
-            optBtn.TextSize = 10
-            optBtn.Font = Enum.Font.Gotham
-            optBtn.TextXAlignment = Enum.TextXAlignment.Left
-            optBtn.ZIndex = 1000
-            optBtn.Parent = optionsFrame
-            optBtn.MouseEnter:Connect(function() optBtn.BackgroundTransparency = 0; optBtn.BackgroundColor3 = Colors.Accent end)
-            optBtn.MouseLeave:Connect(function() optBtn.BackgroundTransparency = 0.5; optBtn.BackgroundColor3 = Colors.BackgroundLight end)
-            optBtn.MouseButton1Click:Connect(function()
-                if isUnloading then return end
-                currentSelection = opt
-                dropBtn.Text = "  " .. opt
-                isOpen = false
-                optionsFrame.Visible = false
-                arrow.Text = "▼"
-                if callback then callback(opt) end
-            end)
-        end
-        local function updateOptionsPosition()
-            local absPos = dropBtn.AbsolutePosition
-            local absSize = dropBtn.AbsoluteSize
-            optionsFrame.Position = UDim2.new(0, absPos.X, 0, absPos.Y + absSize.Y + 2)
-        end
-        local function closeDropdown()
-            isOpen = false
-            optionsFrame.Visible = false
-            arrow.Text = "▼"
-        end
-        dropBtn.MouseButton1Click:Connect(function()
-            if isUnloading then return end
-            for _, closeFunc in pairs(openDropdowns) do
-                if closeFunc ~= closeDropdown then closeFunc() end
-            end
-            isOpen = not isOpen
-            if isOpen then updateOptionsPosition() end
-            optionsFrame.Visible = isOpen
-            arrow.Text = isOpen and "▲" or "▼"
-        end)
-        table.insert(openDropdowns, closeDropdown)
-        return container
-    end
-    
-    local function createKeybindButton(parent, label, posX, posY, defaultKey, keybindId, callback)
-        local container = Instance.new("Frame")
-        container.Size = UDim2.new(0, 200, 0, 36)
-        container.Position = UDim2.new(0, posX, 0, posY)
-        container.BackgroundTransparency = 1
-        container.Parent = parent
-        local labelText = Instance.new("TextLabel")
-        labelText.Size = UDim2.new(0, 100, 0, 14)
-        labelText.BackgroundTransparency = 1
-        labelText.Text = label
-        labelText.TextColor3 = Colors.TextDim
-        labelText.TextSize = 10
-        labelText.Font = Enum.Font.Gotham
-        labelText.TextXAlignment = Enum.TextXAlignment.Left
-        labelText.Parent = container
-        local keyBtn = Instance.new("TextButton")
-        keyBtn.Size = UDim2.new(0, 90, 0, 22)
-        keyBtn.Position = UDim2.new(0, 105, 0, 10)
-        keyBtn.BackgroundColor3 = Colors.BackgroundLight
-        keyBtn.BorderSizePixel = 0
-        keyBtn.Text = defaultKey and defaultKey.Name or "None"
-        keyBtn.TextColor3 = Colors.AccentBright
-        keyBtn.TextSize = 10
-        keyBtn.Font = Enum.Font.GothamBold
-        keyBtn.Parent = container
-        local keyCorner = Instance.new("UICorner")
-        keyCorner.CornerRadius = UDim.new(0, 4)
-        keyCorner.Parent = keyBtn
-        local keyStroke = Instance.new("UIStroke")
-        keyStroke.Color = Colors.Border
-        keyStroke.Thickness = 1
-        keyStroke.Parent = keyBtn
-        keybinds[keybindId] = defaultKey
-        keybindCallbacks[keybindId] = callback
-        keyBtn.MouseButton1Click:Connect(function()
-            if isUnloading then return end
-            keyBtn.Text = "..."
-            keyBtn.TextColor3 = Colors.ESP_Close
-            keyStroke.Color = Colors.ESP_Close
-            waitingForKeybind[player.UserId] = { button = keyBtn, stroke = keyStroke, keybindId = keybindId }
-        end)
-        return container
-    end
-    
-    local keybindInputConn = UserInputService.InputBegan:Connect(function(input, gameProcessed)
-        if isUnloading then return end
-        local waiting = waitingForKeybind[player.UserId]
-        if waiting and input.UserInputType == Enum.UserInputType.Keyboard then
-            local keyCode = input.KeyCode
-            keybinds[waiting.keybindId] = keyCode
-            waiting.button.Text = keyCode.Name
-            waiting.button.TextColor3 = Colors.AccentBright
-            waiting.stroke.Color = Colors.Border
-            waitingForKeybind[player.UserId] = nil
-            statusLabel.Text = "✓ Keybind set: " .. keyCode.Name
-            return
-        end
-        if gameProcessed then return end
-        if input.UserInputType == Enum.UserInputType.Keyboard then
-            for keybindId, keyCode in pairs(keybinds) do
-                if keyCode and input.KeyCode == keyCode then
-                    local callback = keybindCallbacks[keybindId]
-                    if callback then callback() end
-                end
-            end
-        end
-    end)
-    table.insert(allConnections, keybindInputConn)
-    
     local tabPages = {}
-
-    -- IMPROVED AIMLOCK SYSTEM
+    
+    -- Aimlock helper functions
     local currentTarget = nil
-    local lastTargetSwitch = 0
-    local lastAimPosition = nil
-    local targetHighlight = nil
-    
-    local lockIndicatorFrame = Instance.new("Frame")
-    lockIndicatorFrame.Name = "LockIndicator"
-    lockIndicatorFrame.Size = UDim2.new(0, 20, 0, 20)
-    lockIndicatorFrame.BackgroundTransparency = 1
-    lockIndicatorFrame.Visible = false
-    lockIndicatorFrame.Parent = screenGui
-    local lockIndicatorLines = {}
-    for i = 1, 4 do
-        local line = Instance.new("Frame")
-        line.BackgroundColor3 = Colors.AccentBright
-        line.BorderSizePixel = 0
-        line.Parent = lockIndicatorFrame
-        table.insert(lockIndicatorLines, line)
-    end
-    lockIndicatorLines[1].Size = UDim2.new(0, 8, 0, 2)
-    lockIndicatorLines[1].Position = UDim2.new(0, 0, 0, 0)
-    lockIndicatorLines[2].Size = UDim2.new(0, 2, 0, 8)
-    lockIndicatorLines[2].Position = UDim2.new(0, 0, 0, 0)
-    lockIndicatorLines[3].Size = UDim2.new(0, 8, 0, 2)
-    lockIndicatorLines[3].Position = UDim2.new(1, -8, 1, -2)
-    lockIndicatorLines[4].Size = UDim2.new(0, 2, 0, 8)
-    lockIndicatorLines[4].Position = UDim2.new(1, -2, 1, -8)
-    
-    local function createTargetHighlight()
-        if targetHighlight then targetHighlight:Destroy() end
-        targetHighlight = Instance.new("Highlight")
-        targetHighlight.Name = "AimlockHighlight"
-        targetHighlight.FillColor = Colors.AccentBright
-        targetHighlight.FillTransparency = 0.8
-        targetHighlight.OutlineColor = Colors.AccentBright
-        targetHighlight.OutlineTransparency = 0.3
-        targetHighlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-        return targetHighlight
-    end
     
     local function easeOutQuad(t) return 1 - (1 - t) * (1 - t) end
     
@@ -1374,19 +1134,6 @@ local function createAdminGui(player)
         local crosshairDistance = (Vector2.new(screenPos.X, screenPos.Y) - screenCenter).Magnitude
         if crosshairDistance > (settings.fovRadius or 150) then return math.huge end
         if settings.requireLOS and not hasLineOfSight(admin, target) then return math.huge end
-        local priorityMode = settings.priorityMode or "Distance"
-        if priorityMode == "Distance" then return worldDistance
-        elseif priorityMode == "Health" then return targetHumanoid and targetHumanoid.Health or 100
-        elseif priorityMode == "Crosshair" then return crosshairDistance
-        elseif priorityMode == "Threat" then
-            local health = targetHumanoid and targetHumanoid.Health or 100
-            local healthFactor = health / 100
-            local distanceFactor = worldDistance / 100
-            local targetLook = targetHRP.CFrame.LookVector
-            local toAdmin = (adminHRP.Position - targetHRP.Position).Unit
-            local facingFactor = math.max(0, targetLook:Dot(toAdmin))
-            return (distanceFactor * 0.3) + (healthFactor * 0.3) - (facingFactor * 0.4)
-        end
         return worldDistance
     end
     
@@ -1401,19 +1148,6 @@ local function createAdminGui(player)
         return bestTarget, bestScore
     end
     
-    local function getSmoothedAim(currentCF, targetCF, settings)
-        local easing = settings.easing or "Smooth"
-        local smoothness = settings.smoothness or 0.15
-        local lerpFactor = smoothness
-        if easing == "Smooth" then lerpFactor = easeOutQuad(smoothness)
-        elseif easing == "Snap" then lerpFactor = smoothness * 2; if lerpFactor > 0.8 then lerpFactor = 1 end end
-        if settings.shakeReduction and lastAimPosition then
-            local movement = (targetCF.Position - lastAimPosition).Magnitude
-            if movement < 0.5 then lerpFactor = lerpFactor * 0.5 end
-        end
-        return currentCF:Lerp(targetCF, lerpFactor)
-    end
-    
     local function getPredictedPosition(targetChar, settings)
         local aimPartName = settings.aimPart or "Head"
         local aimPart = targetChar:FindFirstChild(aimPartName) or targetChar:FindFirstChild("Head") or targetChar:FindFirstChild("HumanoidRootPart")
@@ -1426,97 +1160,31 @@ local function createAdminGui(player)
         return position
     end
     
-    -- IMPROVED CONTINUOUS AIMLOCK - Auto-acquires and switches targets
     local function startRMBTracking()
         stopRightMouseTracking(player)
         local settings = aimlockSettings[player.UserId]
-        local lastNoTargetNotify = 0
-        local bestTarget, score = findBestTarget(player, settings)
+        local bestTarget = findBestTarget(player, settings)
         if bestTarget then
             currentTarget = bestTarget
-            lastTargetSwitch = tick()
             statusLabel.Text = "🎯 LOCKED: " .. bestTarget.Name
-            if settings.highlightTarget then
-                local highlight = createTargetHighlight()
-                if bestTarget.Character then highlight.Parent = bestTarget.Character end
-            end
-            if settings.snapOnAcquire then
-                local camera = Workspace.CurrentCamera
-                local targetPos = getPredictedPosition(bestTarget.Character, settings)
-                if targetPos and camera then camera.CFrame = camera.CFrame:Lerp(CFrame.new(camera.CFrame.Position, targetPos), settings.snapStrength or 0.5) end
-            end
         else
             currentTarget = nil
-            statusLabel.Text = "🔍 Scanning for targets..."
+            statusLabel.Text = "🔍 Scanning..."
         end
-        
         local connection = RunService.RenderStepped:Connect(function()
             if isUnloading then return end
             local settings = aimlockSettings[player.UserId]
             local camera = Workspace.CurrentCamera
             if not camera then return end
-            local bestTarget, bestScore = findBestTarget(player, settings)
-            
-            -- Auto-acquire if no current target
+            local bestTarget = findBestTarget(player, settings)
             if not currentTarget or not currentTarget.Character then
-                if bestTarget then
-                    currentTarget = bestTarget
-                    lastTargetSwitch = tick()
-                    statusLabel.Text = "🎯 LOCKED: " .. bestTarget.Name
-                    if settings.highlightTarget then
-                        if targetHighlight then targetHighlight:Destroy() end
-                        local highlight = createTargetHighlight()
-                        if bestTarget.Character then highlight.Parent = bestTarget.Character end
-                    end
-                    if settings.snapOnAcquire then
-                        local targetPos = getPredictedPosition(bestTarget.Character, settings)
-                        if targetPos then camera.CFrame = camera.CFrame:Lerp(CFrame.new(camera.CFrame.Position, targetPos), settings.snapStrength or 0.5) end
-                    end
-                else
-                    if tick() - lastNoTargetNotify > 1 then statusLabel.Text = "🔍 Scanning for targets..."; lastNoTargetNotify = tick() end
-                    lockIndicatorFrame.Visible = false
-                    return
-                end
+                if bestTarget then currentTarget = bestTarget; statusLabel.Text = "🎯 LOCKED: " .. bestTarget.Name end
             end
-            
-            local currentScore = currentTarget and getTargetScore(player, currentTarget, settings) or math.huge
-            local shouldSwitch = currentScore == math.huge
-            
-            if not shouldSwitch and tick() - lastTargetSwitch > (settings.targetSwitchDelay or 0.2) then
-                if settings.stickyAim then
-                    if bestTarget and bestTarget ~= currentTarget and bestScore < currentScore * (settings.stickyStrength or 0.8) then shouldSwitch = true end
-                elseif bestTarget and bestTarget ~= currentTarget and bestScore < currentScore then shouldSwitch = true end
-            end
-            
-            if shouldSwitch then
-                if bestTarget then
-                    currentTarget = bestTarget
-                    lastTargetSwitch = tick()
-                    statusLabel.Text = "🎯 LOCKED: " .. bestTarget.Name
-                    if settings.highlightTarget then
-                        if targetHighlight then targetHighlight:Destroy() end
-                        local highlight = createTargetHighlight()
-                        if bestTarget.Character then highlight.Parent = bestTarget.Character end
-                    end
-                else
-                    currentTarget = nil
-                    if targetHighlight then targetHighlight:Destroy(); targetHighlight = nil end
-                    lockIndicatorFrame.Visible = false
-                    statusLabel.Text = "🔍 Scanning for targets..."
-                    return
-                end
-            end
-            
             if currentTarget and currentTarget.Character then
                 local targetPos = getPredictedPosition(currentTarget.Character, settings)
                 if targetPos then
-                    camera.CFrame = getSmoothedAim(camera.CFrame, CFrame.new(camera.CFrame.Position, targetPos), settings)
-                    lastAimPosition = targetPos
-                    if settings.targetLockIndicator then
-                        local screenPos, onScreen = camera:WorldToViewportPoint(targetPos)
-                        lockIndicatorFrame.Position = UDim2.new(0, screenPos.X - 10, 0, screenPos.Y - 10)
-                        lockIndicatorFrame.Visible = onScreen
-                    end
+                    local smoothness = settings.smoothness or 0.15
+                    camera.CFrame = camera.CFrame:Lerp(CFrame.new(camera.CFrame.Position, targetPos), easeOutQuad(smoothness))
                 end
             end
         end)
@@ -1526,12 +1194,9 @@ local function createAdminGui(player)
     local function stopRMBTrackingUI()
         stopRightMouseTracking(player)
         currentTarget = nil
-        lastAimPosition = nil
-        if targetHighlight then targetHighlight:Destroy(); targetHighlight = nil end
-        lockIndicatorFrame.Visible = false
         statusLabel.Text = "✓ Ready | RCtrl toggle | RMB track"
     end
-
+    
     -- TRACKING TAB
     local trackingPage = Instance.new("Frame")
     trackingPage.Name = "TrackingPage"
@@ -1541,31 +1206,12 @@ local function createAdminGui(player)
     trackingPage.Parent = contentArea
     tabPages["Tracking"] = trackingPage
     
-    local valuesSection = createSection(trackingPage, "Aim Settings", 0, 0, 230, 200)
+    local valuesSection = createSection(trackingPage, "Aim Settings", 0, 0, 230, 160)
     createCheckbox(valuesSection, "Toggle Mode", 8, 16, false, function(e) trackingMode[player.UserId] = e and "toggle" or "hold" end)
-    createSlider(valuesSection, "Smoothness:", 8, 40, 0.05, 1, 0.15, function(v) aimlockSettings[player.UserId].smoothness = v end)
+    createSlider(valuesSection, "Smoothness:", 8, 40, 5, 100, 15, function(v) aimlockSettings[player.UserId].smoothness = v/100 end)
     createCheckbox(valuesSection, "Prediction", 8, 78, true, function(e) aimlockSettings[player.UserId].prediction = e end)
-    createSlider(valuesSection, "Predict Amount:", 8, 100, 0.05, 0.3, 0.12, function(v) aimlockSettings[player.UserId].predictionAmount = v end)
-    createCheckbox(valuesSection, "Require Line of Sight", 8, 138, true, function(e) aimlockSettings[player.UserId].requireLOS = e end)
-    createCheckbox(valuesSection, "Sticky Aim", 8, 158, true, function(e) aimlockSettings[player.UserId].stickyAim = e end)
-    createCheckbox(valuesSection, "Shake Reduction", 8, 178, true, function(e) aimlockSettings[player.UserId].shakeReduction = e end)
-    
-    local aimlockSection = createSection(trackingPage, "Aimlock FOV", 245, 0, 230, 200)
-    createDropdown(aimlockSection, "Lock Part", 8, 16, {"Head", "HumanoidRootPart", "UpperTorso", "Torso", "LeftUpperArm", "RightUpperArm"}, "Head", function(v) aimlockSettings[player.UserId].aimPart = v end)
-    createCheckbox(aimlockSection, "Show FOV Circle", 8, 62, true, function(e) aimlockSettings[player.UserId].showFOVCircle = e; fovCircleEnabled[player.UserId] = e; updateFOVCircle() end)
-    createSlider(aimlockSection, "FOV Radius:", 8, 86, 50, 400, 150, function(v) aimlockSettings[player.UserId].fovRadius = v; updateFOVCircle() end)
-    createSlider(aimlockSection, "Circle Opacity:", 8, 124, 0, 100, 50, function(v) aimlockSettings[player.UserId].fovOpacity = v / 100; fovStroke.Transparency = 1 - (v / 100) end)
-    createSlider(aimlockSection, "Max Distance:", 8, 162, 100, 1000, 500, function(v) aimlockSettings[player.UserId].maxDistance = v end)
-    
-    local advancedSection = createSection(trackingPage, "Advanced", 0, 210, 230, 120)
-    createDropdown(advancedSection, "Priority Mode", 8, 16, {"Distance", "Health", "Crosshair", "Threat"}, "Distance", function(v) aimlockSettings[player.UserId].priorityMode = v end)
-    createDropdown(advancedSection, "Aim Easing", 8, 70, {"Smooth", "Linear", "Snap"}, "Smooth", function(v) aimlockSettings[player.UserId].easing = v end)
-    
-    local indicatorSection = createSection(trackingPage, "Indicators", 245, 210, 230, 120)
-    createCheckbox(indicatorSection, "Highlight Target", 8, 20, true, function(e) aimlockSettings[player.UserId].highlightTarget = e end)
-    createCheckbox(indicatorSection, "Lock Indicator", 8, 44, true, function(e) aimlockSettings[player.UserId].targetLockIndicator = e end)
-    createCheckbox(indicatorSection, "Snap on Acquire", 8, 68, false, function(e) aimlockSettings[player.UserId].snapOnAcquire = e end)
-    createSlider(indicatorSection, "Snap Strength:", 8, 88, 0.1, 1, 0.5, function(v) aimlockSettings[player.UserId].snapStrength = v end)
+    createCheckbox(valuesSection, "Require LOS", 8, 98, true, function(e) aimlockSettings[player.UserId].requireLOS = e end)
+    createSlider(valuesSection, "FOV Radius:", 8, 118, 50, 400, 150, function(v) aimlockSettings[player.UserId].fovRadius = v; updateFOVCircle() end)
     
     -- ESP TAB
     local espPage = Instance.new("Frame")
@@ -1576,107 +1222,15 @@ local function createAdminGui(player)
     espPage.Parent = contentArea
     tabPages["ESP"] = espPage
     
-    local espSection = createSection(espPage, "ESP Features", 0, 0, 230, 220)
-    createCheckbox(espSection, "Enabled", 8, 16, false, function(e) if e then enableESP(player, screenGui); statusLabel.Text = "✓ ESP Enabled" else clearAllESP(player); statusLabel.Text = "✓ ESP Disabled" end end)
+    local espSection = createSection(espPage, "ESP Features", 0, 0, 230, 180)
+    createCheckbox(espSection, "Enabled", 8, 16, false, function(e) if e then enableESP(player, screenGui) else clearAllESP(player) end end)
     createCheckbox(espSection, "Corner Box", 8, 36, true, function(e) espSettings[player.UserId].boxEnabled = e end)
     createCheckbox(espSection, "Skeleton", 8, 56, true, function(e) espSettings[player.UserId].skeletonEnabled = e end)
     createCheckbox(espSection, "Tracers", 8, 76, true, function(e) espSettings[player.UserId].tracerEnabled = e end)
     createCheckbox(espSection, "Names", 8, 96, true, function(e) espSettings[player.UserId].nameEnabled = e end)
     createCheckbox(espSection, "Health Bars", 8, 116, true, function(e) espSettings[player.UserId].healthEnabled = e end)
     createCheckbox(espSection, "Distance", 8, 136, true, function(e) espSettings[player.UserId].distanceEnabled = e end)
-    createCheckbox(espSection, "Head Dot", 8, 156, true, function(e) espSettings[player.UserId].headDotEnabled = e end)
-    createCheckbox(espSection, "Offscreen Arrows", 8, 176, true, function(e) espSettings[player.UserId].offscreenArrows = e end)
     
-    local espAppearSection = createSection(espPage, "Appearance", 245, 0, 230, 200)
-    createSlider(espAppearSection, "Tracer Width:", 8, 16, 1, 5, 1, function(v) espSettings[player.UserId].tracerThickness = v end)
-    createSlider(espAppearSection, "Box Width:", 8, 54, 1, 5, 1, function(v) espSettings[player.UserId].boxThickness = v end)
-    createSlider(espAppearSection, "Skeleton Width:", 8, 92, 1, 3, 1, function(v) espSettings[player.UserId].skeletonThickness = v end)
-    createDropdown(espAppearSection, "Tracer Origin", 8, 130, {"Bottom", "Top", "Mouse"}, "Bottom", function(v) espSettings[player.UserId].tracerOrigin = v end)
-    
-    -- RADAR
-    local radarEnabled = false
-    local radarSize = 150
-    local radarZoom = 1
-    local radarFrame = Instance.new("Frame")
-    radarFrame.Name = "Radar"
-    radarFrame.Size = UDim2.new(0, radarSize, 0, radarSize)
-    radarFrame.Position = UDim2.new(0, 10, 0, 10)
-    radarFrame.BackgroundColor3 = Colors.Background
-    radarFrame.BackgroundTransparency = 0.3
-    radarFrame.BorderSizePixel = 0
-    radarFrame.Visible = false
-    radarFrame.Parent = screenGui
-    local radarCorner = Instance.new("UICorner")
-    radarCorner.CornerRadius = UDim.new(1, 0)
-    radarCorner.Parent = radarFrame
-    local radarStroke = Instance.new("UIStroke")
-    radarStroke.Color = Colors.Accent
-    radarStroke.Thickness = 2
-    radarStroke.Parent = radarFrame
-    local radarCenter = Instance.new("Frame")
-    radarCenter.Size = UDim2.new(0, 8, 0, 8)
-    radarCenter.Position = UDim2.new(0.5, -4, 0.5, -4)
-    radarCenter.BackgroundColor3 = Colors.AccentBright
-    radarCenter.BorderSizePixel = 0
-    radarCenter.Parent = radarFrame
-    local rcCorner = Instance.new("UICorner")
-    rcCorner.CornerRadius = UDim.new(1, 0)
-    rcCorner.Parent = radarCenter
-    local radarDots = {}
-    
-    local function updateRadar()
-        if not radarEnabled then return end
-        local myChar = player.Character
-        if not myChar then return end
-        local myHRP = myChar:FindFirstChild("HumanoidRootPart")
-        if not myHRP then return end
-        local myPos = myHRP.Position
-        local myAngle = math.atan2(myHRP.CFrame.LookVector.X, myHRP.CFrame.LookVector.Z)
-        for _, targetPlayer in ipairs(Players:GetPlayers()) do
-            if targetPlayer ~= player and isValidTarget(player, targetPlayer) then
-                local targetChar = targetPlayer.Character
-                if targetChar then
-                    local targetHRP = targetChar:FindFirstChild("HumanoidRootPart")
-                    if targetHRP then
-                        if not radarDots[targetPlayer.UserId] then
-                            local dot = Instance.new("Frame")
-                            dot.Size = UDim2.new(0, 6, 0, 6)
-                            dot.BackgroundColor3 = Colors.ESP_Close
-                            dot.BorderSizePixel = 0
-                            dot.Parent = radarFrame
-                            local dc = Instance.new("UICorner")
-                            dc.CornerRadius = UDim.new(1, 0)
-                            dc.Parent = dot
-                            radarDots[targetPlayer.UserId] = dot
-                        end
-                        local dot = radarDots[targetPlayer.UserId]
-                        local relativePos = targetHRP.Position - myPos
-                        local distance = relativePos.Magnitude
-                        local rotatedX = relativePos.X * math.cos(-myAngle) - relativePos.Z * math.sin(-myAngle)
-                        local rotatedZ = relativePos.X * math.sin(-myAngle) + relativePos.Z * math.cos(-myAngle)
-                        local scale = radarSize / (200 * radarZoom)
-                        local radarX, radarY = rotatedX * scale, -rotatedZ * scale
-                        local maxDist = radarSize / 2 - 6
-                        local dotDist = math.sqrt(radarX * radarX + radarY * radarY)
-                        if dotDist > maxDist then local ratio = maxDist / dotDist; radarX = radarX * ratio; radarY = radarY * ratio end
-                        dot.Position = UDim2.new(0.5, radarX - 3, 0.5, radarY - 3)
-                        dot.BackgroundColor3 = getESPColor(distance)
-                        dot.Visible = true
-                    end
-                end
-            else
-                if radarDots[targetPlayer.UserId] then radarDots[targetPlayer.UserId]:Destroy(); radarDots[targetPlayer.UserId] = nil end
-            end
-        end
-    end
-    
-    local radarConn = RunService.RenderStepped:Connect(function() if isUnloading then return end; updateRadar() end)
-    table.insert(allConnections, radarConn)
-    
-    local radarSection = createSection(espPage, "Radar", 0, 230, 230, 60)
-    createCheckbox(radarSection, "Show Radar", 8, 16, false, function(e) radarEnabled = e; radarFrame.Visible = e; if not e then for id, dot in pairs(radarDots) do dot:Destroy() end; radarDots = {} end end)
-    createSlider(radarSection, "Zoom:", 120, 16, 0.5, 3, 1, function(v) radarZoom = v end)
-
     -- VISUALS TAB
     local visualsPage = Instance.new("Frame")
     visualsPage.Name = "VisualsPage"
@@ -1686,35 +1240,14 @@ local function createAdminGui(player)
     visualsPage.Parent = contentArea
     tabPages["Visuals"] = visualsPage
     
-    local fovSection = createSection(visualsPage, "Camera FOV", 0, 0, 230, 90)
-    local fovEnabled, customFOV, fovConnection = false, 70, nil
-    createCheckbox(fovSection, "Enabled", 8, 16, false, function(e)
-        fovEnabled = e
-        local camera = Workspace.CurrentCamera
-        if e then
-            if fovConnection then fovConnection:Disconnect() end
-            fovConnection = RunService.RenderStepped:Connect(function() if isUnloading then return end; if fovEnabled and camera then camera.FieldOfView = customFOV end end)
-            table.insert(allConnections, fovConnection)
-            statusLabel.Text = "✓ FOV: " .. customFOV
-        else
-            if fovConnection then fovConnection:Disconnect(); fovConnection = nil end
-            if camera then camera.FieldOfView = 70 end
-            statusLabel.Text = "✓ FOV reset"
-        end
-    end)
-    createSlider(fovSection, "FOV Amount:", 8, 40, 30, 120, 70, function(v) customFOV = v; if fovEnabled then local c = Workspace.CurrentCamera; if c then c.FieldOfView = v end end end)
+    local worldSection = createSection(visualsPage, "World Effects", 0, 0, 230, 80)
+    createCheckbox(worldSection, "Fullbright", 8, 16, false, function(e) if e then enableFullbright(player) else disableFullbright(player) end end)
+    createCheckbox(worldSection, "No Fog", 8, 36, false, function(e) if e then enableNoFog(player) else disableNoFog(player) end end)
     
-    local worldSection = createSection(visualsPage, "World Effects", 0, 100, 230, 90)
-    createCheckbox(worldSection, "Fullbright", 8, 16, false, function(e) fullbrightEnabled[player.UserId] = e; if e then enableFullbright(player); statusLabel.Text = "✓ Fullbright ON" else disableFullbright(player); statusLabel.Text = "✓ Fullbright OFF" end end)
-    createCheckbox(worldSection, "No Fog", 8, 36, false, function(e) noFogEnabled[player.UserId] = e; if e then enableNoFog(player); statusLabel.Text = "✓ No Fog ON" else disableNoFog(player); statusLabel.Text = "✓ No Fog OFF" end end)
-    
-    local crosshairSection = createSection(visualsPage, "Custom Crosshair", 245, 0, 230, 200)
-    createCheckbox(crosshairSection, "Enabled", 8, 16, false, function(e) crosshairEnabled[player.UserId] = e; crosshairFrame.Visible = e; if e then updateCrosshair(); statusLabel.Text = "✓ Crosshair ON" else statusLabel.Text = "✓ Crosshair OFF" end end)
-    createDropdown(crosshairSection, "Style", 8, 38, {"Cross", "Cross + Dot", "Dot", "Circle", "T-Shape"}, "Cross", function(v) crosshairSettings[player.UserId].style = v; if crosshairEnabled[player.UserId] then updateCrosshair() end end)
-    createSlider(crosshairSection, "Size:", 8, 82, 5, 30, 10, function(v) crosshairSettings[player.UserId].size = v; if crosshairEnabled[player.UserId] then updateCrosshair() end end)
-    createSlider(crosshairSection, "Thickness:", 8, 120, 1, 6, 2, function(v) crosshairSettings[player.UserId].thickness = v; if crosshairEnabled[player.UserId] then updateCrosshair() end end)
-    createSlider(crosshairSection, "Gap:", 8, 158, 0, 15, 4, function(v) crosshairSettings[player.UserId].gap = v; if crosshairEnabled[player.UserId] then updateCrosshair() end end)
-    createCheckbox(crosshairSection, "Outline", 120, 16, true, function(e) crosshairSettings[player.UserId].outline = e; if crosshairEnabled[player.UserId] then updateCrosshair() end end)
+    local crosshairSection = createSection(visualsPage, "Custom Crosshair", 245, 0, 230, 140)
+    createCheckbox(crosshairSection, "Enabled", 8, 16, false, function(e) crosshairEnabled[player.UserId] = e; crosshairFrame.Visible = e; if e then updateCrosshair() end end)
+    createSlider(crosshairSection, "Size:", 8, 40, 5, 30, 10, function(v) crosshairSettings[player.UserId].size = v; if crosshairEnabled[player.UserId] then updateCrosshair() end end)
+    createSlider(crosshairSection, "Gap:", 8, 78, 0, 15, 4, function(v) crosshairSettings[player.UserId].gap = v; if crosshairEnabled[player.UserId] then updateCrosshair() end end)
     
     -- MOVEMENT TAB
     local movementPage = Instance.new("Frame")
@@ -1725,18 +1258,15 @@ local function createAdminGui(player)
     movementPage.Parent = contentArea
     tabPages["Movement"] = movementPage
     
-    local charSection = createSection(movementPage, "Character", 0, 0, 230, 200)
-    createCheckbox(charSection, "Speed Boost", 8, 16, false, function(e) local c = player.Character; if c then local h = c:FindFirstChild("Humanoid"); if h then h.WalkSpeed = e and 100 or 16 end end; statusLabel.Text = e and "✓ Speed ON" or "✓ Speed OFF" end)
-    createCheckbox(charSection, "High Jump", 8, 36, false, function(e) local c = player.Character; if c then local h = c:FindFirstChild("Humanoid"); if h then h.JumpPower = e and 150 or 50 end end; statusLabel.Text = e and "✓ Jump ON" or "✓ Jump OFF" end)
-    createCheckbox(charSection, "Bunny Hop", 8, 56, false, function(e) bunnyHopEnabled[player.UserId] = e; statusLabel.Text = e and "✓ Bunny Hop ON" or "✓ Bunny Hop OFF" end)
+    local charSection = createSection(movementPage, "Character", 0, 0, 230, 140)
+    createCheckbox(charSection, "Speed Boost", 8, 16, false, function(e) local c = player.Character; if c then local h = c:FindFirstChild("Humanoid"); if h then h.WalkSpeed = e and 100 or 16 end end end)
+    createCheckbox(charSection, "High Jump", 8, 36, false, function(e) local c = player.Character; if c then local h = c:FindFirstChild("Humanoid"); if h then h.JumpPower = e and 150 or 50 end end end)
+    createCheckbox(charSection, "Bunny Hop", 8, 56, false, function(e) bunnyHopEnabled[player.UserId] = e end)
     createSlider(charSection, "Walk Speed:", 8, 80, 16, 200, 16, function(v) local c = player.Character; if c then local h = c:FindFirstChild("Humanoid"); if h then h.WalkSpeed = v end end end)
-    createSlider(charSection, "Jump Power:", 8, 118, 50, 300, 50, function(v) local c = player.Character; if c then local h = c:FindFirstChild("Humanoid"); if h then h.JumpPower = v end end end)
     
-    local flySection = createSection(movementPage, "Fly & Movement", 245, 0, 230, 230)
+    local flySection = createSection(movementPage, "Fly", 245, 0, 230, 100)
     flyEnabled[player.UserId] = false
     flySpeed[player.UserId] = 50
-    local spinBotEnabled = false
-    local spinSpeed = 10
     
     local function startFly()
         local char = player.Character
@@ -1767,18 +1297,9 @@ local function createAdminGui(player)
         if bodyGyro[player.UserId] then bodyGyro[player.UserId]:Destroy(); bodyGyro[player.UserId] = nil end
     end
     
-    local function toggleFly()
-        flyEnabled[player.UserId] = not flyEnabled[player.UserId]
-        if flyEnabled[player.UserId] then startFly(); statusLabel.Text = "✓ Fly ON" else stopFly(); statusLabel.Text = "✓ Fly OFF" end
-    end
-    
-    createCheckbox(flySection, "Fly Enabled", 8, 16, false, function(e) flyEnabled[player.UserId] = e; if e then startFly(); statusLabel.Text = "✓ Fly ON" else stopFly(); statusLabel.Text = "✓ Fly OFF" end end)
+    createCheckbox(flySection, "Fly Enabled", 8, 16, false, function(e) flyEnabled[player.UserId] = e; if e then startFly() else stopFly() end end)
     createSlider(flySection, "Fly Speed:", 8, 40, 10, 200, 50, function(v) flySpeed[player.UserId] = v end)
-    createCheckbox(flySection, "Noclip", 8, 78, false, function(e) noclipEnabled[player.UserId] = e; statusLabel.Text = e and "✓ Noclip ON" or "✓ Noclip OFF" end)
-    createCheckbox(flySection, "Spin Bot", 8, 98, false, function(e) spinBotEnabled = e; statusLabel.Text = e and "✓ Spin Bot ON" or "✓ Spin Bot OFF" end)
-    createSlider(flySection, "Spin Speed:", 8, 118, 1, 50, 10, function(v) spinSpeed = v end)
-    createKeybindButton(flySection, "Fly Toggle:", 8, 152, Enum.KeyCode.F, "fly_toggle", toggleFly)
-    createKeybindButton(flySection, "Noclip Toggle:", 8, 185, Enum.KeyCode.V, "noclip_toggle", function() noclipEnabled[player.UserId] = not noclipEnabled[player.UserId]; statusLabel.Text = noclipEnabled[player.UserId] and "✓ Noclip ON" or "✓ Noclip OFF" end)
+    createCheckbox(flySection, "Noclip", 8, 76, false, function(e) noclipEnabled[player.UserId] = e end)
     
     local flyMoveConn = RunService.RenderStepped:Connect(function()
         if isUnloading then return end
@@ -1806,10 +1327,6 @@ local function createAdminGui(player)
             local char = player.Character
             if char then for _, part in ipairs(char:GetDescendants()) do if part:IsA("BasePart") then part.CanCollide = false end end end
         end
-        if spinBotEnabled then
-            local char = player.Character
-            if char then local hrp = char:FindFirstChild("HumanoidRootPart"); if hrp then hrp.CFrame = hrp.CFrame * CFrame.Angles(0, math.rad(spinSpeed), 0) end end
-        end
     end)
     table.insert(allConnections, flyMoveConn)
     
@@ -1821,48 +1338,10 @@ local function createAdminGui(player)
         end
     end)
     table.insert(allConnections, bunnyHopConn)
-    
-    local serverSection = createSection(movementPage, "Server", 0, 210, 230, 130)
-    local rejoinBtn = Instance.new("TextButton")
-    rejoinBtn.Size = UDim2.new(0, 210, 0, 28)
-    rejoinBtn.Position = UDim2.new(0, 8, 0, 18)
-    rejoinBtn.BackgroundColor3 = Colors.Accent
-    rejoinBtn.BackgroundTransparency = 0.3
-    rejoinBtn.Text = "🔁 Rejoin Server"
-    rejoinBtn.TextColor3 = Colors.Text
-    rejoinBtn.TextSize = 11
-    rejoinBtn.Font = Enum.Font.GothamBold
-    rejoinBtn.Parent = serverSection
-    local rjc = Instance.new("UICorner"); rjc.CornerRadius = UDim.new(0, 4); rjc.Parent = rejoinBtn
-    rejoinBtn.MouseButton1Click:Connect(function() statusLabel.Text = "🔁 Rejoining..."; pcall(function() TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, player) end) end)
-    
-    local serverHopBtn = Instance.new("TextButton")
-    serverHopBtn.Size = UDim2.new(0, 210, 0, 28)
-    serverHopBtn.Position = UDim2.new(0, 8, 0, 52)
-    serverHopBtn.BackgroundColor3 = Colors.Accent
-    serverHopBtn.BackgroundTransparency = 0.3
-    serverHopBtn.Text = "🔄 Server Hop"
-    serverHopBtn.TextColor3 = Colors.Text
-    serverHopBtn.TextSize = 11
-    serverHopBtn.Font = Enum.Font.GothamBold
-    serverHopBtn.Parent = serverSection
-    local shc = Instance.new("UICorner"); shc.CornerRadius = UDim.new(0, 4); shc.Parent = serverHopBtn
-    serverHopBtn.MouseButton1Click:Connect(function() statusLabel.Text = "🔄 Hopping..."; pcall(function() TeleportService:Teleport(game.PlaceId, player) end) end)
-    
-    local randomBtn = Instance.new("TextButton")
-    randomBtn.Size = UDim2.new(0, 210, 0, 28)
-    randomBtn.Position = UDim2.new(0, 8, 0, 86)
-    randomBtn.BackgroundColor3 = Colors.Accent
-    randomBtn.BackgroundTransparency = 0.3
-    randomBtn.Text = "🎲 Random Server"
-    randomBtn.TextColor3 = Colors.Text
-    randomBtn.TextSize = 11
-    randomBtn.Font = Enum.Font.GothamBold
-    randomBtn.Parent = serverSection
-    local rbc = Instance.new("UICorner"); rbc.CornerRadius = UDim.new(0, 4); rbc.Parent = randomBtn
-    randomBtn.MouseButton1Click:Connect(function() statusLabel.Text = "🎲 Joining random..."; pcall(function() TeleportService:Teleport(game.PlaceId, player) end) end)
 
-    -- COMBAT TAB
+    -- =====================================================
+    -- COMBAT TAB - WITH GUN MODS FROM QUOTAS HUB
+    -- =====================================================
     local combatPage = Instance.new("Frame")
     combatPage.Name = "CombatPage"
     combatPage.Size = UDim2.new(1, 0, 1, 0)
@@ -1876,18 +1355,86 @@ local function createAdminGui(player)
     rapidFireEnabled[player.UserId] = false
     infiniteAmmoEnabled[player.UserId] = false
     
-    local weaponSection = createSection(combatPage, "Weapon Mods", 0, 0, 230, 160)
-    createCheckbox(weaponSection, "No Recoil", 8, 16, false, function(e) noRecoilEnabled[player.UserId] = e; statusLabel.Text = e and "✓ No Recoil ON" or "✓ No Recoil OFF" end)
-    createCheckbox(weaponSection, "No Spread", 8, 36, false, function(e) noSpreadEnabled[player.UserId] = e; statusLabel.Text = e and "✓ No Spread ON" or "✓ No Spread OFF" end)
-    createCheckbox(weaponSection, "Rapid Fire", 8, 56, false, function(e) rapidFireEnabled[player.UserId] = e; statusLabel.Text = e and "✓ Rapid Fire ON" or "✓ Rapid Fire OFF" end)
-    createCheckbox(weaponSection, "Infinite Ammo", 8, 76, false, function(e) infiniteAmmoEnabled[player.UserId] = e; statusLabel.Text = e and "✓ Infinite Ammo ON" or "✓ Infinite Ammo OFF" end)
+    local weaponSection = createSection(combatPage, "Gun Mods (from quotas hub)", 0, 0, 280, 140)
     
+    -- NO RECOIL/SPREAD - From quotas hub
+    createCheckbox(weaponSection, "No Recoil/Spread", 8, 16, false, function(e) 
+        noRecoilEnabled[player.UserId] = e
+        noSpreadEnabled[player.UserId] = e
+        statusLabel.Text = e and "✓ No Recoil/Spread ON" or "✓ No Recoil/Spread OFF"
+        if e then
+            task.spawn(function()
+                while noRecoilEnabled[player.UserId] and not isUnloading do
+                    pcall(function()
+                        local replicatedstorage = game:GetService("ReplicatedStorage")
+                        local weapons = replicatedstorage:FindFirstChild("Weapons")
+                        if weapons then
+                            for _, v in pairs(weapons:GetDescendants()) do
+                                if v.Name == "RecoilControl" then v.Value = 0 end
+                                if v.Name == "MaxSpread" then v.Value = 0 end
+                            end
+                        end
+                    end)
+                    task.wait(5)
+                end
+            end)
+        end
+    end)
+    
+    -- RAPID FIRE - From quotas hub
+    createCheckbox(weaponSection, "Rapid Fire (Auto)", 8, 40, false, function(e) 
+        rapidFireEnabled[player.UserId] = e
+        statusLabel.Text = e and "✓ Rapid Fire ON" or "✓ Rapid Fire OFF"
+        if e then
+            task.spawn(function()
+                while rapidFireEnabled[player.UserId] and not isUnloading do
+                    pcall(function()
+                        local replicatedstorage = game:GetService("ReplicatedStorage")
+                        local weapons = replicatedstorage:FindFirstChild("Weapons")
+                        if weapons then
+                            for _, v in pairs(weapons:GetDescendants()) do
+                                if v.Name == "Auto" then v.Value = true end
+                                if v.Name == "FireRate" then v.Value = 0.02 end
+                            end
+                        end
+                    end)
+                    task.wait(5)
+                end
+            end)
+        end
+    end)
+    
+    -- INFINITE AMMO - From quotas hub
+    createCheckbox(weaponSection, "Infinite Ammo", 8, 64, false, function(e) 
+        infiniteAmmoEnabled[player.UserId] = e
+        statusLabel.Text = e and "✓ Infinite Ammo ON" or "✓ Infinite Ammo OFF"
+    end)
+    
+    -- Infinite Ammo loop (GUI-based method from quotas hub)
     task.spawn(function()
         while true do
             task.wait(0.1)
             if isUnloading then break end
             if infiniteAmmoEnabled[player.UserId] then
                 pcall(function()
+                    -- Method 1: PlayerGui ammo values (quotas hub style)
+                    local playerGui = player:FindFirstChild("PlayerGui")
+                    if playerGui then
+                        local gui = playerGui:FindFirstChild("GUI")
+                        if gui then
+                            local client = gui:FindFirstChild("Client")
+                            if client then
+                                local variables = client:FindFirstChild("Variables")
+                                if variables then
+                                    local ammocount = variables:FindFirstChild("ammocount")
+                                    local ammocount2 = variables:FindFirstChild("ammocount2")
+                                    if ammocount then ammocount.Value = 999 end
+                                    if ammocount2 then ammocount2.Value = 999 end
+                                end
+                            end
+                        end
+                    end
+                    -- Method 2: Tool-based ammo (fallback)
                     local char = player.Character
                     if char then
                         for _, tool in ipairs(char:GetChildren()) do
@@ -1905,12 +1452,12 @@ local function createAdminGui(player)
         end
     end)
     
-    local combatInfoSection = createSection(combatPage, "Info", 0, 170, 230, 80)
+    local combatInfoSection = createSection(combatPage, "Info", 0, 150, 280, 70)
     local infoLabel = Instance.new("TextLabel")
-    infoLabel.Size = UDim2.new(1, -16, 1, -20)
-    infoLabel.Position = UDim2.new(0, 8, 0, 16)
+    infoLabel.Size = UDim2.new(1, -16, 1, -16)
+    infoLabel.Position = UDim2.new(0, 8, 0, 12)
     infoLabel.BackgroundTransparency = 1
-    infoLabel.Text = "⚠ Weapon mods work on\ncompatible gun systems.\nResults may vary by game."
+    infoLabel.Text = "⚠ Gun mods work on compatible weapon systems\n(Da Hood style games). Results may vary."
     infoLabel.TextColor3 = Colors.TextDim
     infoLabel.TextSize = 10
     infoLabel.Font = Enum.Font.Gotham
@@ -1918,104 +1465,6 @@ local function createAdminGui(player)
     infoLabel.TextXAlignment = Enum.TextXAlignment.Left
     infoLabel.TextYAlignment = Enum.TextYAlignment.Top
     infoLabel.Parent = combatInfoSection
-    
-    local chatSection = createSection(combatPage, "Chat Spammer", 245, 0, 230, 250)
-    local chatSpamEnabled = false
-    local chatSpamDelay = 1
-    local chatSpamMessage = "Binxix's GUI is the best!"
-    
-    local msgLabel = Instance.new("TextLabel")
-    msgLabel.Size = UDim2.new(1, -16, 0, 14)
-    msgLabel.Position = UDim2.new(0, 8, 0, 18)
-    msgLabel.BackgroundTransparency = 1
-    msgLabel.Text = "Message:"
-    msgLabel.TextColor3 = Colors.TextDim
-    msgLabel.TextSize = 10
-    msgLabel.Font = Enum.Font.Gotham
-    msgLabel.TextXAlignment = Enum.TextXAlignment.Left
-    msgLabel.Parent = chatSection
-    
-    local msgInputBox = Instance.new("TextBox")
-    msgInputBox.Size = UDim2.new(1, -16, 0, 28)
-    msgInputBox.Position = UDim2.new(0, 8, 0, 34)
-    msgInputBox.BackgroundColor3 = Colors.BackgroundLight
-    msgInputBox.BorderSizePixel = 0
-    msgInputBox.Text = chatSpamMessage
-    msgInputBox.PlaceholderText = "Enter message..."
-    msgInputBox.TextColor3 = Colors.Text
-    msgInputBox.PlaceholderColor3 = Colors.TextDim
-    msgInputBox.TextSize = 10
-    msgInputBox.Font = Enum.Font.Gotham
-    msgInputBox.TextXAlignment = Enum.TextXAlignment.Left
-    msgInputBox.ClearTextOnFocus = false
-    msgInputBox.Parent = chatSection
-    local mic = Instance.new("UICorner"); mic.CornerRadius = UDim.new(0, 4); mic.Parent = msgInputBox
-    local mip = Instance.new("UIPadding"); mip.PaddingLeft = UDim.new(0, 8); mip.Parent = msgInputBox
-    msgInputBox.FocusLost:Connect(function() chatSpamMessage = msgInputBox.Text end)
-    
-    createSlider(chatSection, "Delay (sec):", 8, 70, 0.5, 10, 1, function(v) chatSpamDelay = v end)
-    createCheckbox(chatSection, "Enable Spam", 8, 108, false, function(e) chatSpamEnabled = e; statusLabel.Text = e and "✓ Chat Spam ON" or "✓ Chat Spam OFF" end)
-    
-    task.spawn(function()
-        while true do
-            task.wait(chatSpamDelay)
-            if isUnloading then break end
-            if chatSpamEnabled and chatSpamMessage ~= "" then
-                pcall(function()
-                    local ReplicatedStorage = game:GetService("ReplicatedStorage")
-                    local chatEvents = ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents")
-                    if chatEvents then
-                        local sayEvent = chatEvents:FindFirstChild("SayMessageRequest")
-                        if sayEvent then sayEvent:FireServer(chatSpamMessage, "All"); return end
-                    end
-                    local TextChatService = game:GetService("TextChatService")
-                    local channels = TextChatService:FindFirstChild("TextChannels")
-                    if channels then
-                        local general = channels:FindFirstChild("RBXGeneral")
-                        if general then general:SendAsync(chatSpamMessage) end
-                    end
-                end)
-            end
-        end
-    end)
-    
-    local quickMsgLabel = Instance.new("TextLabel")
-    quickMsgLabel.Size = UDim2.new(1, -16, 0, 14)
-    quickMsgLabel.Position = UDim2.new(0, 8, 0, 140)
-    quickMsgLabel.BackgroundTransparency = 1
-    quickMsgLabel.Text = "Quick Messages:"
-    quickMsgLabel.TextColor3 = Colors.TextDim
-    quickMsgLabel.TextSize = 10
-    quickMsgLabel.Font = Enum.Font.Gotham
-    quickMsgLabel.TextXAlignment = Enum.TextXAlignment.Left
-    quickMsgLabel.Parent = chatSection
-    
-    local quickMessages = {"GG", "EZ", "LOL", "Nice!", "Binxix on top"}
-    for i, msg in ipairs(quickMessages) do
-        local row = math.floor((i-1) / 3)
-        local col = (i-1) % 3
-        local quickBtn = Instance.new("TextButton")
-        quickBtn.Size = UDim2.new(0, 65, 0, 22)
-        quickBtn.Position = UDim2.new(0, 8 + col * 69, 0, 156 + row * 26)
-        quickBtn.BackgroundColor3 = Colors.Accent
-        quickBtn.BackgroundTransparency = 0.5
-        quickBtn.Text = msg
-        quickBtn.TextColor3 = Colors.Text
-        quickBtn.TextSize = 9
-        quickBtn.Font = Enum.Font.GothamMedium
-        quickBtn.Parent = chatSection
-        local qc = Instance.new("UICorner"); qc.CornerRadius = UDim.new(0, 4); qc.Parent = quickBtn
-        quickBtn.MouseButton1Click:Connect(function()
-            pcall(function()
-                local ReplicatedStorage = game:GetService("ReplicatedStorage")
-                local chatEvents = ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents")
-                if chatEvents then local sayEvent = chatEvents:FindFirstChild("SayMessageRequest"); if sayEvent then sayEvent:FireServer(msg, "All"); statusLabel.Text = "💬 Sent: " .. msg; return end end
-                local TextChatService = game:GetService("TextChatService")
-                local channels = TextChatService:FindFirstChild("TextChannels")
-                if channels then local general = channels:FindFirstChild("RBXGeneral"); if general then general:SendAsync(msg); statusLabel.Text = "💬 Sent: " .. msg end end
-            end)
-        end)
-    end
     
     -- Tab switching
     for tabName, tabBtn in pairs(tabButtons) do
@@ -2061,12 +1510,12 @@ local function createAdminGui(player)
     
     -- Loaded Notification
     local loadedNotif = Instance.new("TextLabel")
-    loadedNotif.Size = UDim2.new(0, 220, 0, 30)
-    loadedNotif.Position = UDim2.new(0.5, -110, 1, -40)
+    loadedNotif.Size = UDim2.new(0, 260, 0, 30)
+    loadedNotif.Position = UDim2.new(0.5, -130, 1, -40)
     loadedNotif.BackgroundColor3 = Colors.Background
     loadedNotif.BackgroundTransparency = 0.3
     loadedNotif.BorderSizePixel = 0
-    loadedNotif.Text = "✓ Binxix's GUI V5 loaded"
+    loadedNotif.Text = "✓ Binxix's GUI V5 + Gun Mods loaded"
     loadedNotif.TextColor3 = Colors.AccentBright
     loadedNotif.TextSize = 12
     loadedNotif.Font = Enum.Font.GothamBold
