@@ -1,5 +1,5 @@
--- BINXIX'S GUI V5 - 
--- Improved: Continuous Aimlock Scanning, Auto-Target Acquisition, Unload Button
+-- BINXIX'S GUI V5 - FULL VERSION WITH GUN MODS
+-- Improved: Continuous Aimlock Scanning, Auto-Target Acquisition, Unload Button, Gun Mods
 
 -- Services
 local Players = game:GetService("Players")
@@ -10,6 +10,7 @@ local UserInputService = game:GetService("UserInputService")
 local Lighting = game:GetService("Lighting")
 local TeleportService = game:GetService("TeleportService")
 local HttpService = game:GetService("HttpService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local activeTracking = {}
 local activeESP = {}
@@ -45,6 +46,12 @@ local keybinds = {}
 local waitingForKeybind = {}
 local keybindCallbacks = {}
 
+-- NEW GUN MOD VARIABLES
+local recoilModEnabled = {}
+local fireRateModEnabled = {}
+local ammoModEnabled = {}
+local gunModConnections = {}
+
 -- Unload system
 local allConnections = {}
 local guiInstances = {}
@@ -68,6 +75,7 @@ local Colors = {
     Health_Mid = Color3.fromRGB(255, 200, 50),
     Health_Low = Color3.fromRGB(255, 60, 60),
     Unload = Color3.fromRGB(255, 80, 80),
+    GunMod = Color3.fromRGB(255, 150, 50),
 }
 
 local SKELETON_CONNECTIONS = {
@@ -256,6 +264,122 @@ local function drawLine(frame, p1, p2, thickness, color)
     frame.Rotation = math.deg(angle)
     frame.BackgroundColor3 = color
     frame.Visible = true
+end
+
+-- ============================================
+-- GUN MOD FUNCTIONS (FROM QUOTAS HUB)
+-- ============================================
+
+local function startRecoilMod(player)
+    if gunModConnections[player.UserId] and gunModConnections[player.UserId].recoil then
+        gunModConnections[player.UserId].recoil:Disconnect()
+    end
+    
+    local function applyRecoilMod()
+        pcall(function()
+            local weapons = ReplicatedStorage:FindFirstChild("Weapons")
+            if weapons then
+                for i, v in pairs(weapons:GetDescendants()) do
+                    if v.Name == "RecoilControl" then
+                        v.Value = 0
+                    end
+                    if v.Name == "MaxSpread" then
+                        v.Value = 0
+                    end
+                end
+            end
+        end)
+    end
+    
+    applyRecoilMod()
+    
+    local conn = task.spawn(function()
+        while recoilModEnabled[player.UserId] and not isUnloading do
+            task.wait(5)
+            if recoilModEnabled[player.UserId] then
+                applyRecoilMod()
+            end
+        end
+    end)
+    
+    if not gunModConnections[player.UserId] then
+        gunModConnections[player.UserId] = {}
+    end
+end
+
+local function stopRecoilMod(player)
+    recoilModEnabled[player.UserId] = false
+end
+
+local function startFireRateMod(player)
+    if gunModConnections[player.UserId] and gunModConnections[player.UserId].firerate then
+        gunModConnections[player.UserId].firerate:Disconnect()
+    end
+    
+    local function applyFireRateMod()
+        pcall(function()
+            local weapons = ReplicatedStorage:FindFirstChild("Weapons")
+            if weapons then
+                for i, v in pairs(weapons:GetDescendants()) do
+                    if v.Name == "Auto" then
+                        v.Value = true
+                    end
+                    if v.Name == "FireRate" then
+                        v.Value = 0.02
+                    end
+                end
+            end
+        end)
+    end
+    
+    applyFireRateMod()
+    
+    task.spawn(function()
+        while fireRateModEnabled[player.UserId] and not isUnloading do
+            task.wait(5)
+            if fireRateModEnabled[player.UserId] then
+                applyFireRateMod()
+            end
+        end
+    end)
+    
+    if not gunModConnections[player.UserId] then
+        gunModConnections[player.UserId] = {}
+    end
+end
+
+local function stopFireRateMod(player)
+    fireRateModEnabled[player.UserId] = false
+end
+
+local function startAmmoMod(player)
+    task.spawn(function()
+        while ammoModEnabled[player.UserId] and not isUnloading do
+            pcall(function()
+                local playerGui = player:FindFirstChild("PlayerGui")
+                if playerGui then
+                    local gui = playerGui:FindFirstChild("GUI")
+                    if gui then
+                        local client = gui:FindFirstChild("Client")
+                        if client then
+                            local variables = client:FindFirstChild("Variables")
+                            if variables then
+                                local ammocount = variables:FindFirstChild("ammocount")
+                                local ammocount2 = variables:FindFirstChild("ammocount2")
+                                if ammocount then ammocount.Value = 999 end
+                                if ammocount2 then ammocount2.Value = 999 end
+                            end
+                        end
+                    end
+                end
+            end)
+            task.wait(0.1)
+        end
+    end)
+end
+
+local function stopAmmoMod(player)
+    ammoModEnabled[player.UserId] = false
 end
 
 local function createCleanESP(target, admin, screenGui)
@@ -650,9 +774,15 @@ local function enableESP(admin, screenGui)
     end
 end
 
--- UNLOAD FUNCTION
+-- UNLOAD FUNCTION (UPDATED WITH GUN MOD CLEANUP)
 local function unloadScript(player)
     isUnloading = true
+    
+    -- Stop all gun mods
+    recoilModEnabled[player.UserId] = false
+    fireRateModEnabled[player.UserId] = false
+    ammoModEnabled[player.UserId] = false
+    
     for _, conn in ipairs(allConnections) do
         pcall(function() conn:Disconnect() end)
     end
@@ -723,6 +853,11 @@ local function createAdminGui(player)
     fovCircleEnabled[player.UserId] = true
     trackingMode[player.UserId] = "hold"
     toggleTrackingActive[player.UserId] = false
+    
+    -- Initialize gun mod states
+    recoilModEnabled[player.UserId] = false
+    fireRateModEnabled[player.UserId] = false
+    ammoModEnabled[player.UserId] = false
     
     local screenGui = Instance.new("ScreenGui")
     screenGui.Name = "AdminPanel"
@@ -1031,13 +1166,6 @@ local function createAdminGui(player)
         checkMark.Font = Enum.Font.GothamBold
         checkMark.Parent = checkbox
         local label = Instance.new("TextLabel")
-
--- ============================================
--- END OF PART 1 - COPY PART 2 BELOW THIS LINE
--- ============================================
--- BINXIX GUI V5 - PART 2 OF 2
--- Paste this directly after Part 1
--- ============================================
         label.Size = UDim2.new(0, 100, 0, 18)
         label.Position = UDim2.new(0, 18, 0, 0)
         label.BackgroundTransparency = 1
@@ -1546,541 +1674,590 @@ local function createAdminGui(player)
     createSlider(valuesSection, "Smoothness:", 8, 40, 0.05, 1, 0.15, function(v) aimlockSettings[player.UserId].smoothness = v end)
     createCheckbox(valuesSection, "Prediction", 8, 78, true, function(e) aimlockSettings[player.UserId].prediction = e end)
     createSlider(valuesSection, "Predict Amount:", 8, 100, 0.05, 0.3, 0.12, function(v) aimlockSettings[player.UserId].predictionAmount = v end)
-    createCheckbox(valuesSection, "Require Line of Sight", 8, 138, true, function(e) aimlockSettings[player.UserId].requireLOS = e end)
-    createCheckbox(valuesSection, "Sticky Aim", 8, 158, true, function(e) aimlockSettings[player.UserId].stickyAim = e end)
-    createCheckbox(valuesSection, "Shake Reduction", 8, 178, true, function(e) aimlockSettings[player.UserId].shakeReduction = e end)
-    
-    local aimlockSection = createSection(trackingPage, "Aimlock FOV", 245, 0, 230, 200)
-    createDropdown(aimlockSection, "Lock Part", 8, 16, {"Head", "HumanoidRootPart", "UpperTorso", "Torso", "LeftUpperArm", "RightUpperArm"}, "Head", function(v) aimlockSettings[player.UserId].aimPart = v end)
-    createCheckbox(aimlockSection, "Show FOV Circle", 8, 62, true, function(e) aimlockSettings[player.UserId].showFOVCircle = e; fovCircleEnabled[player.UserId] = e; updateFOVCircle() end)
-    createSlider(aimlockSection, "FOV Radius:", 8, 86, 50, 400, 150, function(v) aimlockSettings[player.UserId].fovRadius = v; updateFOVCircle() end)
-    createSlider(aimlockSection, "Circle Opacity:", 8, 124, 0, 100, 50, function(v) aimlockSettings[player.UserId].fovOpacity = v / 100; fovStroke.Transparency = 1 - (v / 100) end)
-    createSlider(aimlockSection, "Max Distance:", 8, 162, 100, 1000, 500, function(v) aimlockSettings[player.UserId].maxDistance = v end)
-    
-    local advancedSection = createSection(trackingPage, "Advanced", 0, 210, 230, 120)
-    createDropdown(advancedSection, "Priority Mode", 8, 16, {"Distance", "Health", "Crosshair", "Threat"}, "Distance", function(v) aimlockSettings[player.UserId].priorityMode = v end)
-    createDropdown(advancedSection, "Aim Easing", 8, 70, {"Smooth", "Linear", "Snap"}, "Smooth", function(v) aimlockSettings[player.UserId].easing = v end)
-    
-    local indicatorSection = createSection(trackingPage, "Indicators", 245, 210, 230, 120)
-    createCheckbox(indicatorSection, "Highlight Target", 8, 20, true, function(e) aimlockSettings[player.UserId].highlightTarget = e end)
-    createCheckbox(indicatorSection, "Lock Indicator", 8, 44, true, function(e) aimlockSettings[player.UserId].targetLockIndicator = e end)
-    createCheckbox(indicatorSection, "Snap on Acquire", 8, 68, false, function(e) aimlockSettings[player.UserId].snapOnAcquire = e end)
-    createSlider(indicatorSection, "Snap Strength:", 8, 88, 0.1, 1, 0.5, function(v) aimlockSettings[player.UserId].snapStrength = v end)
-    
-    -- ESP TAB
-    local espPage = Instance.new("Frame")
-    espPage.Name = "ESPPage"
-    espPage.Size = UDim2.new(1, 0, 1, 0)
-    espPage.BackgroundTransparency = 1
-    espPage.Visible = false
-    espPage.Parent = contentArea
-    tabPages["ESP"] = espPage
-    
-    local espSection = createSection(espPage, "ESP Features", 0, 0, 230, 220)
-    createCheckbox(espSection, "Enabled", 8, 16, false, function(e) if e then enableESP(player, screenGui); statusLabel.Text = "✓ ESP Enabled" else clearAllESP(player); statusLabel.Text = "✓ ESP Disabled" end end)
-    createCheckbox(espSection, "Corner Box", 8, 36, true, function(e) espSettings[player.UserId].boxEnabled = e end)
-    createCheckbox(espSection, "Skeleton", 8, 56, true, function(e) espSettings[player.UserId].skeletonEnabled = e end)
-    createCheckbox(espSection, "Tracers", 8, 76, true, function(e) espSettings[player.UserId].tracerEnabled = e end)
-    createCheckbox(espSection, "Names", 8, 96, true, function(e) espSettings[player.UserId].nameEnabled = e end)
-    createCheckbox(espSection, "Health Bars", 8, 116, true, function(e) espSettings[player.UserId].healthEnabled = e end)
-    createCheckbox(espSection, "Distance", 8, 136, true, function(e) espSettings[player.UserId].distanceEnabled = e end)
-    createCheckbox(espSection, "Head Dot", 8, 156, true, function(e) espSettings[player.UserId].headDotEnabled = e end)
-    createCheckbox(espSection, "Offscreen Arrows", 8, 176, true, function(e) espSettings[player.UserId].offscreenArrows = e end)
-    
-    local espAppearSection = createSection(espPage, "Appearance", 245, 0, 230, 200)
-    createSlider(espAppearSection, "Tracer Width:", 8, 16, 1, 5, 1, function(v) espSettings[player.UserId].tracerThickness = v end)
-    createSlider(espAppearSection, "Box Width:", 8, 54, 1, 5, 1, function(v) espSettings[player.UserId].boxThickness = v end)
-    createSlider(espAppearSection, "Skeleton Width:", 8, 92, 1, 3, 1, function(v) espSettings[player.UserId].skeletonThickness = v end)
-    createDropdown(espAppearSection, "Tracer Origin", 8, 130, {"Bottom", "Top", "Mouse"}, "Bottom", function(v) espSettings[player.UserId].tracerOrigin = v end)
-    
-    -- RADAR
-    local radarEnabled = false
-    local radarSize = 150
-    local radarZoom = 1
-    local radarFrame = Instance.new("Frame")
-    radarFrame.Name = "Radar"
-    radarFrame.Size = UDim2.new(0, radarSize, 0, radarSize)
-    radarFrame.Position = UDim2.new(0, 10, 0, 10)
-    radarFrame.BackgroundColor3 = Colors.Background
-    radarFrame.BackgroundTransparency = 0.3
-    radarFrame.BorderSizePixel = 0
-    radarFrame.Visible = false
-    radarFrame.Parent = screenGui
-    local radarCorner = Instance.new("UICorner")
-    radarCorner.CornerRadius = UDim.new(1, 0)
-    radarCorner.Parent = radarFrame
-    local radarStroke = Instance.new("UIStroke")
-    radarStroke.Color = Colors.Accent
-    radarStroke.Thickness = 2
-    radarStroke.Parent = radarFrame
-    local radarCenter = Instance.new("Frame")
-    radarCenter.Size = UDim2.new(0, 8, 0, 8)
-    radarCenter.Position = UDim2.new(0.5, -4, 0.5, -4)
-    radarCenter.BackgroundColor3 = Colors.AccentBright
-    radarCenter.BorderSizePixel = 0
-    radarCenter.Parent = radarFrame
-    local rcCorner = Instance.new("UICorner")
-    rcCorner.CornerRadius = UDim.new(1, 0)
-    rcCorner.Parent = radarCenter
-    local radarDots = {}
-    
-    local function updateRadar()
-        if not radarEnabled then return end
-        local myChar = player.Character
-        if not myChar then return end
-        local myHRP = myChar:FindFirstChild("HumanoidRootPart")
-        if not myHRP then return end
-        local myPos = myHRP.Position
-        local myAngle = math.atan2(myHRP.CFrame.LookVector.X, myHRP.CFrame.LookVector.Z)
-        for _, targetPlayer in ipairs(Players:GetPlayers()) do
-            if targetPlayer ~= player and isValidTarget(player, targetPlayer) then
-                local targetChar = targetPlayer.Character
-                if targetChar then
-                    local targetHRP = targetChar:FindFirstChild("HumanoidRootPart")
-                    if targetHRP then
-                        if not radarDots[targetPlayer.UserId] then
-                            local dot = Instance.new("Frame")
-                            dot.Size = UDim2.new(0, 6, 0, 6)
-                            dot.BackgroundColor3 = Colors.ESP_Close
-                            dot.BorderSizePixel = 0
-                            dot.Parent = radarFrame
-                            local dc = Instance.new("UICorner")
-                            dc.CornerRadius = UDim.new(1, 0)
-                            dc.Parent = dot
-                            radarDots[targetPlayer.UserId] = dot
-                        end
-                        local dot = radarDots[targetPlayer.UserId]
-                        local relativePos = targetHRP.Position - myPos
-                        local distance = relativePos.Magnitude
-                        local rotatedX = relativePos.X * math.cos(-myAngle) - relativePos.Z * math.sin(-myAngle)
-                        local rotatedZ = relativePos.X * math.sin(-myAngle) + relativePos.Z * math.cos(-myAngle)
-                        local scale = radarSize / (200 * radarZoom)
-                        local radarX, radarY = rotatedX * scale, -rotatedZ * scale
-                        local maxDist = radarSize / 2 - 6
-                        local dotDist = math.sqrt(radarX * radarX + radarY * radarY)
-                        if dotDist > maxDist then local ratio = maxDist / dotDist; radarX = radarX * ratio; radarY = radarY * ratio end
-                        dot.Position = UDim2.new(0.5, radarX - 3, 0.5, radarY - 3)
-                        dot.BackgroundColor3 = getESPColor(distance)
-                        dot.Visible = true
+    createCheckboxContinue12:10 AM(valuesSection, "Require Line of Sight", 8, 138, true, function(e) aimlockSettings[player.UserId].requireLOS = e end)
+createCheckbox(valuesSection, "Sticky Aim", 8, 158, true, function(e) aimlockSettings[player.UserId].stickyAim = e end)
+createCheckbox(valuesSection, "Shake Reduction", 8, 178, true, function(e) aimlockSettings[player.UserId].shakeReduction = e end)
+local aimlockSection = createSection(trackingPage, "Aimlock FOV", 245, 0, 230, 200)
+createDropdown(aimlockSection, "Lock Part", 8, 16, {"Head", "HumanoidRootPart", "UpperTorso", "Torso", "LeftUpperArm", "RightUpperArm"}, "Head", function(v) aimlockSettings[player.UserId].aimPart = v end)
+createCheckbox(aimlockSection, "Show FOV Circle", 8, 62, true, function(e) aimlockSettings[player.UserId].showFOVCircle = e; fovCircleEnabled[player.UserId] = e; updateFOVCircle() end)
+createSlider(aimlockSection, "FOV Radius:", 8, 86, 50, 400, 150, function(v) aimlockSettings[player.UserId].fovRadius = v; updateFOVCircle() end)
+createSlider(aimlockSection, "Circle Opacity:", 8, 124, 0, 100, 50, function(v) aimlockSettings[player.UserId].fovOpacity = v / 100; fovStroke.Transparency = 1 - (v / 100) end)
+createSlider(aimlockSection, "Max Distance:", 8, 162, 100, 1000, 500, function(v) aimlockSettings[player.UserId].maxDistance = v end)
+
+local advancedSection = createSection(trackingPage, "Advanced", 0, 210, 230, 120)
+createDropdown(advancedSection, "Priority Mode", 8, 16, {"Distance", "Health", "Crosshair", "Threat"}, "Distance", function(v) aimlockSettings[player.UserId].priorityMode = v end)
+createDropdown(advancedSection, "Aim Easing", 8, 70, {"Smooth", "Linear", "Snap"}, "Smooth", function(v) aimlockSettings[player.UserId].easing = v end)
+
+local indicatorSection = createSection(trackingPage, "Indicators", 245, 210, 230, 120)
+createCheckbox(indicatorSection, "Highlight Target", 8, 20, true, function(e) aimlockSettings[player.UserId].highlightTarget = e end)
+createCheckbox(indicatorSection, "Lock Indicator", 8, 44, true, function(e) aimlockSettings[player.UserId].targetLockIndicator = e end)
+createCheckbox(indicatorSection, "Snap on Acquire", 8, 68, false, function(e) aimlockSettings[player.UserId].snapOnAcquire = e end)
+createSlider(indicatorSection, "Snap Strength:", 8, 88, 0.1, 1, 0.5, function(v) aimlockSettings[player.UserId].snapStrength = v end)
+
+-- ESP TAB
+local espPage = Instance.new("Frame")
+espPage.Name = "ESPPage"
+espPage.Size = UDim2.new(1, 0, 1, 0)
+espPage.BackgroundTransparency = 1
+espPage.Visible = false
+espPage.Parent = contentArea
+tabPages["ESP"] = espPage
+
+local espSection = createSection(espPage, "ESP Features", 0, 0, 230, 220)
+createCheckbox(espSection, "Enabled", 8, 16, false, function(e) if e then enableESP(player, screenGui); statusLabel.Text = "✓ ESP Enabled" else clearAllESP(player); statusLabel.Text = "✓ ESP Disabled" end end)
+createCheckbox(espSection, "Corner Box", 8, 36, true, function(e) espSettings[player.UserId].boxEnabled = e end)
+createCheckbox(espSection, "Skeleton", 8, 56, true, function(e) espSettings[player.UserId].skeletonEnabled = e end)
+createCheckbox(espSection, "Tracers", 8, 76, true, function(e) espSettings[player.UserId].tracerEnabled = e end)
+createCheckbox(espSection, "Names", 8, 96, true, function(e) espSettings[player.UserId].nameEnabled = e end)
+createCheckbox(espSection, "Health Bars", 8, 116, true, function(e) espSettings[player.UserId].healthEnabled = e end)
+createCheckbox(espSection, "Distance", 8, 136, true, function(e) espSettings[player.UserId].distanceEnabled = e end)
+createCheckbox(espSection, "Head Dot", 8, 156, true, function(e) espSettings[player.UserId].headDotEnabled = e end)
+createCheckbox(espSection, "Offscreen Arrows", 8, 176, true, function(e) espSettings[player.UserId].offscreenArrows = e end)
+
+local espAppearSection = createSection(espPage, "Appearance", 245, 0, 230, 200)
+createSlider(espAppearSection, "Tracer Width:", 8, 16, 1, 5, 1, function(v) espSettings[player.UserId].tracerThickness = v end)
+createSlider(espAppearSection, "Box Width:", 8, 54, 1, 5, 1, function(v) espSettings[player.UserId].boxThickness = v end)
+createSlider(espAppearSection, "Skeleton Width:", 8, 92, 1, 3, 1, function(v) espSettings[player.UserId].skeletonThickness = v end)
+createDropdown(espAppearSection, "Tracer Origin", 8, 130, {"Bottom", "Top", "Mouse"}, "Bottom", function(v) espSettings[player.UserId].tracerOrigin = v end)
+
+-- RADAR
+local radarEnabled = false
+local radarSize = 150
+local radarZoom = 1
+local radarFrame = Instance.new("Frame")
+radarFrame.Name = "Radar"
+radarFrame.Size = UDim2.new(0, radarSize, 0, radarSize)
+radarFrame.Position = UDim2.new(0, 10, 0, 10)
+radarFrame.BackgroundColor3 = Colors.Background
+radarFrame.BackgroundTransparency = 0.3
+radarFrame.BorderSizePixel = 0
+radarFrame.Visible = false
+radarFrame.Parent = screenGui
+local radarCorner = Instance.new("UICorner")
+radarCorner.CornerRadius = UDim.new(1, 0)
+radarCorner.Parent = radarFrame
+local radarStroke = Instance.new("UIStroke")
+radarStroke.Color = Colors.Accent
+radarStroke.Thickness = 2
+radarStroke.Parent = radarFrame
+local radarCenter = Instance.new("Frame")
+radarCenter.Size = UDim2.new(0, 8, 0, 8)
+radarCenter.Position = UDim2.new(0.5, -4, 0.5, -4)
+radarCenter.BackgroundColor3 = Colors.AccentBright
+radarCenter.BorderSizePixel = 0
+radarCenter.Parent = radarFrame
+local rcCorner = Instance.new("UICorner")
+rcCorner.CornerRadius = UDim.new(1, 0)
+rcCorner.Parent = radarCenter
+local radarDots = {}
+
+local function updateRadar()
+    if not radarEnabled then return end
+    local myChar = player.Character
+    if not myChar then return end
+    local myHRP = myChar:FindFirstChild("HumanoidRootPart")
+    if not myHRP then return end
+    local myPos = myHRP.Position
+    local myAngle = math.atan2(myHRP.CFrame.LookVector.X, myHRP.CFrame.LookVector.Z)
+    for _, targetPlayer in ipairs(Players:GetPlayers()) do
+        if targetPlayer ~= player and isValidTarget(player, targetPlayer) then
+            local targetChar = targetPlayer.Character
+            if targetChar then
+                local targetHRP = targetChar:FindFirstChild("HumanoidRootPart")
+                if targetHRP then
+                    if not radarDots[targetPlayer.UserId] then
+                        local dot = Instance.new("Frame")
+                        dot.Size = UDim2.new(0, 6, 0, 6)
+                        dot.BackgroundColor3 = Colors.ESP_Close
+                        dot.BorderSizePixel = 0
+                        dot.Parent = radarFrame
+                        local dc = Instance.new("UICorner")
+                        dc.CornerRadius = UDim.new(1, 0)
+                        dc.Parent = dot
+                        radarDots[targetPlayer.UserId] = dot
                     end
+                    local dot = radarDots[targetPlayer.UserId]
+                    local relativePos = targetHRP.Position - myPos
+                    local distance = relativePos.Magnitude
+                    local rotatedX = relativePos.X * math.cos(-myAngle) - relativePos.Z * math.sin(-myAngle)
+                    local rotatedZ = relativePos.X * math.sin(-myAngle) + relativePos.Z * math.cos(-myAngle)
+                    local scale = radarSize / (200 * radarZoom)
+                    local radarX, radarY = rotatedX * scale, -rotatedZ * scale
+                    local maxDist = radarSize / 2 - 6
+                    local dotDist = math.sqrt(radarX * radarX + radarY * radarY)
+                    if dotDist > maxDist then local ratio = maxDist / dotDist; radarX = radarX * ratio; radarY = radarY * ratio end
+                    dot.Position = UDim2.new(0.5, radarX - 3, 0.5, radarY - 3)
+                    dot.BackgroundColor3 = getESPColor(distance)
+                    dot.Visible = true
                 end
-            else
-                if radarDots[targetPlayer.UserId] then radarDots[targetPlayer.UserId]:Destroy(); radarDots[targetPlayer.UserId] = nil end
             end
+        else
+            if radarDots[targetPlayer.UserId] then radarDots[targetPlayer.UserId]:Destroy(); radarDots[targetPlayer.UserId] = nil end
         end
     end
-    
-    local radarConn = RunService.RenderStepped:Connect(function() if isUnloading then return end; updateRadar() end)
-    table.insert(allConnections, radarConn)
-    
-    local radarSection = createSection(espPage, "Radar", 0, 230, 230, 60)
-    createCheckbox(radarSection, "Show Radar", 8, 16, false, function(e) radarEnabled = e; radarFrame.Visible = e; if not e then for id, dot in pairs(radarDots) do dot:Destroy() end; radarDots = {} end end)
-    createSlider(radarSection, "Zoom:", 120, 16, 0.5, 3, 1, function(v) radarZoom = v end)
+end
 
-    -- VISUALS TAB
-    local visualsPage = Instance.new("Frame")
-    visualsPage.Name = "VisualsPage"
-    visualsPage.Size = UDim2.new(1, 0, 1, 0)
-    visualsPage.BackgroundTransparency = 1
-    visualsPage.Visible = false
-    visualsPage.Parent = contentArea
-    tabPages["Visuals"] = visualsPage
-    
-    local fovSection = createSection(visualsPage, "Camera FOV", 0, 0, 230, 90)
-    local fovEnabled, customFOV, fovConnection = false, 70, nil
-    createCheckbox(fovSection, "Enabled", 8, 16, false, function(e)
-        fovEnabled = e
-        local camera = Workspace.CurrentCamera
-        if e then
-            if fovConnection then fovConnection:Disconnect() end
-            fovConnection = RunService.RenderStepped:Connect(function() if isUnloading then return end; if fovEnabled and camera then camera.FieldOfView = customFOV end end)
-            table.insert(allConnections, fovConnection)
-            statusLabel.Text = "✓ FOV: " .. customFOV
-        else
-            if fovConnection then fovConnection:Disconnect(); fovConnection = nil end
-            if camera then camera.FieldOfView = 70 end
-            statusLabel.Text = "✓ FOV reset"
-        end
-    end)
-    createSlider(fovSection, "FOV Amount:", 8, 40, 30, 120, 70, function(v) customFOV = v; if fovEnabled then local c = Workspace.CurrentCamera; if c then c.FieldOfView = v end end end)
-    
-    local worldSection = createSection(visualsPage, "World Effects", 0, 100, 230, 90)
-    createCheckbox(worldSection, "Fullbright", 8, 16, false, function(e) fullbrightEnabled[player.UserId] = e; if e then enableFullbright(player); statusLabel.Text = "✓ Fullbright ON" else disableFullbright(player); statusLabel.Text = "✓ Fullbright OFF" end end)
-    createCheckbox(worldSection, "No Fog", 8, 36, false, function(e) noFogEnabled[player.UserId] = e; if e then enableNoFog(player); statusLabel.Text = "✓ No Fog ON" else disableNoFog(player); statusLabel.Text = "✓ No Fog OFF" end end)
-    
-    local crosshairSection = createSection(visualsPage, "Custom Crosshair", 245, 0, 230, 200)
-    createCheckbox(crosshairSection, "Enabled", 8, 16, false, function(e) crosshairEnabled[player.UserId] = e; crosshairFrame.Visible = e; if e then updateCrosshair(); statusLabel.Text = "✓ Crosshair ON" else statusLabel.Text = "✓ Crosshair OFF" end end)
-    createDropdown(crosshairSection, "Style", 8, 38, {"Cross", "Cross + Dot", "Dot", "Circle", "T-Shape"}, "Cross", function(v) crosshairSettings[player.UserId].style = v; if crosshairEnabled[player.UserId] then updateCrosshair() end end)
-    createSlider(crosshairSection, "Size:", 8, 82, 5, 30, 10, function(v) crosshairSettings[player.UserId].size = v; if crosshairEnabled[player.UserId] then updateCrosshair() end end)
-    createSlider(crosshairSection, "Thickness:", 8, 120, 1, 6, 2, function(v) crosshairSettings[player.UserId].thickness = v; if crosshairEnabled[player.UserId] then updateCrosshair() end end)
-    createSlider(crosshairSection, "Gap:", 8, 158, 0, 15, 4, function(v) crosshairSettings[player.UserId].gap = v; if crosshairEnabled[player.UserId] then updateCrosshair() end end)
-    createCheckbox(crosshairSection, "Outline", 120, 16, true, function(e) crosshairSettings[player.UserId].outline = e; if crosshairEnabled[player.UserId] then updateCrosshair() end end)
-    
-    -- MOVEMENT TAB
-    local movementPage = Instance.new("Frame")
-    movementPage.Name = "MovementPage"
-    movementPage.Size = UDim2.new(1, 0, 1, 0)
-    movementPage.BackgroundTransparency = 1
-    movementPage.Visible = false
-    movementPage.Parent = contentArea
-    tabPages["Movement"] = movementPage
-    
-    local charSection = createSection(movementPage, "Character", 0, 0, 230, 200)
-    createCheckbox(charSection, "Speed Boost", 8, 16, false, function(e) local c = player.Character; if c then local h = c:FindFirstChild("Humanoid"); if h then h.WalkSpeed = e and 100 or 16 end end; statusLabel.Text = e and "✓ Speed ON" or "✓ Speed OFF" end)
-    createCheckbox(charSection, "High Jump", 8, 36, false, function(e) local c = player.Character; if c then local h = c:FindFirstChild("Humanoid"); if h then h.JumpPower = e and 150 or 50 end end; statusLabel.Text = e and "✓ Jump ON" or "✓ Jump OFF" end)
-    createCheckbox(charSection, "Bunny Hop", 8, 56, false, function(e) bunnyHopEnabled[player.UserId] = e; statusLabel.Text = e and "✓ Bunny Hop ON" or "✓ Bunny Hop OFF" end)
-    createSlider(charSection, "Walk Speed:", 8, 80, 16, 200, 16, function(v) local c = player.Character; if c then local h = c:FindFirstChild("Humanoid"); if h then h.WalkSpeed = v end end end)
-    createSlider(charSection, "Jump Power:", 8, 118, 50, 300, 50, function(v) local c = player.Character; if c then local h = c:FindFirstChild("Humanoid"); if h then h.JumpPower = v end end end)
-    
-    local flySection = createSection(movementPage, "Fly & Movement", 245, 0, 230, 230)
-    flyEnabled[player.UserId] = false
-    flySpeed[player.UserId] = 50
-    local spinBotEnabled = false
-    local spinSpeed = 10
-    
-    local function startFly()
+local radarConn = RunService.RenderStepped:Connect(function() if isUnloading then return end; updateRadar() end)
+table.insert(allConnections, radarConn)
+
+local radarSection = createSection(espPage, "Radar", 0, 230, 230, 60)
+createCheckbox(radarSection, "Show Radar", 8, 16, false, function(e) radarEnabled = e; radarFrame.Visible = e; if not e then for id, dot in pairs(radarDots) do dot:Destroy() end; radarDots = {} end end)
+createSlider(radarSection, "Zoom:", 120, 16, 0.5, 3, 1, function(v) radarZoom = v end)
+
+-- VISUALS TAB
+local visualsPage = Instance.new("Frame")
+visualsPage.Name = "VisualsPage"
+visualsPage.Size = UDim2.new(1, 0, 1, 0)
+visualsPage.BackgroundTransparency = 1
+visualsPage.Visible = false
+visualsPage.Parent = contentArea
+tabPages["Visuals"] = visualsPage
+
+local fovSection = createSection(visualsPage, "Camera FOV", 0, 0, 230, 90)
+local fovEnabled, customFOV, fovConnection = false, 70, nil
+createCheckbox(fovSection, "Enabled", 8, 16, false, function(e)
+    fovEnabled = e
+    local camera = Workspace.CurrentCamera
+    if e then
+        if fovConnection then fovConnection:Disconnect() end
+        fovConnection = RunService.RenderStepped:Connect(function() if isUnloading then return end; if fovEnabled and camera then camera.FieldOfView = customFOV end end)
+        table.insert(allConnections, fovConnection)
+        statusLabel.Text = "✓ FOV: " .. customFOV
+    else
+        if fovConnection then fovConnection:Disconnect(); fovConnection = nil end
+        if camera then camera.FieldOfView = 70 end
+        statusLabel.Text = "✓ FOV reset"
+    end
+end)
+createSlider(fovSection, "FOV Amount:", 8, 40, 30, 120, 70, function(v) customFOV = v; if fovEnabled then local c = Workspace.CurrentCamera; if c then c.FieldOfView = v end end end)
+
+local worldSection = createSection(visualsPage, "World Effects", 0, 100, 230, 90)
+createCheckbox(worldSection, "Fullbright", 8, 16, false, function(e) fullbrightEnabled[player.UserId] = e; if e then enableFullbright(player); statusLabel.Text = "✓ Fullbright ON" else disableFullbright(player); statusLabel.Text = "✓ Fullbright OFF" end end)
+createCheckbox(worldSection, "No Fog", 8, 36, false, function(e) noFogEnabled[player.UserId] = e; if e then enableNoFog(player); statusLabel.Text = "✓ No Fog ON" else disableNoFog(player); statusLabel.Text = "✓ No Fog OFF" end end)
+
+local crosshairSection = createSection(visualsPage, "Custom Crosshair", 245, 0, 230, 200)
+createCheckbox(crosshairSection, "Enabled", 8, 16, false, function(e) crosshairEnabled[player.UserId] = e; crosshairFrame.Visible = e; if e then updateCrosshair(); statusLabel.Text = "✓ Crosshair ON" else statusLabel.Text = "✓ Crosshair OFF" end end)
+createDropdown(crosshairSection, "Style", 8, 38, {"Cross", "Cross + Dot", "Dot", "Circle", "T-Shape"}, "Cross", function(v) crosshairSettings[player.UserId].style = v; if crosshairEnabled[player.UserId] then updateCrosshair() end end)
+createSlider(crosshairSection, "Size:", 8, 82, 5, 30, 10, function(v) crosshairSettings[player.UserId].size = v; if crosshairEnabled[player.UserId] then updateCrosshair() end end)
+createSlider(crosshairSection, "Thickness:", 8, 120, 1, 6, 2, function(v) crosshairSettings[player.UserId].thickness = v; if crosshairEnabled[player.UserId] then updateCrosshair() end end)
+createSlider(crosshairSection, "Gap:", 8, 158, 0, 15, 4, function(v) crosshairSettings[player.UserId].gap = v; if crosshairEnabled[player.UserId] then updateCrosshair() end end)
+createCheckbox(crosshairSection, "Outline", 120, 16, true, function(e) crosshairSettings[player.UserId].outline = e; if crosshairEnabled[player.UserId] then updateCrosshair() end end)
+
+-- MOVEMENT TAB
+local movementPage = Instance.new("Frame")
+movementPage.Name = "MovementPage"
+movementPage.Size = UDim2.new(1, 0, 1, 0)
+movementPage.BackgroundTransparency = 1
+movementPage.Visible = false
+movementPage.Parent = contentArea
+tabPages["Movement"] = movementPage
+
+local charSection = createSection(movementPage, "Character", 0, 0, 230, 200)
+createCheckbox(charSection, "Speed Boost", 8, 16, false, function(e) local c = player.Character; if c then local h = c:FindFirstChild("Humanoid"); if h then h.WalkSpeed = e and 100 or 16 end end; statusLabel.Text = e and "✓ Speed ON" or "✓ Speed OFF" end)
+createCheckbox(charSection, "High Jump", 8, 36, false, function(e) local c = player.Character; if c then local h = c:FindFirstChild("Humanoid"); if h then h.JumpPower = e and 150 or 50 end end; statusLabel.Text = e and "✓ Jump ON" or "✓ Jump OFF" end)
+createCheckbox(charSection, "Bunny Hop", 8, 56, false, function(e) bunnyHopEnabled[player.UserId] = e; statusLabel.Text = e and "✓ Bunny Hop ON" or "✓ Bunny Hop OFF" end)
+createSlider(charSection, "Walk Speed:", 8, 80, 16, 200, 16, function(v) local c = player.Character; if c then local h = c:FindFirstChild("Humanoid"); if h then h.WalkSpeed = v end end end)
+createSlider(charSection, "Jump Power:", 8, 118, 50, 300, 50, function(v) local c = player.Character; if c then local h = c:FindFirstChild("Humanoid"); if h then h.JumpPower = v end end end)
+
+local flySection = createSection(movementPage, "Fly & Movement", 245, 0, 230, 230)
+flyEnabled[player.UserId] = false
+flySpeed[player.UserId] = 50
+local spinBotEnabled = false
+local spinSpeed = 10
+
+local function startFly()
+    local char = player.Character
+    if not char then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    local humanoid = char:FindFirstChild("Humanoid")
+    if not hrp or not humanoid then return end
+    if bodyVelocity[player.UserId] then bodyVelocity[player.UserId]:Destroy() end
+    if bodyGyro[player.UserId] then bodyGyro[player.UserId]:Destroy() end
+    local bv = Instance.new("BodyVelocity")
+    bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+    bv.Velocity = Vector3.new(0, 0, 0)
+    bv.Parent = hrp
+    bodyVelocity[player.UserId] = bv
+    local bg = Instance.new("BodyGyro")
+    bg.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+    bg.P = 9e4
+    bg.CFrame = hrp.CFrame
+    bg.Parent = hrp
+    bodyGyro[player.UserId] = bg
+    humanoid.PlatformStand = true
+end
+
+local function stopFly()
+    local char = player.Character
+    if char then local h = char:FindFirstChild("Humanoid"); if h then h.PlatformStand = false end end
+    if bodyVelocity[player.UserId] then bodyVelocity[player.UserId]:Destroy(); bodyVelocity[player.UserId] = nil end
+    if bodyGyro[player.UserId] then bodyGyro[player.UserId]:Destroy(); bodyGyro[player.UserId] = nil end
+end
+
+local function toggleFly()
+    flyEnabled[player.UserId] = not flyEnabled[player.UserId]
+    if flyEnabled[player.UserId] then startFly(); statusLabel.Text = "✓ Fly ON" else stopFly(); statusLabel.Text = "✓ Fly OFF" end
+end
+
+createCheckbox(flySection, "Fly Enabled", 8, 16, false, function(e) flyEnabled[player.UserId] = e; if e then startFly(); statusLabel.Text = "✓ Fly ON" else stopFly(); statusLabel.Text = "✓ Fly OFF" end end)
+createSlider(flySection, "Fly Speed:", 8, 40, 10, 200, 50, function(v) flySpeed[player.UserId] = v end)
+createCheckbox(flySection, "Noclip", 8, 78, false, function(e) noclipEnabled[player.UserId] = e; statusLabel.Text = e and "✓ Noclip ON" or "✓ Noclip OFF" end)
+createCheckbox(flySection, "Spin Bot", 8, 98, false, function(e) spinBotEnabled = e; statusLabel.Text = e and "✓ Spin Bot ON" or "✓ Spin Bot OFF" end)
+createSlider(flySection, "Spin Speed:", 8, 118, 1, 50, 10, function(v) spinSpeed = v end)
+createKeybindButton(flySection, "Fly Toggle:", 8, 152, Enum.KeyCode.F, "fly_toggle", toggleFly)
+createKeybindButton(flySection, "Noclip Toggle:", 8, 185, Enum.KeyCode.V, "noclip_toggle", function() noclipEnabled[player.UserId] = not noclipEnabled[player.UserId]; statusLabel.Text = noclipEnabled[player.UserId] and "✓ Noclip ON" or "✓ Noclip OFF" end)
+
+local flyMoveConn = RunService.RenderStepped:Connect(function()
+    if isUnloading then return end
+    if flyEnabled[player.UserId] then
         local char = player.Character
         if not char then return end
         local hrp = char:FindFirstChild("HumanoidRootPart")
-        local humanoid = char:FindFirstChild("Humanoid")
-        if not hrp or not humanoid then return end
-        if bodyVelocity[player.UserId] then bodyVelocity[player.UserId]:Destroy() end
-        if bodyGyro[player.UserId] then bodyGyro[player.UserId]:Destroy() end
-        local bv = Instance.new("BodyVelocity")
-        bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-        bv.Velocity = Vector3.new(0, 0, 0)
-        bv.Parent = hrp
-        bodyVelocity[player.UserId] = bv
-        local bg = Instance.new("BodyGyro")
-        bg.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
-        bg.P = 9e4
-        bg.CFrame = hrp.CFrame
-        bg.Parent = hrp
-        bodyGyro[player.UserId] = bg
-        humanoid.PlatformStand = true
+        local camera = Workspace.CurrentCamera
+        if not hrp or not camera then return end
+        local bv, bg = bodyVelocity[player.UserId], bodyGyro[player.UserId]
+        if not bv or not bg then return end
+        local speed = flySpeed[player.UserId] or 50
+        local direction = Vector3.new(0, 0, 0)
+        if UserInputService:IsKeyDown(Enum.KeyCode.W) then direction = direction + camera.CFrame.LookVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.S) then direction = direction - camera.CFrame.LookVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.A) then direction = direction - camera.CFrame.RightVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.D) then direction = direction + camera.CFrame.RightVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.Space) then direction = direction + Vector3.new(0, 1, 0) end
+        if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then direction = direction - Vector3.new(0, 1, 0) end
+        if direction.Magnitude > 0 then direction = direction.Unit end
+        bv.Velocity = direction * speed
+        bg.CFrame = camera.CFrame
     end
-    
-    local function stopFly()
+    if noclipEnabled[player.UserId] then
         local char = player.Character
-        if char then local h = char:FindFirstChild("Humanoid"); if h then h.PlatformStand = false end end
-        if bodyVelocity[player.UserId] then bodyVelocity[player.UserId]:Destroy(); bodyVelocity[player.UserId] = nil end
-        if bodyGyro[player.UserId] then bodyGyro[player.UserId]:Destroy(); bodyGyro[player.UserId] = nil end
+        if char then for _, part in ipairs(char:GetDescendants()) do if part:IsA("BasePart") then part.CanCollide = false end end end
     end
-    
-    local function toggleFly()
-        flyEnabled[player.UserId] = not flyEnabled[player.UserId]
-        if flyEnabled[player.UserId] then startFly(); statusLabel.Text = "✓ Fly ON" else stopFly(); statusLabel.Text = "✓ Fly OFF" end
+    if spinBotEnabled then
+        local char = player.Character
+        if char then local hrp = char:FindFirstChild("HumanoidRootPart"); if hrp then hrp.CFrame = hrp.CFrame * CFrame.Angles(0, math.rad(spinSpeed), 0) end end
     end
-    
-    createCheckbox(flySection, "Fly Enabled", 8, 16, false, function(e) flyEnabled[player.UserId] = e; if e then startFly(); statusLabel.Text = "✓ Fly ON" else stopFly(); statusLabel.Text = "✓ Fly OFF" end end)
-    createSlider(flySection, "Fly Speed:", 8, 40, 10, 200, 50, function(v) flySpeed[player.UserId] = v end)
-    createCheckbox(flySection, "Noclip", 8, 78, false, function(e) noclipEnabled[player.UserId] = e; statusLabel.Text = e and "✓ Noclip ON" or "✓ Noclip OFF" end)
-    createCheckbox(flySection, "Spin Bot", 8, 98, false, function(e) spinBotEnabled = e; statusLabel.Text = e and "✓ Spin Bot ON" or "✓ Spin Bot OFF" end)
-    createSlider(flySection, "Spin Speed:", 8, 118, 1, 50, 10, function(v) spinSpeed = v end)
-    createKeybindButton(flySection, "Fly Toggle:", 8, 152, Enum.KeyCode.F, "fly_toggle", toggleFly)
-    createKeybindButton(flySection, "Noclip Toggle:", 8, 185, Enum.KeyCode.V, "noclip_toggle", function() noclipEnabled[player.UserId] = not noclipEnabled[player.UserId]; statusLabel.Text = noclipEnabled[player.UserId] and "✓ Noclip ON" or "✓ Noclip OFF" end)
-    
-    local flyMoveConn = RunService.RenderStepped:Connect(function()
-        if isUnloading then return end
-        if flyEnabled[player.UserId] then
-            local char = player.Character
-            if not char then return end
-            local hrp = char:FindFirstChild("HumanoidRootPart")
-            local camera = Workspace.CurrentCamera
-            if not hrp or not camera then return end
-            local bv, bg = bodyVelocity[player.UserId], bodyGyro[player.UserId]
-            if not bv or not bg then return end
-            local speed = flySpeed[player.UserId] or 50
-            local direction = Vector3.new(0, 0, 0)
-            if UserInputService:IsKeyDown(Enum.KeyCode.W) then direction = direction + camera.CFrame.LookVector end
-            if UserInputService:IsKeyDown(Enum.KeyCode.S) then direction = direction - camera.CFrame.LookVector end
-            if UserInputService:IsKeyDown(Enum.KeyCode.A) then direction = direction - camera.CFrame.RightVector end
-            if UserInputService:IsKeyDown(Enum.KeyCode.D) then direction = direction + camera.CFrame.RightVector end
-            if UserInputService:IsKeyDown(Enum.KeyCode.Space) then direction = direction + Vector3.new(0, 1, 0) end
-            if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then direction = direction - Vector3.new(0, 1, 0) end
-            if direction.Magnitude > 0 then direction = direction.Unit end
-            bv.Velocity = direction * speed
-            bg.CFrame = camera.CFrame
-        end
-        if noclipEnabled[player.UserId] then
-            local char = player.Character
-            if char then for _, part in ipairs(char:GetDescendants()) do if part:IsA("BasePart") then part.CanCollide = false end end end
-        end
-        if spinBotEnabled then
-            local char = player.Character
-            if char then local hrp = char:FindFirstChild("HumanoidRootPart"); if hrp then hrp.CFrame = hrp.CFrame * CFrame.Angles(0, math.rad(spinSpeed), 0) end end
-        end
-    end)
-    table.insert(allConnections, flyMoveConn)
-    
-    local bunnyHopConn = RunService.RenderStepped:Connect(function()
-        if isUnloading then return end
-        if bunnyHopEnabled[player.UserId] and UserInputService:IsKeyDown(Enum.KeyCode.Space) then
-            local char = player.Character
-            if char then local h = char:FindFirstChild("Humanoid"); if h and h:GetState() ~= Enum.HumanoidStateType.Jumping and h:GetState() ~= Enum.HumanoidStateType.Freefall then h:ChangeState(Enum.HumanoidStateType.Jumping) end end
-        end
-    end)
-    table.insert(allConnections, bunnyHopConn)
-    
-    local serverSection = createSection(movementPage, "Server", 0, 210, 230, 130)
-    local rejoinBtn = Instance.new("TextButton")
-    rejoinBtn.Size = UDim2.new(0, 210, 0, 28)
-    rejoinBtn.Position = UDim2.new(0, 8, 0, 18)
-    rejoinBtn.BackgroundColor3 = Colors.Accent
-    rejoinBtn.BackgroundTransparency = 0.3
-    rejoinBtn.Text = "🔁 Rejoin Server"
-    rejoinBtn.TextColor3 = Colors.Text
-    rejoinBtn.TextSize = 11
-    rejoinBtn.Font = Enum.Font.GothamBold
-    rejoinBtn.Parent = serverSection
-    local rjc = Instance.new("UICorner"); rjc.CornerRadius = UDim.new(0, 4); rjc.Parent = rejoinBtn
-    rejoinBtn.MouseButton1Click:Connect(function() statusLabel.Text = "🔁 Rejoining..."; pcall(function() TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, player) end) end)
-    
-    local serverHopBtn = Instance.new("TextButton")
-    serverHopBtn.Size = UDim2.new(0, 210, 0, 28)
-    serverHopBtn.Position = UDim2.new(0, 8, 0, 52)
-    serverHopBtn.BackgroundColor3 = Colors.Accent
-    serverHopBtn.BackgroundTransparency = 0.3
-    serverHopBtn.Text = "🔄 Server Hop"
-    serverHopBtn.TextColor3 = Colors.Text
-    serverHopBtn.TextSize = 11
-    serverHopBtn.Font = Enum.Font.GothamBold
-    serverHopBtn.Parent = serverSection
-    local shc = Instance.new("UICorner"); shc.CornerRadius = UDim.new(0, 4); shc.Parent = serverHopBtn
-    serverHopBtn.MouseButton1Click:Connect(function() statusLabel.Text = "🔄 Hopping..."; pcall(function() TeleportService:Teleport(game.PlaceId, player) end) end)
-    
-    local randomBtn = Instance.new("TextButton")
-    randomBtn.Size = UDim2.new(0, 210, 0, 28)
-    randomBtn.Position = UDim2.new(0, 8, 0, 86)
-    randomBtn.BackgroundColor3 = Colors.Accent
-    randomBtn.BackgroundTransparency = 0.3
-    randomBtn.Text = "🎲 Random Server"
-    randomBtn.TextColor3 = Colors.Text
-    randomBtn.TextSize = 11
-    randomBtn.Font = Enum.Font.GothamBold
-    randomBtn.Parent = serverSection
-    local rbc = Instance.new("UICorner"); rbc.CornerRadius = UDim.new(0, 4); rbc.Parent = randomBtn
-    randomBtn.MouseButton1Click:Connect(function() statusLabel.Text = "🎲 Joining random..."; pcall(function() TeleportService:Teleport(game.PlaceId, player) end) end)
+end)
+table.insert(allConnections, flyMoveConn)
 
-    -- COMBAT TAB
-    local combatPage = Instance.new("Frame")
-    combatPage.Name = "CombatPage"
-    combatPage.Size = UDim2.new(1, 0, 1, 0)
-    combatPage.BackgroundTransparency = 1
-    combatPage.Visible = false
-    combatPage.Parent = contentArea
-    tabPages["Combat"] = combatPage
-    
-    noRecoilEnabled[player.UserId] = false
-    noSpreadEnabled[player.UserId] = false
-    rapidFireEnabled[player.UserId] = false
-    infiniteAmmoEnabled[player.UserId] = false
-    
-    local weaponSection = createSection(combatPage, "Weapon Mods", 0, 0, 230, 160)
-    createCheckbox(weaponSection, "No Recoil", 8, 16, false, function(e) noRecoilEnabled[player.UserId] = e; statusLabel.Text = e and "✓ No Recoil ON" or "✓ No Recoil OFF" end)
-    createCheckbox(weaponSection, "No Spread", 8, 36, false, function(e) noSpreadEnabled[player.UserId] = e; statusLabel.Text = e and "✓ No Spread ON" or "✓ No Spread OFF" end)
-    createCheckbox(weaponSection, "Rapid Fire", 8, 56, false, function(e) rapidFireEnabled[player.UserId] = e; statusLabel.Text = e and "✓ Rapid Fire ON" or "✓ Rapid Fire OFF" end)
-    createCheckbox(weaponSection, "Infinite Ammo", 8, 76, false, function(e) infiniteAmmoEnabled[player.UserId] = e; statusLabel.Text = e and "✓ Infinite Ammo ON" or "✓ Infinite Ammo OFF" end)
-    
-    task.spawn(function()
-        while true do
-            task.wait(0.1)
-            if isUnloading then break end
-            if infiniteAmmoEnabled[player.UserId] then
-                pcall(function()
-                    local char = player.Character
-                    if char then
-                        for _, tool in ipairs(char:GetChildren()) do
-                            if tool:IsA("Tool") then
-                                for _, desc in ipairs(tool:GetDescendants()) do
-                                    if (desc.Name:lower():find("ammo") or desc.Name:lower():find("clip") or desc.Name:lower():find("magazine")) and (desc:IsA("NumberValue") or desc:IsA("IntValue")) then
-                                        if desc.Value < 999 then desc.Value = 999 end
-                                    end
+local bunnyHopConn = RunService.RenderStepped:Connect(function()
+    if isUnloading then return end
+    if bunnyHopEnabled[player.UserId] and UserInputService:IsKeyDown(Enum.KeyCode.Space) then
+        local char = player.Character
+        if char then local h = char:FindFirstChild("Humanoid"); if h and h:GetState() ~= Enum.HumanoidStateType.Jumping and h:GetState() ~= Enum.HumanoidStateType.Freefall then h:ChangeState(Enum.HumanoidStateType.Jumping) end end
+    end
+end)
+table.insert(allConnections, bunnyHopConn)
+
+local serverSection = createSection(movementPage, "Server", 0, 210, 230, 130)
+local rejoinBtn = Instance.new("TextButton")
+rejoinBtn.Size = UDim2.new(0, 210, 0, 28)
+rejoinBtn.Position = UDim2.new(0, 8, 0, 18)
+rejoinBtn.BackgroundColor3 = Colors.Accent
+rejoinBtn.BackgroundTransparency = 0.3
+rejoinBtn.Text = "🔁 Rejoin Server"
+rejoinBtn.TextColor3 = Colors.Text
+rejoinBtn.TextSize = 11
+rejoinBtn.Font = Enum.Font.GothamBold
+rejoinBtn.Parent = serverSection
+local rjc = Instance.new("UICorner"); rjc.CornerRadius = UDim.new(0, 4); rjc.Parent = rejoinBtn
+rejoinBtn.MouseButton1Click:Connect(function() statusLabel.Text = "🔁 Rejoining..."; pcall(function() TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, player) end) end)
+
+local serverHopBtn = Instance.new("TextButton")
+serverHopBtn.Size = UDim2.new(0, 210, 0, 28)
+serverHopBtn.Position = UDim2.new(0, 8, 0, 52)
+serverHopBtn.BackgroundColor3 = Colors.Accent
+serverHopBtn.BackgroundTransparency = 0.3
+serverHopBtn.Text = "🔄 Server Hop"
+serverHopBtn.TextColor3 = Colors.Text
+serverHopBtn.TextSize = 11
+serverHopBtn.Font = Enum.Font.GothamBold
+serverHopBtn.Parent = serverSection
+local shc = Instance.new("UICorner"); shc.CornerRadius = UDim.new(0, 4); shc.Parent = serverHopBtn
+serverHopBtn.MouseButton1Click:Connect(function() statusLabel.Text = "🔄 Hopping..."; pcall(function() TeleportService:Teleport(game.PlaceId, player) end) end)
+
+local randomBtn = Instance.new("TextButton")
+randomBtn.Size = UDim2.new(0, 210, 0, 28)
+randomBtn.Position = UDim2.new(0, 8, 0, 86)
+randomBtn.BackgroundColor3 = Colors.Accent
+randomBtn.BackgroundTransparency = 0.3
+randomBtn.Text = "🎲 Random Server"
+randomBtn.TextColor3 = Colors.Text
+randomBtn.TextSize = 11
+randomBtn.Font = Enum.Font.GothamBold
+randomBtn.Parent = serverSection
+local rbc = Instance.new("UICorner"); rbc.CornerRadius = UDim.new(0, 4); rbc.Parent = randomBtn
+randomBtn.MouseButton1Click:Connect(function() statusLabel.Text = "🎲 Joining random..."; pcall(function() TeleportService:Teleport(game.PlaceId, player) end) end)
+
+-- ============================================
+-- COMBAT TAB (WITH NEW GUN MODS)
+-- ============================================
+local combatPage = Instance.new("Frame")
+combatPage.Name = "CombatPage"
+combatPage.Size = UDim2.new(1, 0, 1, 0)
+combatPage.BackgroundTransparency = 1
+combatPage.Visible = false
+combatPage.Parent = contentArea
+tabPages["Combat"] = combatPage
+
+noRecoilEnabled[player.UserId] = false
+noSpreadEnabled[player.UserId] = false
+rapidFireEnabled[player.UserId] = false
+infiniteAmmoEnabled[player.UserId] = false
+
+-- ORIGINAL WEAPON MODS SECTION
+local weaponSection = createSection(combatPage, "Weapon Mods", 0, 0, 230, 160)
+createCheckbox(weaponSection, "No Recoil", 8, 16, false, function(e) noRecoilEnabled[player.UserId] = e; statusLabel.Text = e and "✓ No Recoil ON" or "✓ No Recoil OFF" end)
+createCheckbox(weaponSection, "No Spread", 8, 36, false, function(e) noSpreadEnabled[player.UserId] = e; statusLabel.Text = e and "✓ No Spread ON" or "✓ No Spread OFF" end)
+createCheckbox(weaponSection, "Rapid Fire", 8, 56, false, function(e) rapidFireEnabled[player.UserId] = e; statusLabel.Text = e and "✓ Rapid Fire ON" or "✓ Rapid Fire OFF" end)
+createCheckbox(weaponSection, "Infinite Ammo", 8, 76, false, function(e) infiniteAmmoEnabled[player.UserId] = e; statusLabel.Text = e and "✓ Infinite Ammo ON" or "✓ Infinite Ammo OFF" end)
+
+task.spawn(function()
+    while true do
+        task.wait(0.1)
+        if isUnloading then break end
+        if infiniteAmmoEnabled[player.UserId] then
+            pcall(function()
+                local char = player.Character
+                if char then
+                    for _, tool in ipairs(char:GetChildren()) do
+                        if tool:IsA("Tool") then
+                            for _, desc in ipairs(tool:GetDescendants()) do
+                                if (desc.Name:lower():find("ammo") or desc.Name:lower():find("clip") or desc.Name:lower():find("magazine")) and (desc:IsA("NumberValue") or desc:IsA("IntValue")) then
+                                    if desc.Value < 999 then desc.Value = 999 end
                                 end
                             end
                         end
                     end
-                end)
-            end
+                end
+            end)
         end
-    end)
-    
-    local combatInfoSection = createSection(combatPage, "Info", 0, 170, 230, 80)
-    local infoLabel = Instance.new("TextLabel")
-    infoLabel.Size = UDim2.new(1, -16, 1, -20)
-    infoLabel.Position = UDim2.new(0, 8, 0, 16)
-    infoLabel.BackgroundTransparency = 1
-    infoLabel.Text = "⚠ Weapon mods work on\ncompatible gun systems.\nResults may vary by game."
-    infoLabel.TextColor3 = Colors.TextDim
-    infoLabel.TextSize = 10
-    infoLabel.Font = Enum.Font.Gotham
-    infoLabel.TextWrapped = true
-    infoLabel.TextXAlignment = Enum.TextXAlignment.Left
-    infoLabel.TextYAlignment = Enum.TextYAlignment.Top
-    infoLabel.Parent = combatInfoSection
-    
-    local chatSection = createSection(combatPage, "Chat Spammer", 245, 0, 230, 250)
-    local chatSpamEnabled = false
-    local chatSpamDelay = 1
-    local chatSpamMessage = "Binxix's GUI is the best!"
-    
-    local msgLabel = Instance.new("TextLabel")
-    msgLabel.Size = UDim2.new(1, -16, 0, 14)
-    msgLabel.Position = UDim2.new(0, 8, 0, 18)
-    msgLabel.BackgroundTransparency = 1
-    msgLabel.Text = "Message:"
-    msgLabel.TextColor3 = Colors.TextDim
-    msgLabel.TextSize = 10
-    msgLabel.Font = Enum.Font.Gotham
-    msgLabel.TextXAlignment = Enum.TextXAlignment.Left
-    msgLabel.Parent = chatSection
-    
-    local msgInputBox = Instance.new("TextBox")
-    msgInputBox.Size = UDim2.new(1, -16, 0, 28)
-    msgInputBox.Position = UDim2.new(0, 8, 0, 34)
-    msgInputBox.BackgroundColor3 = Colors.BackgroundLight
-    msgInputBox.BorderSizePixel = 0
-    msgInputBox.Text = chatSpamMessage
-    msgInputBox.PlaceholderText = "Enter message..."
-    msgInputBox.TextColor3 = Colors.Text
-    msgInputBox.PlaceholderColor3 = Colors.TextDim
-    msgInputBox.TextSize = 10
-    msgInputBox.Font = Enum.Font.Gotham
-    msgInputBox.TextXAlignment = Enum.TextXAlignment.Left
-    msgInputBox.ClearTextOnFocus = false
-    msgInputBox.Parent = chatSection
-    local mic = Instance.new("UICorner"); mic.CornerRadius = UDim.new(0, 4); mic.Parent = msgInputBox
-    local mip = Instance.new("UIPadding"); mip.PaddingLeft = UDim.new(0, 8); mip.Parent = msgInputBox
-    msgInputBox.FocusLost:Connect(function() chatSpamMessage = msgInputBox.Text end)
-    
-    createSlider(chatSection, "Delay (sec):", 8, 70, 0.5, 10, 1, function(v) chatSpamDelay = v end)
-    createCheckbox(chatSection, "Enable Spam", 8, 108, false, function(e) chatSpamEnabled = e; statusLabel.Text = e and "✓ Chat Spam ON" or "✓ Chat Spam OFF" end)
-    
-    task.spawn(function()
-        while true do
-            task.wait(chatSpamDelay)
-            if isUnloading then break end
-            if chatSpamEnabled and chatSpamMessage ~= "" then
-                pcall(function()
-                    local ReplicatedStorage = game:GetService("ReplicatedStorage")
-                    local chatEvents = ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents")
-                    if chatEvents then
-                        local sayEvent = chatEvents:FindFirstChild("SayMessageRequest")
-                        if sayEvent then sayEvent:FireServer(chatSpamMessage, "All"); return end
-                    end
-                    local TextChatService = game:GetService("TextChatService")
-                    local channels = TextChatService:FindFirstChild("TextChannels")
-                    if channels then
-                        local general = channels:FindFirstChild("RBXGeneral")
-                        if general then general:SendAsync(chatSpamMessage) end
-                    end
-                end)
-            end
-        end
-    end)
-    
-    local quickMsgLabel = Instance.new("TextLabel")
-    quickMsgLabel.Size = UDim2.new(1, -16, 0, 14)
-    quickMsgLabel.Position = UDim2.new(0, 8, 0, 140)
-    quickMsgLabel.BackgroundTransparency = 1
-    quickMsgLabel.Text = "Quick Messages:"
-    quickMsgLabel.TextColor3 = Colors.TextDim
-    quickMsgLabel.TextSize = 10
-    quickMsgLabel.Font = Enum.Font.Gotham
-    quickMsgLabel.TextXAlignment = Enum.TextXAlignment.Left
-    quickMsgLabel.Parent = chatSection
-    
-    local quickMessages = {"GG", "EZ", "LOL", "Nice!", "Binxix on top"}
-    for i, msg in ipairs(quickMessages) do
-        local row = math.floor((i-1) / 3)
-        local col = (i-1) % 3
-        local quickBtn = Instance.new("TextButton")
-        quickBtn.Size = UDim2.new(0, 65, 0, 22)
-        quickBtn.Position = UDim2.new(0, 8 + col * 69, 0, 156 + row * 26)
-        quickBtn.BackgroundColor3 = Colors.Accent
-        quickBtn.BackgroundTransparency = 0.5
-        quickBtn.Text = msg
-        quickBtn.TextColor3 = Colors.Text
-        quickBtn.TextSize = 9
-        quickBtn.Font = Enum.Font.GothamMedium
-        quickBtn.Parent = chatSection
-        local qc = Instance.new("UICorner"); qc.CornerRadius = UDim.new(0, 4); qc.Parent = quickBtn
-        quickBtn.MouseButton1Click:Connect(function()
+    end
+end)
+
+-- NEW GUN MODS SECTION (FROM QUOTAS HUB)
+local gunModSection = createSection(combatPage, "Gun Mods (Quotas)", 0, 170, 230, 120)
+
+createCheckbox(gunModSection, "Recoil Mod", 8, 16, false, function(e)
+    recoilModEnabled[player.UserId] = e
+    if e then
+        startRecoilMod(player)
+        statusLabel.Text = "🔫 Recoil Mod ON"
+    else
+        stopRecoilMod(player)
+        statusLabel.Text = "🔫 Recoil Mod OFF"
+    end
+end)
+
+createCheckbox(gunModSection, "FireRate Mod", 8, 36, false, function(e)
+    fireRateModEnabled[player.UserId] = e
+    if e then
+        startFireRateMod(player)
+        statusLabel.Text = "🔫 FireRate Mod ON"
+    else
+        stopFireRateMod(player)
+        statusLabel.Text = "🔫 FireRate Mod OFF"
+    end
+end)
+
+createCheckbox(gunModSection, "Ammo Mod", 8, 56, false, function(e)
+    ammoModEnabled[player.UserId] = e
+    if e then
+        startAmmoMod(player)
+        statusLabel.Text = "🔫 Ammo Mod ON"
+    else
+        stopAmmoMod(player)
+        statusLabel.Text = "🔫 Ammo Mod OFF"
+    end
+end)
+
+-- Info text for gun mods
+local gunModInfo = Instance.new("TextLabel")
+gunModInfo.Size = UDim2.new(1, -16, 0, 30)
+gunModInfo.Position = UDim2.new(0, 8, 0, 80)
+gunModInfo.BackgroundTransparency = 1
+gunModInfo.Text = "⚠ Works with specific gun\nsystems (ReplicatedStorage)"
+gunModInfo.TextColor3 = Colors.TextDim
+gunModInfo.TextSize = 9
+gunModInfo.Font = Enum.Font.Gotham
+gunModInfo.TextWrapped = true
+gunModInfo.TextXAlignment = Enum.TextXAlignment.Left
+gunModInfo.TextYAlignment = Enum.TextYAlignment.Top
+gunModInfo.Parent = gunModSection
+
+local combatInfoSection = createSection(combatPage, "Info", 245, 0, 230, 80)
+local infoLabel = Instance.new("TextLabel")
+infoLabel.Size = UDim2.new(1, -16, 1, -20)
+infoLabel.Position = UDim2.new(0, 8, 0, 16)
+infoLabel.BackgroundTransparency = 1
+infoLabel.Text = "⚠ Weapon mods work on\ncompatible gun systems.\nResults may vary by game."
+infoLabel.TextColor3 = Colors.TextDim
+infoLabel.TextSize = 10
+infoLabel.Font = Enum.Font.Gotham
+infoLabel.TextWrapped = true
+infoLabel.TextXAlignment = Enum.TextXAlignment.Left
+infoLabel.TextYAlignment = Enum.TextYAlignment.Top
+infoLabel.Parent = combatInfoSection
+
+local chatSection = createSection(combatPage, "Chat Spammer", 245, 90, 230, 250)
+local chatSpamEnabled = false
+local chatSpamDelay = 1
+local chatSpamMessage = "Binxix's GUI is the best!"
+
+local msgLabel = Instance.new("TextLabel")
+msgLabel.Size = UDim2.new(1, -16, 0, 14)
+msgLabel.Position = UDim2.new(0, 8, 0, 18)
+msgLabel.BackgroundTransparency = 1
+msgLabel.Text = "Message:"
+msgLabel.TextColor3 = Colors.TextDim
+msgLabel.TextSize = 10
+msgLabel.Font = Enum.Font.Gotham
+msgLabel.TextXAlignment = Enum.TextXAlignment.Left
+msgLabel.Parent = chatSection
+
+local msgInputBox = Instance.new("TextBox")
+msgInputBox.Size = UDim2.new(1, -16, 0, 28)
+msgInputBox.Position = UDim2.new(0, 8, 0, 34)
+msgInputBox.BackgroundColor3 = Colors.BackgroundLight
+msgInputBox.BorderSizePixel = 0
+msgInputBox.Text = chatSpamMessage
+msgInputBox.PlaceholderText = "Enter message..."
+msgInputBox.TextColor3 = Colors.Text
+msgInputBox.PlaceholderColor3 = Colors.TextDim
+msgInputBox.TextSize = 10
+msgInputBox.Font = Enum.Font.Gotham
+msgInputBox.TextXAlignment = Enum.TextXAlignment.Left
+msgInputBox.ClearTextOnFocus = false
+msgInputBox.Parent = chatSection
+local mic = Instance.new("UICorner"); mic.CornerRadius = UDim.new(0, 4); mic.Parent = msgInputBox
+local mip = Instance.new("UIPadding"); mip.PaddingLeft = UDim.new(0, 8); mip.Parent = msgInputBox
+msgInputBox.FocusLost:Connect(function() chatSpamMessage = msgInputBox.Text end)
+
+createSlider(chatSection, "Delay (sec):", 8, 70, 0.5, 10, 1, function(v) chatSpamDelay = v end)
+createCheckbox(chatSection, "Enable Spam", 8, 108, false, function(e) chatSpamEnabled = e; statusLabel.Text = e and "✓ Chat Spam ON" or "✓ Chat Spam OFF" end)
+
+task.spawn(function()
+    while true do
+        task.wait(chatSpamDelay)
+        if isUnloading then break end
+        if chatSpamEnabled and chatSpamMessage ~= "" then
             pcall(function()
-                local ReplicatedStorage = game:GetService("ReplicatedStorage")
                 local chatEvents = ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents")
-                if chatEvents then local sayEvent = chatEvents:FindFirstChild("SayMessageRequest"); if sayEvent then sayEvent:FireServer(msg, "All"); statusLabel.Text = "💬 Sent: " .. msg; return end end
+                if chatEvents then
+                    local sayEvent = chatEvents:FindFirstChild("SayMessageRequest")
+                    if sayEvent then sayEvent:FireServer(chatSpamMessage, "All"); return end
+                end
                 local TextChatService = game:GetService("TextChatService")
                 local channels = TextChatService:FindFirstChild("TextChannels")
-                if channels then local general = channels:FindFirstChild("RBXGeneral"); if general then general:SendAsync(msg); statusLabel.Text = "💬 Sent: " .. msg end end
-            end)
-        end)
-    end
-    
-    -- Tab switching
-    for tabName, tabBtn in pairs(tabButtons) do
-        tabBtn.MouseButton1Click:Connect(function()
-            if isUnloading then return end
-            for name, btn in pairs(tabButtons) do
-                btn.BackgroundColor3 = name == tabName and Colors.Accent or Colors.BackgroundLight
-                btn.BackgroundTransparency = name == tabName and 0.5 or 0.7
-                btn.TextColor3 = name == tabName and Colors.Text or Colors.TextDim
-            end
-            for name, page in pairs(tabPages) do page.Visible = name == tabName end
-        end)
-    end
-    
-    -- Input handlers
-    local inputBeganConn = UserInputService.InputBegan:Connect(function(input, gameProcessed)
-        if isUnloading then return end
-        if gameProcessed then return end
-        if input.KeyCode == Enum.KeyCode.RightControl then mainFrame.Visible = not mainFrame.Visible end
-        if input.UserInputType == Enum.UserInputType.MouseButton2 then
-            if trackingMode[player.UserId] == "hold" then 
-                startRMBTracking()
-            else
-                if toggleTrackingActive[player.UserId] then 
-                    toggleTrackingActive[player.UserId] = false
-                    stopRMBTrackingUI()
-                else 
-                    toggleTrackingActive[player.UserId] = true
-                    startRMBTracking() 
+                if channels then
+                    local general = channels:FindFirstChild("RBXGeneral")
+                    if general then general:SendAsync(chatSpamMessage) end
                 end
-            end
+            end)
         end
-    end)
-    table.insert(allConnections, inputBeganConn)
-    
-    local inputEndedConn = UserInputService.InputEnded:Connect(function(input)
-        if isUnloading then return end
-        if input.UserInputType == Enum.UserInputType.MouseButton2 then
-            if trackingMode[player.UserId] == "hold" then stopRMBTrackingUI() end
-        end
-    end)
-    table.insert(allConnections, inputEndedConn)
-    
-    -- Loaded Notification
-    local loadedNotif = Instance.new("TextLabel")
-    loadedNotif.Size = UDim2.new(0, 220, 0, 30)
-    loadedNotif.Position = UDim2.new(0.5, -110, 1, -40)
-    loadedNotif.BackgroundColor3 = Colors.Background
-    loadedNotif.BackgroundTransparency = 0.3
-    loadedNotif.BorderSizePixel = 0
-    loadedNotif.Text = "✓ Binxix's GUI V5 loaded"
-    loadedNotif.TextColor3 = Colors.AccentBright
-    loadedNotif.TextSize = 12
-    loadedNotif.Font = Enum.Font.GothamBold
-    loadedNotif.Parent = screenGui
-    local notifCorner = Instance.new("UICorner")
-    notifCorner.CornerRadius = UDim.new(0, 6)
-    notifCorner.Parent = loadedNotif
-    task.spawn(function()
-        task.wait(3)
-        for i = 0, 1, 0.05 do loadedNotif.BackgroundTransparency = 0.3 + (i * 0.7); loadedNotif.TextTransparency = i; task.wait(0.02) end
-        loadedNotif:Destroy()
+    end
+end)
+
+local quickMsgLabel = Instance.new("TextLabel")
+quickMsgLabel.Size = UDim2.new(1, -16, 0, 14)
+quickMsgLabel.Position = UDim2.new(0, 8, 0, 140)
+quickMsgLabel.BackgroundTransparency = 1
+quickMsgLabel.Text = "Quick Messages:"
+quickMsgLabel.TextColor3 = Colors.TextDim
+quickMsgLabel.TextSize = 10
+quickMsgLabel.Font = Enum.Font.Gotham
+quickMsgLabel.TextXAlignment = Enum.TextXAlignment.Left
+quickMsgLabel.Parent = chatSection
+
+local quickMessages = {"GG", "EZ", "LOL", "Nice!", "Binxix on top"}
+for i, msg in ipairs(quickMessages) do
+    local row = math.floor((i-1) / 3)
+    local col = (i-1) % 3
+    local quickBtn = Instance.new("TextButton")
+    quickBtn.Size = UDim2.new(0, 65, 0, 22)
+    quickBtn.Position = UDim2.new(0, 8 + col * 69, 0, 156 + row * 26)
+    quickBtn.BackgroundColor3 = Colors.Accent
+    quickBtn.BackgroundTransparency = 0.5
+    quickBtn.Text = msg
+    quickBtn.TextColor3 = Colors.Text
+    quickBtn.TextSize = 9
+    quickBtn.Font = Enum.Font.GothamMedium
+    quickBtn.Parent = chatSection
+    local qc = Instance.new("UICorner"); qc.CornerRadius = UDim.new(0, 4); qc.Parent = quickBtn
+    quickBtn.MouseButton1Click:Connect(function()
+        pcall(function()
+            local chatEvents = ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents")
+            if chatEvents then local sayEvent = chatEvents:FindFirstChild("SayMessageRequest"); if sayEvent then sayEvent:FireServer(msg, "All"); statusLabel.Text = "💬 Sent: " .. msg; return end end
+            local TextChatService = game:GetService("TextChatService")
+            local channels = TextChatService:FindFirstChild("TextChannels")
+            if channels then local general = channels:FindFirstChild("RBXGeneral"); if general then general:SendAsync(msg); statusLabel.Text = "💬 Sent: " .. msg end end
+        end)
     end)
 end
 
+-- Tab switching
+for tabName, tabBtn in pairs(tabButtons) do
+    tabBtn.MouseButton1Click:Connect(function()
+        if isUnloading then return end
+        for name, btn in pairs(tabButtons) do
+            btn.BackgroundColor3 = name == tabName and Colors.Accent or Colors.BackgroundLight
+            btn.BackgroundTransparency = name == tabName and 0.5 or 0.7
+            btn.TextColor3 = name == tabName and Colors.Text or Colors.TextDim
+        end
+        for name, page in pairs(tabPages) do page.Visible = name == tabName end
+    end)
+end
+
+-- Input handlers
+local inputBeganConn = UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if isUnloading then return end
+    if gameProcessed then return end
+    if input.KeyCode == Enum.KeyCode.RightControl then mainFrame.Visible = not mainFrame.Visible end
+    if input.UserInputType == Enum.UserInputType.MouseButton2 then
+        if trackingMode[player.UserId] == "hold" then 
+            startRMBTracking()
+        else
+            if toggleTrackingActive[player.UserId] then 
+                toggleTrackingActive[player.UserId] = false
+                stopRMBTrackingUI()
+            else 
+                toggleTrackingActive[player.UserId] = true
+                startRMBTracking() 
+            end
+        end
+    end
+end)
+table.insert(allConnections, inputBeganConn)
+
+local inputEndedConn = UserInputService.InputEnded:Connect(function(input)
+    if isUnloading then return end
+    if input.UserInputType == Enum.UserInputType.MouseButton2 then
+        if trackingMode[player.UserId] == "hold" then stopRMBTrackingUI() end
+    end
+end)
+table.insert(allConnections, inputEndedConn)
+
+-- Loaded Notification
+local loadedNotif = Instance.new("TextLabel")
+loadedNotif.Size = UDim2.new(0, 220, 0, 30)
+loadedNotif.Position = UDim2.new(0.5, -110, 1, -40)
+loadedNotif.BackgroundColor3 = Colors.Background
+loadedNotif.BackgroundTransparency = 0.3
+loadedNotif.BorderSizePixel = 0
+loadedNotif.Text = "✓ Binxix's GUI V5 loaded"
+loadedNotif.TextColor3 = Colors.AccentBright
+loadedNotif.TextSize = 12
+loadedNotif.Font = Enum.Font.GothamBold
+loadedNotif.Parent = screenGui
+local notifCorner = Instance.new("UICorner")
+notifCorner.CornerRadius = UDim.new(0, 6)
+notifCorner.Parent = loadedNotif
+task.spawn(function()
+    task.wait(3)
+    for i = 0, 1, 0.05 do loadedNotif.BackgroundTransparency = 0.3 + (i * 0.7); loadedNotif.TextTransparency = i; task.wait(0.02) end
+    loadedNotif:Destroy()
+end)
+end
 -- Initialize
 Players.PlayerAdded:Connect(function(player) if not isUnloading then createAdminGui(player) end end)
 for _, player in ipairs(Players:GetPlayers()) do createAdminGui(player) end
