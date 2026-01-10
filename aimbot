@@ -1,5 +1,5 @@
--- BINXIX'S GUI V5 - COMPLETE VERSION WITH GUN MODS
--- Improved: Continuous Aimlock Scanning, Auto-Target Acquisition, Unload Button, Gun Mods from Quotas Hub
+-- BINXIX'S GUI V5 - 
+-- Improved: Continuous Aimlock Scanning, Auto-Target Acquisition, Unload Button
 
 -- Services
 local Players = game:GetService("Players")
@@ -10,7 +10,6 @@ local UserInputService = game:GetService("UserInputService")
 local Lighting = game:GetService("Lighting")
 local TeleportService = game:GetService("TeleportService")
 local HttpService = game:GetService("HttpService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local activeTracking = {}
 local activeESP = {}
@@ -46,12 +45,6 @@ local keybinds = {}
 local waitingForKeybind = {}
 local keybindCallbacks = {}
 
--- NEW GUN MOD VARIABLES (FROM QUOTAS HUB)
-local recoilModEnabled = {}
-local fireRateModEnabled = {}
-local ammoModEnabled = {}
-local gunModConnections = {}
-
 -- Unload system
 local allConnections = {}
 local guiInstances = {}
@@ -75,7 +68,6 @@ local Colors = {
     Health_Mid = Color3.fromRGB(255, 200, 50),
     Health_Low = Color3.fromRGB(255, 60, 60),
     Unload = Color3.fromRGB(255, 80, 80),
-    GunMod = Color3.fromRGB(255, 150, 50),
 }
 
 local SKELETON_CONNECTIONS = {
@@ -266,95 +258,6 @@ local function drawLine(frame, p1, p2, thickness, color)
     frame.Visible = true
 end
 
--- GUN MOD FUNCTIONS (FROM QUOTAS HUB)
-local function startRecoilMod(player)
-    if gunModConnections[player.UserId] and gunModConnections[player.UserId].recoil then
-        gunModConnections[player.UserId].recoil:Disconnect()
-    end
-    local function applyRecoilMod()
-        pcall(function()
-            local weapons = ReplicatedStorage:FindFirstChild("Weapons")
-            if weapons then
-                for i, v in pairs(weapons:GetDescendants()) do
-                    if v.Name == "RecoilControl" then v.Value = 0 end
-                    if v.Name == "MaxSpread" then v.Value = 0 end
-                end
-            end
-        end)
-    end
-    applyRecoilMod()
-    task.spawn(function()
-        while recoilModEnabled[player.UserId] and not isUnloading do
-            task.wait(5)
-            if recoilModEnabled[player.UserId] then applyRecoilMod() end
-        end
-    end)
-    if not gunModConnections[player.UserId] then gunModConnections[player.UserId] = {} end
-end
-
-local function stopRecoilMod(player)
-    recoilModEnabled[player.UserId] = false
-end
-
-local function startFireRateMod(player)
-    if gunModConnections[player.UserId] and gunModConnections[player.UserId].firerate then
-        gunModConnections[player.UserId].firerate:Disconnect()
-    end
-    local function applyFireRateMod()
-        pcall(function()
-            local weapons = ReplicatedStorage:FindFirstChild("Weapons")
-            if weapons then
-                for i, v in pairs(weapons:GetDescendants()) do
-                    if v.Name == "Auto" then v.Value = true end
-                    if v.Name == "FireRate" then v.Value = 0.02 end
-                end
-            end
-        end)
-    end
-    applyFireRateMod()
-    task.spawn(function()
-        while fireRateModEnabled[player.UserId] and not isUnloading do
-            task.wait(5)
-            if fireRateModEnabled[player.UserId] then applyFireRateMod() end
-        end
-    end)
-    if not gunModConnections[player.UserId] then gunModConnections[player.UserId] = {} end
-end
-
-local function stopFireRateMod(player)
-    fireRateModEnabled[player.UserId] = false
-end
-
-local function startAmmoMod(player)
-    task.spawn(function()
-        while ammoModEnabled[player.UserId] and not isUnloading do
-            pcall(function()
-                local playerGui = player:FindFirstChild("PlayerGui")
-                if playerGui then
-                    local gui = playerGui:FindFirstChild("GUI")
-                    if gui then
-                        local client = gui:FindFirstChild("Client")
-                        if client then
-                            local variables = client:FindFirstChild("Variables")
-                            if variables then
-                                local ammocount = variables:FindFirstChild("ammocount")
-                                local ammocount2 = variables:FindFirstChild("ammocount2")
-                                if ammocount then ammocount.Value = 999 end
-                                if ammocount2 then ammocount2.Value = 999 end
-                            end
-                        end
-                    end
-                end
-            end)
-            task.wait(0.1)
-        end
-    end)
-end
-
-local function stopAmmoMod(player)
-    ammoModEnabled[player.UserId] = false
-end
--- ESP FUNCTIONS
 local function createCleanESP(target, admin, screenGui)
     if not target.Character then return nil end
     if not isValidTarget(admin, target) then return nil end
@@ -750,9 +653,6 @@ end
 -- UNLOAD FUNCTION
 local function unloadScript(player)
     isUnloading = true
-    recoilModEnabled[player.UserId] = false
-    fireRateModEnabled[player.UserId] = false
-    ammoModEnabled[player.UserId] = false
     for _, conn in ipairs(allConnections) do
         pcall(function() conn:Disconnect() end)
     end
@@ -799,7 +699,6 @@ local function unloadScript(player)
     print("Binxix's GUI V5 has been unloaded!")
 end
 
--- MAIN GUI CREATION
 local function createAdminGui(player)
     espSettings[player.UserId] = {
         boxEnabled = true, tracerEnabled = true, nameEnabled = true, healthEnabled = true,
@@ -824,9 +723,6 @@ local function createAdminGui(player)
     fovCircleEnabled[player.UserId] = true
     trackingMode[player.UserId] = "hold"
     toggleTrackingActive[player.UserId] = false
-    recoilModEnabled[player.UserId] = false
-    fireRateModEnabled[player.UserId] = false
-    ammoModEnabled[player.UserId] = false
     
     local screenGui = Instance.new("ScreenGui")
     screenGui.Name = "AdminPanel"
@@ -836,6 +732,7 @@ local function createAdminGui(player)
     screenGui.Parent = player:WaitForChild("PlayerGui")
     table.insert(guiInstances, screenGui)
     
+    -- FOV Circle
     local fovCircle = Instance.new("Frame")
     fovCircle.Name = "FOVCircle"
     fovCircle.Size = UDim2.new(0, 300, 0, 300)
@@ -860,6 +757,7 @@ local function createAdminGui(player)
         fovCircle.Visible = settings.showFOVCircle and fovCircleEnabled[player.UserId]
     end
     
+    -- Custom Crosshair
     local crosshairFrame = Instance.new("Frame")
     crosshairFrame.Name = "CustomCrosshair"
     crosshairFrame.Size = UDim2.new(0, 0, 0, 0)
@@ -963,6 +861,7 @@ local function createAdminGui(player)
         end
     end
     
+    -- Main Frame
     local mainFrame = Instance.new("Frame")
     mainFrame.Name = "MainFrame"
     mainFrame.Size = UDim2.new(0, 580, 0, 500)
@@ -981,6 +880,7 @@ local function createAdminGui(player)
     mainStroke.Thickness = 1
     mainStroke.Parent = mainFrame
     
+    -- Title Bar
     local titleBar = Instance.new("Frame")
     titleBar.Size = UDim2.new(1, 0, 0, 30)
     titleBar.BackgroundColor3 = Colors.BackgroundLight
@@ -1000,6 +900,7 @@ local function createAdminGui(player)
     titleText.TextXAlignment = Enum.TextXAlignment.Left
     titleText.Parent = titleBar
     
+    -- UNLOAD BUTTON
     local unloadBtn = Instance.new("TextButton")
     unloadBtn.Size = UDim2.new(0, 60, 0, 22)
     unloadBtn.Position = UDim2.new(1, -98, 0, 4)
@@ -1032,6 +933,7 @@ local function createAdminGui(player)
     closeBtnCorner.Parent = closeBtn
     closeBtn.MouseButton1Click:Connect(function() mainFrame.Visible = false end)
     
+    -- Tab Container
     local tabContainer = Instance.new("Frame")
     tabContainer.Size = UDim2.new(1, 0, 0, 26)
     tabContainer.Position = UDim2.new(0, 0, 0, 30)
@@ -1073,6 +975,7 @@ local function createAdminGui(player)
     statusLabel.TextXAlignment = Enum.TextXAlignment.Left
     statusLabel.Parent = mainFrame
     
+    -- Helper Functions
     local function createSection(parent, title, posX, posY, width, height)
         local section = Instance.new("Frame")
         section.Size = UDim2.new(0, width, 0, height)
@@ -1128,6 +1031,13 @@ local function createAdminGui(player)
         checkMark.Font = Enum.Font.GothamBold
         checkMark.Parent = checkbox
         local label = Instance.new("TextLabel")
+
+-- ============================================
+-- END OF PART 1 - COPY PART 2 BELOW THIS LINE
+-- ============================================
+-- BINXIX GUI V5 - PART 2 OF 2
+-- Paste this directly after Part 1
+-- ============================================
         label.Size = UDim2.new(0, 100, 0, 18)
         label.Position = UDim2.new(0, 18, 0, 0)
         label.BackgroundTransparency = 1
@@ -1399,11 +1309,213 @@ local function createAdminGui(player)
     table.insert(allConnections, keybindInputConn)
     
     local tabPages = {}
+
+    -- IMPROVED AIMLOCK SYSTEM
     local currentTarget = nil
     local lastTargetSwitch = 0
     local lastAimPosition = nil
     local targetHighlight = nil
- onScreen
+    
+    local lockIndicatorFrame = Instance.new("Frame")
+    lockIndicatorFrame.Name = "LockIndicator"
+    lockIndicatorFrame.Size = UDim2.new(0, 20, 0, 20)
+    lockIndicatorFrame.BackgroundTransparency = 1
+    lockIndicatorFrame.Visible = false
+    lockIndicatorFrame.Parent = screenGui
+    local lockIndicatorLines = {}
+    for i = 1, 4 do
+        local line = Instance.new("Frame")
+        line.BackgroundColor3 = Colors.AccentBright
+        line.BorderSizePixel = 0
+        line.Parent = lockIndicatorFrame
+        table.insert(lockIndicatorLines, line)
+    end
+    lockIndicatorLines[1].Size = UDim2.new(0, 8, 0, 2)
+    lockIndicatorLines[1].Position = UDim2.new(0, 0, 0, 0)
+    lockIndicatorLines[2].Size = UDim2.new(0, 2, 0, 8)
+    lockIndicatorLines[2].Position = UDim2.new(0, 0, 0, 0)
+    lockIndicatorLines[3].Size = UDim2.new(0, 8, 0, 2)
+    lockIndicatorLines[3].Position = UDim2.new(1, -8, 1, -2)
+    lockIndicatorLines[4].Size = UDim2.new(0, 2, 0, 8)
+    lockIndicatorLines[4].Position = UDim2.new(1, -2, 1, -8)
+    
+    local function createTargetHighlight()
+        if targetHighlight then targetHighlight:Destroy() end
+        targetHighlight = Instance.new("Highlight")
+        targetHighlight.Name = "AimlockHighlight"
+        targetHighlight.FillColor = Colors.AccentBright
+        targetHighlight.FillTransparency = 0.8
+        targetHighlight.OutlineColor = Colors.AccentBright
+        targetHighlight.OutlineTransparency = 0.3
+        targetHighlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+        return targetHighlight
+    end
+    
+    local function easeOutQuad(t) return 1 - (1 - t) * (1 - t) end
+    
+    local function getTargetScore(admin, target, settings)
+        local camera = Workspace.CurrentCamera
+        if not camera then return math.huge end
+        local targetChar = target.Character
+        if not targetChar then return math.huge end
+        local adminChar = admin.Character
+        if not adminChar then return math.huge end
+        local adminHRP = adminChar:FindFirstChild("HumanoidRootPart")
+        local targetHRP = targetChar:FindFirstChild("HumanoidRootPart")
+        local targetHumanoid = targetChar:FindFirstChild("Humanoid")
+        if not adminHRP or not targetHRP then return math.huge end
+        if targetHumanoid and targetHumanoid.Health <= 0 then return math.huge end
+        local worldDistance = (adminHRP.Position - targetHRP.Position).Magnitude
+        if worldDistance > (settings.maxDistance or 500) then return math.huge end
+        local aimPart = targetChar:FindFirstChild(settings.aimPart) or targetChar:FindFirstChild("Head") or targetHRP
+        local screenPos, onScreen = camera:WorldToViewportPoint(aimPart.Position)
+        if not onScreen or screenPos.Z < 0 then return math.huge end
+        local screenCenter = camera.ViewportSize / 2
+        local crosshairDistance = (Vector2.new(screenPos.X, screenPos.Y) - screenCenter).Magnitude
+        if crosshairDistance > (settings.fovRadius or 150) then return math.huge end
+        if settings.requireLOS and not hasLineOfSight(admin, target) then return math.huge end
+        local priorityMode = settings.priorityMode or "Distance"
+        if priorityMode == "Distance" then return worldDistance
+        elseif priorityMode == "Health" then return targetHumanoid and targetHumanoid.Health or 100
+        elseif priorityMode == "Crosshair" then return crosshairDistance
+        elseif priorityMode == "Threat" then
+            local health = targetHumanoid and targetHumanoid.Health or 100
+            local healthFactor = health / 100
+            local distanceFactor = worldDistance / 100
+            local targetLook = targetHRP.CFrame.LookVector
+            local toAdmin = (adminHRP.Position - targetHRP.Position).Unit
+            local facingFactor = math.max(0, targetLook:Dot(toAdmin))
+            return (distanceFactor * 0.3) + (healthFactor * 0.3) - (facingFactor * 0.4)
+        end
+        return worldDistance
+    end
+    
+    local function findBestTarget(admin, settings)
+        local bestTarget, bestScore = nil, math.huge
+        for _, target in ipairs(Players:GetPlayers()) do
+            if isValidTarget(admin, target) then
+                local score = getTargetScore(admin, target, settings)
+                if score < bestScore then bestScore = score; bestTarget = target end
+            end
+        end
+        return bestTarget, bestScore
+    end
+    
+    local function getSmoothedAim(currentCF, targetCF, settings)
+        local easing = settings.easing or "Smooth"
+        local smoothness = settings.smoothness or 0.15
+        local lerpFactor = smoothness
+        if easing == "Smooth" then lerpFactor = easeOutQuad(smoothness)
+        elseif easing == "Snap" then lerpFactor = smoothness * 2; if lerpFactor > 0.8 then lerpFactor = 1 end end
+        if settings.shakeReduction and lastAimPosition then
+            local movement = (targetCF.Position - lastAimPosition).Magnitude
+            if movement < 0.5 then lerpFactor = lerpFactor * 0.5 end
+        end
+        return currentCF:Lerp(targetCF, lerpFactor)
+    end
+    
+    local function getPredictedPosition(targetChar, settings)
+        local aimPartName = settings.aimPart or "Head"
+        local aimPart = targetChar:FindFirstChild(aimPartName) or targetChar:FindFirstChild("Head") or targetChar:FindFirstChild("HumanoidRootPart")
+        if not aimPart then return nil end
+        local position = aimPart.Position
+        if settings.prediction then
+            local hrp = targetChar:FindFirstChild("HumanoidRootPart")
+            if hrp then position = position + (hrp.AssemblyLinearVelocity * (settings.predictionAmount or 0.12)) end
+        end
+        return position
+    end
+    
+    -- IMPROVED CONTINUOUS AIMLOCK - Auto-acquires and switches targets
+    local function startRMBTracking()
+        stopRightMouseTracking(player)
+        local settings = aimlockSettings[player.UserId]
+        local lastNoTargetNotify = 0
+        local bestTarget, score = findBestTarget(player, settings)
+        if bestTarget then
+            currentTarget = bestTarget
+            lastTargetSwitch = tick()
+            statusLabel.Text = "🎯 LOCKED: " .. bestTarget.Name
+            if settings.highlightTarget then
+                local highlight = createTargetHighlight()
+                if bestTarget.Character then highlight.Parent = bestTarget.Character end
+            end
+            if settings.snapOnAcquire then
+                local camera = Workspace.CurrentCamera
+                local targetPos = getPredictedPosition(bestTarget.Character, settings)
+                if targetPos and camera then camera.CFrame = camera.CFrame:Lerp(CFrame.new(camera.CFrame.Position, targetPos), settings.snapStrength or 0.5) end
+            end
+        else
+            currentTarget = nil
+            statusLabel.Text = "🔍 Scanning for targets..."
+        end
+        
+        local connection = RunService.RenderStepped:Connect(function()
+            if isUnloading then return end
+            local settings = aimlockSettings[player.UserId]
+            local camera = Workspace.CurrentCamera
+            if not camera then return end
+            local bestTarget, bestScore = findBestTarget(player, settings)
+            
+            -- Auto-acquire if no current target
+            if not currentTarget or not currentTarget.Character then
+                if bestTarget then
+                    currentTarget = bestTarget
+                    lastTargetSwitch = tick()
+                    statusLabel.Text = "🎯 LOCKED: " .. bestTarget.Name
+                    if settings.highlightTarget then
+                        if targetHighlight then targetHighlight:Destroy() end
+                        local highlight = createTargetHighlight()
+                        if bestTarget.Character then highlight.Parent = bestTarget.Character end
+                    end
+                    if settings.snapOnAcquire then
+                        local targetPos = getPredictedPosition(bestTarget.Character, settings)
+                        if targetPos then camera.CFrame = camera.CFrame:Lerp(CFrame.new(camera.CFrame.Position, targetPos), settings.snapStrength or 0.5) end
+                    end
+                else
+                    if tick() - lastNoTargetNotify > 1 then statusLabel.Text = "🔍 Scanning for targets..."; lastNoTargetNotify = tick() end
+                    lockIndicatorFrame.Visible = false
+                    return
+                end
+            end
+            
+            local currentScore = currentTarget and getTargetScore(player, currentTarget, settings) or math.huge
+            local shouldSwitch = currentScore == math.huge
+            
+            if not shouldSwitch and tick() - lastTargetSwitch > (settings.targetSwitchDelay or 0.2) then
+                if settings.stickyAim then
+                    if bestTarget and bestTarget ~= currentTarget and bestScore < currentScore * (settings.stickyStrength or 0.8) then shouldSwitch = true end
+                elseif bestTarget and bestTarget ~= currentTarget and bestScore < currentScore then shouldSwitch = true end
+            end
+            
+            if shouldSwitch then
+                if bestTarget then
+                    currentTarget = bestTarget
+                    lastTargetSwitch = tick()
+                    statusLabel.Text = "🎯 LOCKED: " .. bestTarget.Name
+                    if settings.highlightTarget then
+                        if targetHighlight then targetHighlight:Destroy() end
+                        local highlight = createTargetHighlight()
+                        if bestTarget.Character then highlight.Parent = bestTarget.Character end
+                    end
+                else
+                    currentTarget = nil
+                    if targetHighlight then targetHighlight:Destroy(); targetHighlight = nil end
+                    lockIndicatorFrame.Visible = false
+                    statusLabel.Text = "🔍 Scanning for targets..."
+                    return
+                end
+            end
+            
+            if currentTarget and currentTarget.Character then
+                local targetPos = getPredictedPosition(currentTarget.Character, settings)
+                if targetPos then
+                    camera.CFrame = getSmoothedAim(camera.CFrame, CFrame.new(camera.CFrame.Position, targetPos), settings)
+                    lastAimPosition = targetPos
+                    if settings.targetLockIndicator then
+                        local screenPos, onScreen = camera:WorldToViewportPoint(targetPos)
+                        lockIndicatorFrame.Position = UDim2.new(0, screenPos.X - 10, 0, screenPos.Y - 10)
+                        lockIndicatorFrame.Visible = onScreen
                     end
                 end
             end
@@ -1750,7 +1862,7 @@ local function createAdminGui(player)
     local rbc = Instance.new("UICorner"); rbc.CornerRadius = UDim.new(0, 4); rbc.Parent = randomBtn
     randomBtn.MouseButton1Click:Connect(function() statusLabel.Text = "🎲 Joining random..."; pcall(function() TeleportService:Teleport(game.PlaceId, player) end) end)
 
-    -- COMBAT TAB (WITH GUN MODS FROM QUOTAS HUB)
+    -- COMBAT TAB
     local combatPage = Instance.new("Frame")
     combatPage.Name = "CombatPage"
     combatPage.Size = UDim2.new(1, 0, 1, 0)
@@ -1793,56 +1905,7 @@ local function createAdminGui(player)
         end
     end)
     
-    -- NEW GUN MODS SECTION (FROM QUOTAS HUB)
-    local gunModSection = createSection(combatPage, "Gun Mods (Quotas)", 0, 170, 230, 120)
-    
-    createCheckbox(gunModSection, "Recoil Mod", 8, 16, false, function(e)
-        recoilModEnabled[player.UserId] = e
-        if e then
-            startRecoilMod(player)
-            statusLabel.Text = "🔫 Recoil Mod ON"
-        else
-            stopRecoilMod(player)
-            statusLabel.Text = "🔫 Recoil Mod OFF"
-        end
-    end)
-    
-    createCheckbox(gunModSection, "FireRate Mod", 8, 36, false, function(e)
-        fireRateModEnabled[player.UserId] = e
-        if e then
-            startFireRateMod(player)
-            statusLabel.Text = "🔫 FireRate Mod ON"
-        else
-            stopFireRateMod(player)
-            statusLabel.Text = "🔫 FireRate Mod OFF"
-        end
-    end)
-    
-    createCheckbox(gunModSection, "Ammo Mod", 8, 56, false, function(e)
-        ammoModEnabled[player.UserId] = e
-        if e then
-            startAmmoMod(player)
-            statusLabel.Text = "🔫 Ammo Mod ON"
-        else
-            stopAmmoMod(player)
-            statusLabel.Text = "🔫 Ammo Mod OFF"
-        end
-    end)
-    
-    local gunModInfo = Instance.new("TextLabel")
-    gunModInfo.Size = UDim2.new(1, -16, 0, 30)
-    gunModInfo.Position = UDim2.new(0, 8, 0, 80)
-    gunModInfo.BackgroundTransparency = 1
-    gunModInfo.Text = "⚠ Works with specific gun\nsystems (ReplicatedStorage)"
-    gunModInfo.TextColor3 = Colors.TextDim
-    gunModInfo.TextSize = 9
-    gunModInfo.Font = Enum.Font.Gotham
-    gunModInfo.TextWrapped = true
-    gunModInfo.TextXAlignment = Enum.TextXAlignment.Left
-    gunModInfo.TextYAlignment = Enum.TextYAlignment.Top
-    gunModInfo.Parent = gunModSection
-    
-    local combatInfoSection = createSection(combatPage, "Info", 245, 0, 230, 80)
+    local combatInfoSection = createSection(combatPage, "Info", 0, 170, 230, 80)
     local infoLabel = Instance.new("TextLabel")
     infoLabel.Size = UDim2.new(1, -16, 1, -20)
     infoLabel.Position = UDim2.new(0, 8, 0, 16)
@@ -1856,7 +1919,7 @@ local function createAdminGui(player)
     infoLabel.TextYAlignment = Enum.TextYAlignment.Top
     infoLabel.Parent = combatInfoSection
     
-    local chatSection = createSection(combatPage, "Chat Spammer", 245, 90, 230, 250)
+    local chatSection = createSection(combatPage, "Chat Spammer", 245, 0, 230, 250)
     local chatSpamEnabled = false
     local chatSpamDelay = 1
     local chatSpamMessage = "Binxix's GUI is the best!"
@@ -1899,6 +1962,7 @@ local function createAdminGui(player)
             if isUnloading then break end
             if chatSpamEnabled and chatSpamMessage ~= "" then
                 pcall(function()
+                    local ReplicatedStorage = game:GetService("ReplicatedStorage")
                     local chatEvents = ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents")
                     if chatEvents then
                         local sayEvent = chatEvents:FindFirstChild("SayMessageRequest")
@@ -1943,6 +2007,7 @@ local function createAdminGui(player)
         local qc = Instance.new("UICorner"); qc.CornerRadius = UDim.new(0, 4); qc.Parent = quickBtn
         quickBtn.MouseButton1Click:Connect(function()
             pcall(function()
+                local ReplicatedStorage = game:GetService("ReplicatedStorage")
                 local chatEvents = ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents")
                 if chatEvents then local sayEvent = chatEvents:FindFirstChild("SayMessageRequest"); if sayEvent then sayEvent:FireServer(msg, "All"); statusLabel.Text = "💬 Sent: " .. msg; return end end
                 local TextChatService = game:GetService("TextChatService")
