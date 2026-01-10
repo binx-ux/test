@@ -1,4 +1,3 @@
--- BINXIX'S GUI V5 - 
 -- Improved: Continuous Aimlock Scanning, Auto-Target Acquisition, Unload Button
 
 -- Services
@@ -699,6 +698,15 @@ local function unloadScript(player)
     print("Binxix's GUI V5 has been unloaded!")
 end
 
+-- ============================================
+-- END OF PART 1 - CONTINUE WITH PART 2 BELOW
+-- ============================================
+
+-- ============================================
+-- BINXIX'S GUI V5 - PART 2 OF 2
+-- This continues directly from Part 1
+-- ============================================
+
 local function createAdminGui(player)
     espSettings[player.UserId] = {
         boxEnabled = true, tracerEnabled = true, nameEnabled = true, healthEnabled = true,
@@ -1031,13 +1039,6 @@ local function createAdminGui(player)
         checkMark.Font = Enum.Font.GothamBold
         checkMark.Parent = checkbox
         local label = Instance.new("TextLabel")
-
--- ============================================
--- END OF PART 1 - COPY PART 2 BELOW THIS LINE
--- ============================================
--- BINXIX GUI V5 - PART 2 OF 2
--- Paste this directly after Part 1
--- ============================================
         label.Size = UDim2.new(0, 100, 0, 18)
         label.Position = UDim2.new(0, 18, 0, 0)
         label.BackgroundTransparency = 1
