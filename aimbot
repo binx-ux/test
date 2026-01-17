@@ -1,5 +1,6 @@
--- ============================================
--- BINXIX'S GUI V5 - KEY SYSTEM
+--- ============================================
+-- BINXIX'S GUI V5 - TIERED KEY SYSTEM
+-- Keys with expiration: 1 Day, 1 Week, 1 Month, Lifetime
 -- Place this at the VERY TOP of your script
 -- ============================================
 
@@ -7,60 +8,132 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 
 local player = Players.LocalPlayer
-local validKeys = {
-    -- Format: alphanumeric_alphanumeric=alphanumeric-alphanumeric
-    "2j1ldp_i23bn9=12nd-mnmnionj",
-    "8k3mfx_q47ht2=93xp-vbcdrewk",
-    "5n9waz_r82jk6=47mq-plkjhgfd",
-    "1p4ycb_s63lm0=58nr-qazwsxed",
-    "7r2ted_u95no3=69os-rfvtgbyh",
-    "3t6vgf_w28pq7=70pt-unjmikol",
-    "9v0xih_y41rs1=81qu-yhnbgtrf",
-    "4x8zjj_a74tu5=92rv-zxcvbnma",
-    "6z5blk_c07vw9=03sw-asdfghjk",
-    "0b3dnm_e30xy2=14tx-lkjhgfds",
-    "2d1fpn_g63za6=25uy-poiuytre",
-    "8f7hro_i96ab0=36vz-mnbvcxzl",
-    "4h5jtp_k29cd4=47wa-qwertyui",
-    "6j3luq_m52ef8=58xb-zxcvbnmk",
-    "0l1nvr_o85gh1=69yc-asdfghjp",
-    "2n9pws_q18ij5=70zd-lkjhgfdq",
-    "8p7rxt_s41kl9=81ae-poiuytrw",
-    "4r5tyu_u74mn2=92bf-mnbvcxze",
-    "6t3vzv_w07op6=03cg-qwertyor",
-    "0v1xaw_y30qr0=14dh-zxcvbnmt",
-    "3x9zby_a63st4=25ei-asdfghjy",
-    "9z7bdz_c96uv8=36fj-lkjhgfdu",
-    "5b5dfa_e29wx1=47gk-poiuytri",
-    "7d3fgb_g52yz5=58hl-mnbvcxzo",
-    "1f1hjc_i85ab9=69im-qwertyup",
-    "3h9jkd_k18cd2=70jn-zxcvbnma",
-    "9j7lme_m41ef6=81ko-asdfghjs",
-    "5l5npf_o74gh0=92lp-lkjhgfdd",
-    "7n3prg_q07ij4=03mq-poiuytrf",
-    "1p1rth_s30kl8=14nr-mnbvcxzg",
-    "4r9tvi_u63mn1=25os-qwertyuh",
-    "0t7vxj_w96op5=36pt-zxcvbnmj",
-    "6v5xzk_y29qr9=47qu-asdfghjk",
-    "8x3zbl_a52st2=58rv-lkjhgfdl",
-    "2z1bdm_c85uv6=69sw-poiuytrz",
-    "4b9dfn_e18wx0=70tx-mnbvcxxx",
-    "0d7fho_g41yz4=81uy-qwertyic",
-    "6f5hjp_i74ab8=92vz-zxcvbnmv",
-    "8h3jlq_k07cd1=03wa-asdfghjb",
-    "2j1lnr_m30ef5=14xb-lkjhgfdn",
-    "5l9nps_o63gh9=25yc-poiuytrm",
-    "1n7prt_q96ij2=36zd-mnbvcxzq",
-    "7p5rvu_s29kl6=47ae-qwertyiw",
-    "3r3tvv_u52mn0=58bf-zxcvbnme",
+
+-- ============================================
+-- KEY DATABASE WITH TIERS
+-- Prefix: DAY- = 1 day, WEEK- = 1 week, MONTH- = 1 month, LIFE- = lifetime
+-- ============================================
+
+local keyDatabase = {
+    -- ========== 1 DAY KEYS ($2) - 24 hour access ==========
+    {key = "DAY-2j1ldp_i23bn9=12nd", tier = "1day"},
+    {key = "DAY-8k3mfx_q47ht2=93xp", tier = "1day"},
+    {key = "DAY-5n9waz_r82jk6=47mq", tier = "1day"},
+    {key = "DAY-1p4ycb_s63lm0=58nr", tier = "1day"},
+    {key = "DAY-7r2ted_u95no3=69os", tier = "1day"},
+    {key = "DAY-3t6vgf_w28pq7=70pt", tier = "1day"},
+    {key = "DAY-9v0xih_y41rs1=81qu", tier = "1day"},
+    {key = "DAY-4x8zjj_a74tu5=92rv", tier = "1day"},
+    {key = "DAY-6z5blk_c07vw9=03sw", tier = "1day"},
+    {key = "DAY-0b3dnm_e30xy2=14tx", tier = "1day"},
+    {key = "DAY-a1b2c3_d4e5f6=test1", tier = "1day"},
+    {key = "DAY-g7h8i9_j0k1l2=test2", tier = "1day"},
+    
+    -- ========== 1 WEEK KEYS ($5) - 7 day access ==========
+    {key = "WEEK-2d1fpn_g63za6=25uy", tier = "1week"},
+    {key = "WEEK-8f7hro_i96ab0=36vz", tier = "1week"},
+    {key = "WEEK-4h5jtp_k29cd4=47wa", tier = "1week"},
+    {key = "WEEK-6j3luq_m52ef8=58xb", tier = "1week"},
+    {key = "WEEK-0l1nvr_o85gh1=69yc", tier = "1week"},
+    {key = "WEEK-2n9pws_q18ij5=70zd", tier = "1week"},
+    {key = "WEEK-8p7rxt_s41kl9=81ae", tier = "1week"},
+    {key = "WEEK-4r5tyu_u74mn2=92bf", tier = "1week"},
+    {key = "WEEK-6t3vzv_w07op6=03cg", tier = "1week"},
+    {key = "WEEK-0v1xaw_y30qr0=14dh", tier = "1week"},
+    {key = "WEEK-m3n4o5_p6q7r8=test3", tier = "1week"},
+    {key = "WEEK-s9t0u1_v2w3x4=test4", tier = "1week"},
+    
+    -- ========== 1 MONTH KEYS ($12) - 30 day access ==========
+    {key = "MONTH-3x9zby_a63st4=25ei", tier = "1month"},
+    {key = "MONTH-9z7bdz_c96uv8=36fj", tier = "1month"},
+    {key = "MONTH-5b5dfa_e29wx1=47gk", tier = "1month"},
+    {key = "MONTH-7d3fgb_g52yz5=58hl", tier = "1month"},
+    {key = "MONTH-1f1hjc_i85ab9=69im", tier = "1month"},
+    {key = "MONTH-3h9jkd_k18cd2=70jn", tier = "1month"},
+    {key = "MONTH-9j7lme_m41ef6=81ko", tier = "1month"},
+    {key = "MONTH-5l5npf_o74gh0=92lp", tier = "1month"},
+    {key = "MONTH-7n3prg_q07ij4=03mq", tier = "1month"},
+    {key = "MONTH-1p1rth_s30kl8=14nr", tier = "1month"},
+    {key = "MONTH-y5z6a7_b8c9d0=test5", tier = "1month"},
+    {key = "MONTH-e1f2g3_h4i5j6=test6", tier = "1month"},
+    
+    -- ========== LIFETIME KEYS ($25) - Forever access ==========
+    {key = "LIFE-4r9tvi_u63mn1=25os", tier = "lifetime"},
+    {key = "LIFE-0t7vxj_w96op5=36pt", tier = "lifetime"},
+    {key = "LIFE-6v5xzk_y29qr9=47qu", tier = "lifetime"},
+    {key = "LIFE-8x3zbl_a52st2=58rv", tier = "lifetime"},
+    {key = "LIFE-2z1bdm_c85uv6=69sw", tier = "lifetime"},
+    {key = "LIFE-4b9dfn_e18wx0=70tx", tier = "lifetime"},
+    {key = "LIFE-0d7fho_g41yz4=81uy", tier = "lifetime"},
+    {key = "LIFE-6f5hjp_i74ab8=92vz", tier = "lifetime"},
+    {key = "LIFE-8h3jlq_k07cd1=03wa", tier = "lifetime"},
+    {key = "LIFE-2j1lnr_m30ef5=14xb", tier = "lifetime"},
+    {key = "LIFE-k7l8m9_n0o1p2=test7", tier = "lifetime"},
+    {key = "LIFE-q3r4s5_t6u7v8=test8", tier = "lifetime"},
+}
+
+-- Duration in seconds for each tier
+local tierDurations = {
+    ["1day"] = 86400,      -- 24 hours (60 * 60 * 24)
+    ["1week"] = 604800,    -- 7 days (60 * 60 * 24 * 7)
+    ["1month"] = 2592000,  -- 30 days (60 * 60 * 24 * 30)
+    ["lifetime"] = -1      -- Never expires
+}
+
+-- Tier display info
+local tierInfo = {
+    ["1day"] = {name = "1 Day", color = Color3.fromRGB(255, 180, 50), icon = "⏰", price = "$2"},
+    ["1week"] = {name = "1 Week", color = Color3.fromRGB(80, 150, 255), icon = "📅", price = "$5"},
+    ["1month"] = {name = "1 Month", color = Color3.fromRGB(160, 100, 255), icon = "📆", price = "$12"},
+    ["lifetime"] = {name = "Lifetime", color = Color3.fromRGB(80, 255, 120), icon = "∞", price = "$25"}
 }
 
 local keySystemActive = true
 local keyValidated = false
+local activatedKeyTier = nil
+local keyExpirationTime = nil
+
+-- Find key in database
+local function findKeyInDatabase(enteredKey)
+    for _, keyData in ipairs(keyDatabase) do
+        if keyData.key == enteredKey then
+            return keyData
+        end
+    end
+    return nil
+end
+
+-- Get remaining time
+local function getRemainingTime(tier, activationTime)
+    if tier == "lifetime" then return -1 end
+    local duration = tierDurations[tier]
+    local remaining = (activationTime + duration) - os.time()
+    return math.max(0, remaining)
+end
+
+-- Format time
+local function formatTimeRemaining(seconds)
+    if seconds == -1 then return "Forever" end
+    if seconds <= 0 then return "Expired" end
+    
+    local days = math.floor(seconds / 86400)
+    local hours = math.floor((seconds % 86400) / 3600)
+    local minutes = math.floor((seconds % 3600) / 60)
+    local secs = seconds % 60
+    
+    if days > 0 then
+        return string.format("%dd %dh %dm", days, hours, minutes)
+    elseif hours > 0 then
+        return string.format("%dh %dm %ds", hours, minutes, secs)
+    elseif minutes > 0 then
+        return string.format("%dm %ds", minutes, secs)
+    else
+        return string.format("%ds", secs)
+    end
+end
 
 -- Create Key System GUI
 local function createKeySystemGUI()
-    -- Check if GUI already exists
     local existingGui = player:FindFirstChild("PlayerGui") and player.PlayerGui:FindFirstChild("BinxixKeySystem")
     if existingGui then existingGui:Destroy() end
     
@@ -69,7 +142,6 @@ local function createKeySystemGUI()
         BackgroundLight = Color3.fromRGB(25, 25, 32),
         Accent = Color3.fromRGB(130, 80, 200),
         AccentBright = Color3.fromRGB(160, 100, 255),
-        AccentGlow = Color3.fromRGB(180, 120, 255),
         Border = Color3.fromRGB(50, 50, 60),
         Text = Color3.fromRGB(220, 220, 230),
         TextDim = Color3.fromRGB(120, 120, 130),
@@ -85,20 +157,16 @@ local function createKeySystemGUI()
     screenGui.IgnoreGuiInset = true
     screenGui.Parent = player:WaitForChild("PlayerGui")
     
-    -- Background blur/overlay
     local overlay = Instance.new("Frame")
-    overlay.Name = "Overlay"
     overlay.Size = UDim2.new(1, 0, 1, 0)
     overlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
     overlay.BackgroundTransparency = 0.5
     overlay.BorderSizePixel = 0
     overlay.Parent = screenGui
     
-    -- Main container
     local mainFrame = Instance.new("Frame")
-    mainFrame.Name = "MainFrame"
-    mainFrame.Size = UDim2.new(0, 420, 0, 320)
-    mainFrame.Position = UDim2.new(0.5, -210, 0.5, -160)
+    mainFrame.Size = UDim2.new(0, 460, 0, 520)
+    mainFrame.Position = UDim2.new(0.5, -230, 0.5, -260)
     mainFrame.BackgroundColor3 = Colors.Background
     mainFrame.BorderSizePixel = 0
     mainFrame.Parent = screenGui
@@ -112,9 +180,7 @@ local function createKeySystemGUI()
     mainStroke.Thickness = 2
     mainStroke.Parent = mainFrame
     
-    -- Glow effect
     local glow = Instance.new("ImageLabel")
-    glow.Name = "Glow"
     glow.Size = UDim2.new(1, 60, 1, 60)
     glow.Position = UDim2.new(0.5, 0, 0.5, 0)
     glow.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -127,7 +193,7 @@ local function createKeySystemGUI()
     glow.ZIndex = 0
     glow.Parent = mainFrame
     
-    -- Title section
+    -- Title
     local titleFrame = Instance.new("Frame")
     titleFrame.Size = UDim2.new(1, 0, 0, 70)
     titleFrame.BackgroundColor3 = Colors.BackgroundLight
@@ -138,7 +204,6 @@ local function createKeySystemGUI()
     titleCorner.CornerRadius = UDim.new(0, 12)
     titleCorner.Parent = titleFrame
     
-    -- Fix bottom corners of title
     local titleFix = Instance.new("Frame")
     titleFix.Size = UDim2.new(1, 0, 0, 15)
     titleFix.Position = UDim2.new(0, 0, 1, -15)
@@ -146,7 +211,6 @@ local function createKeySystemGUI()
     titleFix.BorderSizePixel = 0
     titleFix.Parent = titleFrame
     
-    -- Logo/Icon
     local iconLabel = Instance.new("TextLabel")
     iconLabel.Size = UDim2.new(0, 50, 0, 50)
     iconLabel.Position = UDim2.new(0, 15, 0, 10)
@@ -157,12 +221,8 @@ local function createKeySystemGUI()
     iconLabel.TextSize = 28
     iconLabel.Font = Enum.Font.GothamBold
     iconLabel.Parent = titleFrame
+    Instance.new("UICorner", iconLabel).CornerRadius = UDim.new(0, 10)
     
-    local iconCorner = Instance.new("UICorner")
-    iconCorner.CornerRadius = UDim.new(0, 10)
-    iconCorner.Parent = iconLabel
-    
-    -- Title text
     local titleText = Instance.new("TextLabel")
     titleText.Size = UDim2.new(0, 300, 0, 30)
     titleText.Position = UDim2.new(0, 75, 0, 12)
@@ -178,14 +238,13 @@ local function createKeySystemGUI()
     subtitleText.Size = UDim2.new(0, 300, 0, 18)
     subtitleText.Position = UDim2.new(0, 75, 0, 42)
     subtitleText.BackgroundTransparency = 1
-    subtitleText.Text = "Premium Key System"
+    subtitleText.Text = "Premium Tiered Key System"
     subtitleText.TextColor3 = Colors.AccentBright
     subtitleText.TextSize = 13
     subtitleText.Font = Enum.Font.GothamMedium
     subtitleText.TextXAlignment = Enum.TextXAlignment.Left
     subtitleText.Parent = titleFrame
     
-    -- Version badge
     local versionBadge = Instance.new("TextLabel")
     versionBadge.Size = UDim2.new(0, 45, 0, 20)
     versionBadge.Position = UDim2.new(1, -55, 0, 25)
@@ -195,22 +254,93 @@ local function createKeySystemGUI()
     versionBadge.TextSize = 11
     versionBadge.Font = Enum.Font.GothamBold
     versionBadge.Parent = titleFrame
+    Instance.new("UICorner", versionBadge).CornerRadius = UDim.new(0, 6)
     
-    local versionCorner = Instance.new("UICorner")
-    versionCorner.CornerRadius = UDim.new(0, 6)
-    versionCorner.Parent = versionBadge
+    -- Tier Cards
+    local tiersFrame = Instance.new("Frame")
+    tiersFrame.Size = UDim2.new(1, -30, 0, 100)
+    tiersFrame.Position = UDim2.new(0, 15, 0, 80)
+    tiersFrame.BackgroundTransparency = 1
+    tiersFrame.Parent = mainFrame
     
-    -- Content area
+    local tiersList = Instance.new("UIListLayout")
+    tiersList.FillDirection = Enum.FillDirection.Horizontal
+    tiersList.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    tiersList.Padding = UDim.new(0, 8)
+    tiersList.Parent = tiersFrame
+    
+    local tierCards = {
+        {tier = "1day", duration = "24 hours"},
+        {tier = "1week", duration = "7 days"},
+        {tier = "1month", duration = "30 days"},
+        {tier = "lifetime", duration = "Forever"}
+    }
+    
+    for _, cardData in ipairs(tierCards) do
+        local info = tierInfo[cardData.tier]
+        
+        local card = Instance.new("Frame")
+        card.Size = UDim2.new(0, 100, 0, 95)
+        card.BackgroundColor3 = Colors.BackgroundLight
+        card.BorderSizePixel = 0
+        card.Parent = tiersFrame
+        Instance.new("UICorner", card).CornerRadius = UDim.new(0, 8)
+        
+        local cardStroke = Instance.new("UIStroke")
+        cardStroke.Color = info.color
+        cardStroke.Thickness = 1
+        cardStroke.Transparency = 0.5
+        cardStroke.Parent = card
+        
+        local iconLbl = Instance.new("TextLabel")
+        iconLbl.Size = UDim2.new(1, 0, 0, 24)
+        iconLbl.Position = UDim2.new(0, 0, 0, 6)
+        iconLbl.BackgroundTransparency = 1
+        iconLbl.Text = info.icon
+        iconLbl.TextSize = 20
+        iconLbl.Font = Enum.Font.GothamBold
+        iconLbl.Parent = card
+        
+        local priceLbl = Instance.new("TextLabel")
+        priceLbl.Size = UDim2.new(1, 0, 0, 26)
+        priceLbl.Position = UDim2.new(0, 0, 0, 30)
+        priceLbl.BackgroundTransparency = 1
+        priceLbl.Text = info.price
+        priceLbl.TextColor3 = info.color
+        priceLbl.TextSize = 22
+        priceLbl.Font = Enum.Font.GothamBlack
+        priceLbl.Parent = card
+        
+        local durationLbl = Instance.new("TextLabel")
+        durationLbl.Size = UDim2.new(1, 0, 0, 14)
+        durationLbl.Position = UDim2.new(0, 0, 0, 56)
+        durationLbl.BackgroundTransparency = 1
+        durationLbl.Text = cardData.duration
+        durationLbl.TextColor3 = Colors.TextDim
+        durationLbl.TextSize = 10
+        durationLbl.Font = Enum.Font.Gotham
+        durationLbl.Parent = card
+        
+        local tierNameLbl = Instance.new("TextLabel")
+        tierNameLbl.Size = UDim2.new(1, 0, 0, 14)
+        tierNameLbl.Position = UDim2.new(0, 0, 0, 72)
+        tierNameLbl.BackgroundTransparency = 1
+        tierNameLbl.Text = info.name
+        tierNameLbl.TextColor3 = Colors.TextDim
+        tierNameLbl.TextSize = 11
+        tierNameLbl.Font = Enum.Font.GothamMedium
+        tierNameLbl.Parent = card
+    end
+    
+    -- Content
     local contentFrame = Instance.new("Frame")
-    contentFrame.Size = UDim2.new(1, -40, 0, 180)
-    contentFrame.Position = UDim2.new(0, 20, 0, 85)
+    contentFrame.Size = UDim2.new(1, -40, 0, 270)
+    contentFrame.Position = UDim2.new(0, 20, 0, 190)
     contentFrame.BackgroundTransparency = 1
     contentFrame.Parent = mainFrame
     
-    -- Instructions
     local instructionLabel = Instance.new("TextLabel")
     instructionLabel.Size = UDim2.new(1, 0, 0, 20)
-    instructionLabel.Position = UDim2.new(0, 0, 0, 0)
     instructionLabel.BackgroundTransparency = 1
     instructionLabel.Text = "🔐 Enter your license key to continue"
     instructionLabel.TextColor3 = Colors.TextDim
@@ -218,55 +348,44 @@ local function createKeySystemGUI()
     instructionLabel.Font = Enum.Font.Gotham
     instructionLabel.Parent = contentFrame
     
-    -- Key input container
     local inputContainer = Instance.new("Frame")
     inputContainer.Size = UDim2.new(1, 0, 0, 50)
-    inputContainer.Position = UDim2.new(0, 0, 0, 30)
+    inputContainer.Position = UDim2.new(0, 0, 0, 28)
     inputContainer.BackgroundColor3 = Colors.BackgroundLight
     inputContainer.BorderSizePixel = 0
     inputContainer.Parent = contentFrame
-    
-    local inputCorner = Instance.new("UICorner")
-    inputCorner.CornerRadius = UDim.new(0, 8)
-    inputCorner.Parent = inputContainer
+    Instance.new("UICorner", inputContainer).CornerRadius = UDim.new(0, 8)
     
     local inputStroke = Instance.new("UIStroke")
-    inputStroke.Name = "InputStroke"
     inputStroke.Color = Colors.Border
     inputStroke.Thickness = 1
     inputStroke.Parent = inputContainer
     
-    -- Key icon
     local keyIcon = Instance.new("TextLabel")
     keyIcon.Size = UDim2.new(0, 40, 0, 50)
-    keyIcon.Position = UDim2.new(0, 0, 0, 0)
     keyIcon.BackgroundTransparency = 1
     keyIcon.Text = "🔑"
     keyIcon.TextSize = 18
     keyIcon.Font = Enum.Font.GothamBold
     keyIcon.Parent = inputContainer
     
-    -- Key input box
     local keyInput = Instance.new("TextBox")
-    keyInput.Name = "KeyInput"
     keyInput.Size = UDim2.new(1, -50, 1, 0)
     keyInput.Position = UDim2.new(0, 45, 0, 0)
     keyInput.BackgroundTransparency = 1
     keyInput.Text = ""
-    keyInput.PlaceholderText = "Enter key here (e.g., 2j1ldp_i23bn9=12nd-mnmnionj)"
+    keyInput.PlaceholderText = "DAY-xxxxx / WEEK-xxxxx / MONTH-xxxxx / LIFE-xxxxx"
     keyInput.TextColor3 = Colors.Text
     keyInput.PlaceholderColor3 = Colors.TextDim
-    keyInput.TextSize = 12
+    keyInput.TextSize = 11
     keyInput.Font = Enum.Font.Code
     keyInput.TextXAlignment = Enum.TextXAlignment.Left
     keyInput.ClearTextOnFocus = false
     keyInput.Parent = inputContainer
     
-    -- Status label
     local statusLabel = Instance.new("TextLabel")
-    statusLabel.Name = "StatusLabel"
     statusLabel.Size = UDim2.new(1, 0, 0, 20)
-    statusLabel.Position = UDim2.new(0, 0, 0, 88)
+    statusLabel.Position = UDim2.new(0, 0, 0, 86)
     statusLabel.BackgroundTransparency = 1
     statusLabel.Text = ""
     statusLabel.TextColor3 = Colors.TextDim
@@ -274,18 +393,56 @@ local function createKeySystemGUI()
     statusLabel.Font = Enum.Font.Gotham
     statusLabel.Parent = contentFrame
     
-    -- Buttons container
+    -- Tier indicator
+    local tierIndicator = Instance.new("Frame")
+    tierIndicator.Size = UDim2.new(1, 0, 0, 50)
+    tierIndicator.Position = UDim2.new(0, 0, 0, 112)
+    tierIndicator.BackgroundColor3 = Colors.BackgroundLight
+    tierIndicator.BackgroundTransparency = 0.5
+    tierIndicator.BorderSizePixel = 0
+    tierIndicator.Visible = false
+    tierIndicator.Parent = contentFrame
+    Instance.new("UICorner", tierIndicator).CornerRadius = UDim.new(0, 6)
+    
+    local tierIconLbl = Instance.new("TextLabel")
+    tierIconLbl.Size = UDim2.new(0, 50, 1, 0)
+    tierIconLbl.BackgroundTransparency = 1
+    tierIconLbl.Text = "∞"
+    tierIconLbl.TextSize = 24
+    tierIconLbl.Font = Enum.Font.GothamBold
+    tierIconLbl.Parent = tierIndicator
+    
+    local tierNameLabel = Instance.new("TextLabel")
+    tierNameLabel.Size = UDim2.new(0, 200, 0, 22)
+    tierNameLabel.Position = UDim2.new(0, 50, 0, 6)
+    tierNameLabel.BackgroundTransparency = 1
+    tierNameLabel.Text = "Lifetime Access"
+    tierNameLabel.TextColor3 = tierInfo["lifetime"].color
+    tierNameLabel.TextSize = 15
+    tierNameLabel.Font = Enum.Font.GothamBold
+    tierNameLabel.TextXAlignment = Enum.TextXAlignment.Left
+    tierNameLabel.Parent = tierIndicator
+    
+    local timeRemainingLabel = Instance.new("TextLabel")
+    timeRemainingLabel.Size = UDim2.new(0, 300, 0, 16)
+    timeRemainingLabel.Position = UDim2.new(0, 50, 0, 28)
+    timeRemainingLabel.BackgroundTransparency = 1
+    timeRemainingLabel.Text = "⏱ Time Remaining: Forever"
+    timeRemainingLabel.TextColor3 = Colors.TextDim
+    timeRemainingLabel.TextSize = 11
+    timeRemainingLabel.Font = Enum.Font.Gotham
+    timeRemainingLabel.TextXAlignment = Enum.TextXAlignment.Left
+    timeRemainingLabel.Parent = tierIndicator
+    
+    -- Buttons
     local buttonContainer = Instance.new("Frame")
     buttonContainer.Size = UDim2.new(1, 0, 0, 40)
-    buttonContainer.Position = UDim2.new(0, 0, 0, 115)
+    buttonContainer.Position = UDim2.new(0, 0, 0, 170)
     buttonContainer.BackgroundTransparency = 1
     buttonContainer.Parent = contentFrame
     
-    -- Validate button
     local validateBtn = Instance.new("TextButton")
-    validateBtn.Name = "ValidateBtn"
     validateBtn.Size = UDim2.new(0.48, 0, 1, 0)
-    validateBtn.Position = UDim2.new(0, 0, 0, 0)
     validateBtn.BackgroundColor3 = Colors.Accent
     validateBtn.Text = "✓ Validate Key"
     validateBtn.TextColor3 = Colors.Text
@@ -293,14 +450,9 @@ local function createKeySystemGUI()
     validateBtn.Font = Enum.Font.GothamBold
     validateBtn.AutoButtonColor = false
     validateBtn.Parent = buttonContainer
+    Instance.new("UICorner", validateBtn).CornerRadius = UDim.new(0, 8)
     
-    local validateCorner = Instance.new("UICorner")
-    validateCorner.CornerRadius = UDim.new(0, 8)
-    validateCorner.Parent = validateBtn
-    
-    -- Get Key button
     local getKeyBtn = Instance.new("TextButton")
-    getKeyBtn.Name = "GetKeyBtn"
     getKeyBtn.Size = UDim2.new(0.48, 0, 1, 0)
     getKeyBtn.Position = UDim2.new(0.52, 0, 0, 0)
     getKeyBtn.BackgroundColor3 = Colors.BackgroundLight
@@ -310,30 +462,21 @@ local function createKeySystemGUI()
     getKeyBtn.Font = Enum.Font.GothamBold
     getKeyBtn.AutoButtonColor = false
     getKeyBtn.Parent = buttonContainer
+    Instance.new("UICorner", getKeyBtn).CornerRadius = UDim.new(0, 8)
+    Instance.new("UIStroke", getKeyBtn).Color = Colors.Border
     
-    local getKeyCorner = Instance.new("UICorner")
-    getKeyCorner.CornerRadius = UDim.new(0, 8)
-    getKeyCorner.Parent = getKeyBtn
-    
-    local getKeyStroke = Instance.new("UIStroke")
-    getKeyStroke.Color = Colors.Border
-    getKeyStroke.Thickness = 1
-    getKeyStroke.Parent = getKeyBtn
-    
-    -- Info text
     local infoLabel = Instance.new("TextLabel")
-    infoLabel.Size = UDim2.new(1, 0, 0, 30)
-    infoLabel.Position = UDim2.new(0, 0, 0, 160)
+    infoLabel.Size = UDim2.new(1, 0, 0, 50)
+    infoLabel.Position = UDim2.new(0, 0, 0, 218)
     infoLabel.BackgroundTransparency = 1
-    infoLabel.Text = "⚠ Keys are case-sensitive • Contact @Binxix for support"
+    infoLabel.Text = "⚠ Keys are case-sensitive • Prefix indicates tier\n📞 Contact @Binxix on Discord for support\n💡 Test keys: DAY-a1b2c3_d4e5f6=test1"
     infoLabel.TextColor3 = Colors.TextDim
     infoLabel.TextSize = 10
     infoLabel.Font = Enum.Font.Gotham
+    infoLabel.TextWrapped = true
     infoLabel.Parent = contentFrame
     
-    -- Attempts counter
     local attemptsLabel = Instance.new("TextLabel")
-    attemptsLabel.Name = "AttemptsLabel"
     attemptsLabel.Size = UDim2.new(0, 120, 0, 20)
     attemptsLabel.Position = UDim2.new(1, -130, 1, -30)
     attemptsLabel.BackgroundTransparency = 1
@@ -344,93 +487,86 @@ local function createKeySystemGUI()
     attemptsLabel.TextXAlignment = Enum.TextXAlignment.Right
     attemptsLabel.Parent = mainFrame
     
-    -- Animation functions
+    -- Animations
     local function pulseGlow()
         while screenGui.Parent and keySystemActive do
-            local tweenIn = TweenService:Create(glow, TweenInfo.new(1.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {ImageTransparency = 0.75})
-            tweenIn:Play()
-            tweenIn.Completed:Wait()
-            local tweenOut = TweenService:Create(glow, TweenInfo.new(1.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {ImageTransparency = 0.9})
-            tweenOut:Play()
-            tweenOut.Completed:Wait()
+            TweenService:Create(glow, TweenInfo.new(1.5, Enum.EasingStyle.Sine), {ImageTransparency = 0.75}):Play()
+            task.wait(1.5)
+            TweenService:Create(glow, TweenInfo.new(1.5, Enum.EasingStyle.Sine), {ImageTransparency = 0.9}):Play()
+            task.wait(1.5)
         end
     end
     
-    -- Button hover effects
-    validateBtn.MouseEnter:Connect(function()
-        TweenService:Create(validateBtn, TweenInfo.new(0.2), {BackgroundColor3 = Colors.AccentBright}):Play()
-    end)
-    validateBtn.MouseLeave:Connect(function()
-        TweenService:Create(validateBtn, TweenInfo.new(0.2), {BackgroundColor3 = Colors.Accent}):Play()
-    end)
+    validateBtn.MouseEnter:Connect(function() TweenService:Create(validateBtn, TweenInfo.new(0.2), {BackgroundColor3 = Colors.AccentBright}):Play() end)
+    validateBtn.MouseLeave:Connect(function() TweenService:Create(validateBtn, TweenInfo.new(0.2), {BackgroundColor3 = Colors.Accent}):Play() end)
+    getKeyBtn.MouseEnter:Connect(function() TweenService:Create(getKeyBtn, TweenInfo.new(0.2), {BackgroundColor3 = Colors.Border}):Play() end)
+    getKeyBtn.MouseLeave:Connect(function() TweenService:Create(getKeyBtn, TweenInfo.new(0.2), {BackgroundColor3 = Colors.BackgroundLight}):Play() end)
+    keyInput.Focused:Connect(function() TweenService:Create(inputStroke, TweenInfo.new(0.2), {Color = Colors.AccentBright}):Play() end)
+    keyInput.FocusLost:Connect(function() TweenService:Create(inputStroke, TweenInfo.new(0.2), {Color = Colors.Border}):Play() end)
     
-    getKeyBtn.MouseEnter:Connect(function()
-        TweenService:Create(getKeyBtn, TweenInfo.new(0.2), {BackgroundColor3 = Colors.Border}):Play()
-    end)
-    getKeyBtn.MouseLeave:Connect(function()
-        TweenService:Create(getKeyBtn, TweenInfo.new(0.2), {BackgroundColor3 = Colors.BackgroundLight}):Play()
-    end)
-    
-    -- Input focus effects
-    keyInput.Focused:Connect(function()
-        TweenService:Create(inputStroke, TweenInfo.new(0.2), {Color = Colors.AccentBright}):Play()
-    end)
-    keyInput.FocusLost:Connect(function()
-        TweenService:Create(inputStroke, TweenInfo.new(0.2), {Color = Colors.Border}):Play()
-    end)
-    
-    -- Start glow animation
     task.spawn(pulseGlow)
     
-    -- Variables
     local attempts = 0
     local maxAttempts = 5
     local cooldownActive = false
     
-    -- Validation function
+    local function updateTierIndicator(tier, activationTime)
+        local info = tierInfo[tier]
+        tierIndicator.Visible = true
+        tierIconLbl.Text = info.icon
+        tierIconLbl.TextColor3 = info.color
+        tierNameLabel.Text = info.name .. " Access Activated!"
+        tierNameLabel.TextColor3 = info.color
+        timeRemainingLabel.Text = "⏱ Time Remaining: " .. formatTimeRemaining(getRemainingTime(tier, activationTime))
+        
+        local existingStroke = tierIndicator:FindFirstChildOfClass("UIStroke")
+        if existingStroke then existingStroke:Destroy() end
+        local tierStroke = Instance.new("UIStroke")
+        tierStroke.Color = info.color
+        tierStroke.Thickness = 1
+        tierStroke.Transparency = 0.3
+        tierStroke.Parent = tierIndicator
+    end
+    
     local function validateKey()
         if cooldownActive then
-            statusLabel.Text = "⏳ Please wait before trying again..."
+            statusLabel.Text = "⏳ Please wait..."
             statusLabel.TextColor3 = Colors.Warning
             return false
         end
         
-        local enteredKey = keyInput.Text:gsub("%s+", "") -- Remove whitespace
+        local enteredKey = keyInput.Text:gsub("%s+", "")
         
         if enteredKey == "" then
             statusLabel.Text = "❌ Please enter a key"
             statusLabel.TextColor3 = Colors.Error
-            TweenService:Create(inputStroke, TweenInfo.new(0.1), {Color = Colors.Error}):Play()
-            task.wait(0.5)
-            TweenService:Create(inputStroke, TweenInfo.new(0.2), {Color = Colors.Border}):Play()
             return false
         end
         
-        -- Check against valid keys
-        local isValid = false
-        for _, key in ipairs(validKeys) do
-            if enteredKey == key then
-                isValid = true
-                break
-            end
-        end
+        local keyData = findKeyInDatabase(enteredKey)
         
-        if isValid then
-            -- Success!
-            statusLabel.Text = "✅ Key validated successfully!"
-            statusLabel.TextColor3 = Colors.Success
-            TweenService:Create(inputStroke, TweenInfo.new(0.2), {Color = Colors.Success}):Play()
-            TweenService:Create(mainStroke, TweenInfo.new(0.2), {Color = Colors.Success}):Play()
+        if keyData then
+            local tier = keyData.tier
+            local info = tierInfo[tier]
+            local activationTime = os.time()
             
-            validateBtn.Text = "✓ Success!"
-            validateBtn.BackgroundColor3 = Colors.Success
+            statusLabel.Text = "✅ " .. info.name .. " key validated!"
+            statusLabel.TextColor3 = info.color
+            TweenService:Create(inputStroke, TweenInfo.new(0.2), {Color = info.color}):Play()
+            TweenService:Create(mainStroke, TweenInfo.new(0.2), {Color = info.color}):Play()
+            
+            updateTierIndicator(tier, activationTime)
+            
+            validateBtn.Text = "✓ " .. info.name .. " Activated!"
+            validateBtn.BackgroundColor3 = info.color
             
             keyValidated = true
             keySystemActive = false
+            activatedKeyTier = tier
+            keyExpirationTime = tier == "lifetime" and -1 or (activationTime + tierDurations[tier])
             
-            -- Success animation
             task.spawn(function()
-                task.wait(1)
+                task.wait(2.5)
                 for i = 0, 1, 0.05 do
                     mainFrame.BackgroundTransparency = i
                     overlay.BackgroundTransparency = 0.5 + (i * 0.5)
@@ -438,10 +574,8 @@ local function createKeySystemGUI()
                         if desc:IsA("TextLabel") or desc:IsA("TextButton") or desc:IsA("TextBox") then
                             desc.TextTransparency = i
                         end
-                        if desc:IsA("Frame") or desc:IsA("TextButton") then
-                            if desc.BackgroundTransparency < 1 then
-                                desc.BackgroundTransparency = desc.BackgroundTransparency + 0.05
-                            end
+                        if (desc:IsA("Frame") or desc:IsA("TextButton")) and desc.BackgroundTransparency < 1 then
+                            desc.BackgroundTransparency = desc.BackgroundTransparency + 0.05
                         end
                     end
                     task.wait(0.02)
@@ -451,7 +585,6 @@ local function createKeySystemGUI()
             
             return true
         else
-            -- Failed
             attempts = attempts + 1
             attemptsLabel.Text = "Attempts: " .. attempts .. "/" .. maxAttempts
             
@@ -462,7 +595,6 @@ local function createKeySystemGUI()
                 validateBtn.Text = "⏳ Cooldown..."
                 validateBtn.BackgroundColor3 = Colors.Error
                 
-                -- Cooldown timer
                 task.spawn(function()
                     for i = 30, 1, -1 do
                         if not screenGui.Parent then return end
@@ -472,16 +604,15 @@ local function createKeySystemGUI()
                     cooldownActive = false
                     attempts = 0
                     attemptsLabel.Text = "Attempts: 0/" .. maxAttempts
-                    statusLabel.Text = "✓ You can try again now"
+                    statusLabel.Text = "✓ Try again"
                     statusLabel.TextColor3 = Colors.Success
                     validateBtn.Text = "✓ Validate Key"
                     validateBtn.BackgroundColor3 = Colors.Accent
                 end)
             else
-                statusLabel.Text = "❌ Invalid key! (" .. (maxAttempts - attempts) .. " attempts remaining)"
+                statusLabel.Text = "❌ Invalid key! (" .. (maxAttempts - attempts) .. " attempts left)"
                 statusLabel.TextColor3 = Colors.Error
                 
-                -- Shake animation
                 local originalPos = mainFrame.Position
                 for i = 1, 5 do
                     mainFrame.Position = originalPos + UDim2.new(0, math.random(-5, 5), 0, 0)
@@ -498,52 +629,74 @@ local function createKeySystemGUI()
         end
     end
     
-    -- Button connections
-    validateBtn.MouseButton1Click:Connect(function()
-        if not cooldownActive then
-            validateKey()
-        end
-    end)
-    
-    -- Enter key to validate
-    keyInput.FocusLost:Connect(function(enterPressed)
-        if enterPressed and not cooldownActive then
-            validateKey()
-        end
-    end)
-    
-    -- Get Key button (you can change this URL)
+    validateBtn.MouseButton1Click:Connect(function() if not cooldownActive then validateKey() end end)
+    keyInput.FocusLost:Connect(function(enterPressed) if enterPressed and not cooldownActive then validateKey() end end)
     getKeyBtn.MouseButton1Click:Connect(function()
-        statusLabel.Text = "📋 Contact @Binxix on Discord for a key!"
+        statusLabel.Text = "📋 Contact @Binxix on Discord!"
         statusLabel.TextColor3 = Colors.AccentBright
-        
-        -- You can add your key link here if needed
-        -- setclipboard("https://your-key-link.com")
-        -- statusLabel.Text = "📋 Link copied to clipboard!"
     end)
     
     return screenGui
 end
 
--- ============================================
--- KEY VALIDATION CHECK
--- ============================================
-
+-- Wait for validation
 local function waitForKeyValidation()
     createKeySystemGUI()
-    
-    -- Wait until key is validated
-    while not keyValidated do
-        task.wait(0.1)
-    end
-    
+    while not keyValidated do task.wait(0.1) end
     return true
 end
 
--- Run key system and wait for validation
-if not waitForKeyValidation() then
-    return -- Exit if key validation fails
+if not waitForKeyValidation() then return end
+
+-- Print activation info
+print("✅ Key validated! Loading Binxix's GUI V5...")
+print("📋 Access Tier: " .. tierInfo[activatedKeyTier].name)
+print("⏱ Expiration: " .. (keyExpirationTime == -1 and "Never (Lifetime)" or os.date("%Y-%m-%d %H:%M:%S", keyExpirationTime)))
+
+-- Session expiration monitor
+if activatedKeyTier ~= "lifetime" then
+    task.spawn(function()
+        while true do
+            task.wait(60)
+            if keyExpirationTime > 0 and os.time() >= keyExpirationTime then
+                warn("⚠ Your " .. tierInfo[activatedKeyTier].name .. " key has expired!")
+                
+                local expiredGui = Instance.new("ScreenGui")
+                expiredGui.Name = "KeyExpired"
+                expiredGui.Parent = player:WaitForChild("PlayerGui")
+                
+                local expiredFrame = Instance.new("Frame")
+                expiredFrame.Size = UDim2.new(0, 380, 0, 130)
+                expiredFrame.Position = UDim2.new(0.5, -190, 0.5, -65)
+                expiredFrame.BackgroundColor3 = Color3.fromRGB(30, 15, 15)
+                expiredFrame.BorderSizePixel = 0
+                expiredFrame.Parent = expiredGui
+                Instance.new("UICorner", expiredFrame).CornerRadius = UDim.new(0, 10)
+                Instance.new("UIStroke", expiredFrame).Color = Color3.fromRGB(255, 80, 80)
+                
+                local expiredText = Instance.new("TextLabel")
+                expiredText.Size = UDim2.new(1, -20, 1, -20)
+                expiredText.Position = UDim2.new(0, 10, 0, 10)
+                expiredText.BackgroundTransparency = 1
+                expiredText.Text = "⚠ YOUR " .. string.upper(tierInfo[activatedKeyTier].name) .. " KEY HAS EXPIRED!\n\nPurchase a new key to continue.\nContact @Binxix on Discord"
+                expiredText.TextColor3 = Color3.fromRGB(255, 100, 100)
+                expiredText.TextSize = 14
+                expiredText.Font = Enum.Font.GothamBold
+                expiredText.TextWrapped = true
+                expiredText.Parent = expiredFrame
+                
+                break
+            end
+        end
+    end)
 end
+
+-- ============================================
+-- YOUR MAIN GUI V5 SCRIPT STARTS HERE
+-- Paste the rest of your V5 code below this line
+-- ============================================
+
+-- [REST OF YOUR BINXIX'S GUI V5 CODE GOES HERE]
 
 -- ============================================
 -- YOUR MAIN SCRIPT STARTS BELOW THIS LINE
